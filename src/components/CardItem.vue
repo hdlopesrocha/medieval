@@ -83,13 +83,39 @@ export default {
   ,
   methods: {
     async exportCardToPng() {
+      // Build a plain DOM representation of the card (avoid shadow DOM of Ionic web components)
+      const wrapper = document.createElement('div')
+      wrapper.style.position = 'fixed'
+      wrapper.style.left = '-9999px'
+      wrapper.style.top = '0'
+      wrapper.style.zIndex = '99999'
+      // base styles to approximate the card look
+      wrapper.innerHTML = `
+        <div style="width: 360px; padding:16px; box-sizing:border-box; background:#fff; border-radius:8px; box-shadow:0 6px 18px rgba(0,0,0,0.12); color:#111; font-family: sans-serif;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+            <div style="font-weight:800;font-size:18px;">${this._escapeHtml(this.card.title || '')}</div>
+            <div style="background:#eee;padding:4px 8px;border-radius:6px;font-weight:700;">${this._escapeHtml(String(this.card.type || ''))}</div>
+          </div>
+          ${this.card.imageUrl ? `<img src="${this._escapeAttr(this.imageSrc)}" style="width:100%;height:180px;object-fit:cover;border-radius:6px;margin-bottom:8px;"/>` : ''}
+          <div style="border:1px solid rgba(0,0,0,0.06);padding:8px;border-radius:6px;margin-bottom:8px;color:#333;">
+            <div style="margin-bottom:6px">${this._escapeHtml(this.card.description || '')}</div>
+            ${this.card.effectDescription ? `<div style="font-weight:700;color:#0a6">Effect: ${this._escapeHtml(this.card.effectDescription)}</div>` : ''}
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;font-weight:700">
+            <div style="background:rgba(0,0,0,0.04);padding:6px 8px;border-radius:6px">⚔️ ATK ${this._escapeHtml(String(this.card.attackPoints ?? ''))}</div>
+            <div style="background:rgba(0,0,0,0.04);padding:6px 8px;border-radius:6px">🛡️ DEF ${this._escapeHtml(String(this.card.defensePoints ?? ''))}</div>
+            <div style="background:rgba(0,0,0,0.04);padding:6px 8px;border-radius:6px">❤️ HP ${this._escapeHtml(String(this.card.hp ?? ''))}</div>
+            <div style="background:rgba(0,0,0,0.04);padding:6px 8px;border-radius:6px">💨 VEL ${this._escapeHtml(String(this.card.velocity ?? ''))}</div>
+            <div style="background:rgba(0,0,0,0.04);padding:6px 8px;border-radius:6px">🎯 RNG ${this._escapeHtml(String(this.card.range ?? ''))}</div>
+          </div>
+        </div>
+      `
+      document.body.appendChild(wrapper)
       try {
-        const el = this.$el.querySelector('ion-card') || this.$el
-        // use html2canvas to capture exact rendered DOM
-        const canvas = await html2canvas(el, { backgroundColor: null, scale: window.devicePixelRatio || 1 })
+        const canvas = await html2canvas(wrapper, { backgroundColor: null, scale: window.devicePixelRatio || 1, useCORS: true })
         if (!canvas) return
-        canvas.toBlob((blob) => {
-          if (!blob) return
+        await new Promise((resolve) => canvas.toBlob((blob) => {
+          if (!blob) return resolve(null)
           const link = document.createElement('a')
           link.href = URL.createObjectURL(blob)
           const safeTitle = (this.card.title || 'card').replace(/[^a-z0-9-_]/gi, '_')
@@ -98,11 +124,16 @@ export default {
           link.click()
           link.remove()
           URL.revokeObjectURL(link.href)
-        })
+          resolve(true)
+        }))
       } catch (e) {
-        // ignore errors
+        // ignore
+      } finally {
+        wrapper.remove()
       }
     },
+    _escapeHtml(s) { return String(s).replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]) },
+    _escapeAttr(s) { return String(s).replace(/"/g, '&quot;') },
     _inlineAllStyles(source, target) {
       try {
         const origNodes = [source].concat(Array.from(source.querySelectorAll('*')))
