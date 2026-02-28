@@ -1,0 +1,50 @@
+html, body, #app, ion-app {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background-image: url('/src/images/background.png');
+  background-size: cover;
+  background-position: center center;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Ensure Ionic pages are transparent so the background shows through */
+ion-page {
+  background: transparent;
+}
+
+/* Ensure ion-content expands to viewport height so pages can contain tall content */
+ion-content {
+  min-height: 100vh;
+  box-sizing: border-box;
+}
+
+/* Make sure Ionic root fills viewport */
+ion-app, .ion-page, #app {
+  min-height: 100vh;
+}
+
+/* If you want a semi-opaque content area, use a utility class */
+.content-card {
+  background: rgba(255,255,255,0.85);
+  border-radius: 8px;
+  padding: 16px;
+}
+
+/* Deck view background */
+.deck-bg {
+  background-image: url('/src/images/country.png');
+  background-size: cover;
+  background-position: center center;
+}
+
+.deck-grid {
+  display:flex;
+  flex-wrap:wrap;
+  justify-content:flex-start;
+}

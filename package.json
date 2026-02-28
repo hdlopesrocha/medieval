@@ -1,0 +1,21 @@
+{
+  "name": "tocabola-vue",
+  "version": "0.0.0",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "vue": "latest",
+    "@ionic/vue": "latest",
+    "@ionic/vue-router": "latest",
+    "ionicons": "latest"
+  },
+  "devDependencies": {
+    "vite": "latest",
+    "@vitejs/plugin-vue": "latest"
+  }
+}
