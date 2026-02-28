@@ -3,7 +3,7 @@
 
 NPM ?= npm
 
-.PHONY: help install dev build preview clean
+.PHONY: help install dev build preview clean deploy
 
 help:
 	@echo "Makefile commands:"
@@ -11,6 +11,7 @@ help:
 	@echo "  make dev        - run vite dev server (npm run dev)"
 	@echo "  make build      - build for production (npm run build)"
 	@echo "  make preview    - preview production build (npm run preview)"
+	@echo "  make deploy     - build and publish dist to GitHub Pages (gh-pages)"
 	@echo "  make clean      - remove node_modules and dist"
 
 install:
@@ -24,6 +25,10 @@ build:
 
 preview:
 	$(NPM) run preview
+
+deploy: build
+	@echo "Deploying to GitHub Pages (gh-pages branch)..."
+	npx --yes gh-pages -d dist
 
 clean:
 	rm -rf node_modules dist
