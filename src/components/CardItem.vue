@@ -4,14 +4,19 @@
       <div class="card-back-text">Card Back</div>
     </div>
     <template v-else>
-      <div v-if="card.cost !== undefined && card.cost !== null" class="cost-badge">{{ card.cost }}</div>
-      <ion-img :src="imageSrc" alt="card image" />
       <ion-card-header>
-        <ion-card-title>{{ card.title }}</ion-card-title>
-        <ion-chip>{{ card.type }}</ion-chip>
+        <div class="card-header-row">
+          <ion-card-title class="card-title">{{ card.title }}</ion-card-title>
+          <ion-chip class="card-type">{{ card.type }}</ion-chip>
+        </div>
       </ion-card-header>
       <ion-card-content>
-        <p>{{ card.description }}</p>
+        <ion-img :src="imageSrc" alt="card image" />
+
+        <div class="card-text-block">
+          <p class="description">{{ card.description }}</p>
+          <p v-if="card.effectDescription" class="effect-description"><strong>Effect:</strong> {{ card.effectDescription }}</p>
+        </div>
         <div class="attributes">
           <div class="attr"><span class="attr-icon">⚔️</span><span class="attr-label">ATK</span><span class="attr-value">{{ card.attackPoints }}</span></div>
           <div class="attr"><span class="attr-icon">🛡️</span><span class="attr-label">DEF</span><span class="attr-value">{{ card.defensePoints }}</span></div>
@@ -29,7 +34,7 @@
           <div class="hp-bar">
             <div class="hp-remaining" :style="{ width: hpPercent + '%' }"></div>
           </div>
-          <div class="hp-value">{{ card.hp }} / 10</div>
+          <div class="hp-value">{{ card.hp }} / {{ card.maxHp ?? 10 }}</div>
         </div>
       </ion-card-content>
     </template>
@@ -49,7 +54,8 @@ export default {
   computed: {
     hpPercent() {
       const hp = Number(this.card.hp ?? 0)
-      const pct = Math.round((hp / 10) * 100)
+      const max = Number(this.card.maxHp ?? 10)
+      const pct = max > 0 ? Math.round((hp / max) * 100) : 0
       return Math.max(0, Math.min(100, pct))
     },
     imageSrc() {
@@ -68,18 +74,7 @@ ion-card {
   margin: 8px;
 }
 
-.cost-badge {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  background: rgba(0,0,0,0.7);
-  color: #fff;
-  padding: 4px 8px;
-  border-radius: 12px;
-  font-weight: 700;
-  font-size: 12px;
-  z-index: 5;
-}
+
 
 .hp-section {
   display: flex;
@@ -139,4 +134,18 @@ ion-card {
 
 .card-back { display:flex; align-items:center; justify-content:center; height:220px; background: linear-gradient(135deg,#2b2b2b,#1b1b1b); color:#fff; border-radius:6px }
 .card-back-text { font-weight:800; font-size:18px; letter-spacing:1px }
+
+.card-header-row { display:flex; align-items:center; justify-content:space-between; gap:8px }
+.card-title { text-align:left; flex:1; margin:0; padding-right:8px }
+.card-type { margin-left:auto }
+.effect-description { margin-top:8px; font-weight:700; color:#2a6 }
+
+.card-text-block {
+  border: 1px solid rgba(0,0,0,0.08);
+  padding: 8px;
+  border-radius: 6px;
+  background: rgba(255,255,255,0.02);
+  margin-top: 8px;
+}
+.card-text-block .description { margin: 0 0 6px 0 }
 </style>
