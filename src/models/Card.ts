@@ -2,6 +2,11 @@ export enum CardType {
   SOLDIER = 'SOLDIER',
   ARCHER = 'ARCHER',
   PRIEST = 'PRIEST',
+  KING = 'KING',
+  SAINT = 'SAINT',
+  SHIP = 'SHIP',
+  ARCHANGEL = 'ARCHANGEL',
+  EFFECT = 'EFFECT',
   CAVALRY = 'CAVALRY',
   CATAPULT = 'CATAPULT'
 }
@@ -104,7 +109,11 @@ export default class Card {
 
   // Setters with basic validation
   set imageUrl(value: string) {
-    if (!value || typeof value !== 'string') throw new TypeError('imageUrl must be a non-empty string')
+    if (!value || typeof value !== 'string') {
+      // fallback to default card back image when none provided
+      this._imageUrl = '/images/backface.jpg'
+      return
+    }
     this._imageUrl = value
   }
 
