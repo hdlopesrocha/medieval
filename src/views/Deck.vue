@@ -19,14 +19,14 @@
 
 <script>
 import CardItem from '../components/CardItem.vue'
-import createSampleDeck from '../data/sampleDeck'
+import { createInitialDeck } from '../data/sampleDeck'
 import { IonPage, IonHeader, IonToolbar, IonTitle, IonContent, IonButtons, IonBackButton } from '@ionic/vue'
 
 export default {
   name: 'Deck',
   components: { CardItem, IonPage, IonHeader, IonToolbar, IonTitle, IonContent, IonButtons, IonBackButton },
   data() {
-    return { deck: createSampleDeck() }
+    return { deck: createInitialDeck() }
   }
 }
 </script>

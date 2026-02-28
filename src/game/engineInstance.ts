@@ -1,6 +1,6 @@
 import GameEngine from './GameEngine'
-import createSampleDeck from '../data/sampleDeck'
+import { createInitialDeck } from '../data/sampleDeck'
 
-const engine = new GameEngine(createSampleDeck())
+const engine = new GameEngine(createInitialDeck())
 
 export default engine
