@@ -9,6 +9,13 @@
           <ion-card-title class="card-title">{{ card.title }}</ion-card-title>
           <ion-chip class="card-type">{{ card.type }}</ion-chip>
         </div>
+        <div class="hp-section">
+          <div class="hp-label">HP</div>
+          <div class="hp-bar">
+            <div class="hp-remaining" :style="{ width: hpPercent + '%' }"></div>
+          </div>
+          <div class="hp-value">{{ card.hp }} / {{ card.maxHp ?? 10 }}</div>
+        </div>
       </ion-card-header>
       <ion-card-content>
         <ion-img :src="imageSrc" alt="card image" />
@@ -29,13 +36,7 @@
           <div class="attr"><span class="attr-icon">🎯</span><span class="attr-label">RNG</span><span class="attr-value">{{ card.range }}</span></div>
         </div>
 
-        <div class="hp-section">
-          <div class="hp-label">HP</div>
-          <div class="hp-bar">
-            <div class="hp-remaining" :style="{ width: hpPercent + '%' }"></div>
-          </div>
-          <div class="hp-value">{{ card.hp }} / {{ card.maxHp ?? 10 }}</div>
-        </div>
+
       </ion-card-content>
     </template>
   </ion-card>
