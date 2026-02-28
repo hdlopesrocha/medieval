@@ -1,4 +1,4 @@
-# Makefile for the Tocabola Vue + Ionic project
+# Makefile for the Fifth Empire Vue + Ionic project
 # Basic targets for development and build
 
 NPM ?= npm
