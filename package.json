@@ -9,13 +9,15 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "vue": "latest",
     "@ionic/vue": "latest",
     "@ionic/vue-router": "latest",
-    "ionicons": "latest"
+    "html2canvas": "^1.4.1",
+    "ionicons": "latest",
+    "vue": "latest",
+    "vue-router": "^4.6.4"
   },
   "devDependencies": {
-    "vite": "latest",
-    "@vitejs/plugin-vue": "latest"
+    "@vitejs/plugin-vue": "latest",
+    "vite": "latest"
   }
 }
