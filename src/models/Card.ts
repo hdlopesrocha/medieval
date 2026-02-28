@@ -15,13 +15,14 @@ export type CardJSON = {
   imageUrl: string
   title: string
   description: string
+  effectDescription?: string
   attackPoints: number
   defensePoints: number
   type: CardType
   hp: number
+  maxHp?: number
   velocity: number
   range: number
-  cost?: number
 }
 
 /**
@@ -34,36 +35,39 @@ export default class Card {
   private _imageUrl: string
   private _title: string
   private _description: string
+  private _effectDescription: string
   private _attackPoints: number
   private _defensePoints: number
   private _type: CardType
   private _hp: number
+  private _maxHp: number
   private _velocity: number
   private _range: number
-  private _cost: number
 
   constructor(
     imageUrl: string,
     title: string,
     description: string,
+    effectDescription = '',
     attackPoints = 0,
     defensePoints = 0,
     type: CardType = CardType.SOLDIER,
     hp = 0,
     velocity = 0,
     range = 0
-    , cost = 1
   ) {
     this.imageUrl = imageUrl
     this.title = title
     this.description = description
+    this.effectDescription = effectDescription
     this.attackPoints = attackPoints
     this.defensePoints = defensePoints
     this.type = type
+    // treat constructor hp as the unit's maximum HP and set current hp to max by default
+    this.maxHp = hp
     this.hp = hp
     this.velocity = velocity
     this.range = range
-    this.cost = cost
   }
 
   // Getters
@@ -77,6 +81,10 @@ export default class Card {
 
   get description(): string {
     return this._description
+  }
+
+  get effectDescription(): string {
+    return this._effectDescription
   }
 
   get attackPoints(): number {
@@ -95,16 +103,16 @@ export default class Card {
     return this._hp
   }
 
+  get maxHp(): number {
+    return this._maxHp
+  }
+
   get velocity(): number {
     return this._velocity
   }
 
   get range(): number {
     return this._range
-  }
-
-  get cost(): number {
-    return this._cost
   }
 
   // Setters with basic validation
@@ -127,6 +135,11 @@ export default class Card {
     this._description = value
   }
 
+  set effectDescription(value: string) {
+    if (typeof value !== 'string') throw new TypeError('effectDescription must be a string')
+    this._effectDescription = value
+  }
+
   set attackPoints(value: number) {
     if (!Number.isFinite(value) || value < 0) throw new RangeError('attackPoints must be a non-negative number')
     this._attackPoints = Math.trunc(value)
@@ -147,6 +160,11 @@ export default class Card {
     this._hp = Math.trunc(value)
   }
 
+  set maxHp(value: number) {
+    if (!Number.isFinite(value) || value < 0) throw new RangeError('maxHp must be a non-negative number')
+    this._maxHp = Math.trunc(value)
+  }
+
   set velocity(value: number) {
     if (!Number.isFinite(value) || value < 0) throw new RangeError('velocity must be a non-negative number')
     this._velocity = Math.trunc(value)
@@ -157,24 +175,20 @@ export default class Card {
     this._range = Math.trunc(value)
   }
 
-  set cost(value: number) {
-    if (!Number.isFinite(value) || value < 0) throw new RangeError('cost must be a non-negative number')
-    this._cost = Math.trunc(value)
-  }
-
   // Make serialization to JSON straightforward
   toJSON(): CardJSON {
     return {
       imageUrl: this.imageUrl,
       title: this.title,
       description: this.description,
+      effectDescription: this.effectDescription,
       attackPoints: this.attackPoints,
       defensePoints: this.defensePoints,
       type: this.type,
       hp: this.hp,
+      maxHp: this.maxHp,
       velocity: this.velocity,
       range: this.range,
-      cost: this.cost
     }
   }
 
@@ -184,18 +198,21 @@ export default class Card {
     const typeCandidate = obj.type && (Object.values(CardType) as string[]).includes(obj.type as string)
       ? (obj.type as CardType)
       : CardType.SOLDIER
-
-    return new Card(
+    const maxHp = (typeof obj.maxHp === 'number') ? obj.maxHp : (obj.hp ?? 0)
+    const card = new Card(
       obj.imageUrl ?? '',
       obj.title ?? '',
       obj.description ?? '',
+      obj.effectDescription ?? '',
       obj.attackPoints ?? 0,
       obj.defensePoints ?? 0,
       typeCandidate,
-      obj.hp ?? 0,
+      maxHp,
       obj.velocity ?? 0,
-      obj.range ?? 0,
-      obj.cost ?? 1
+      obj.range ?? 0
     )
+    // if JSON stored a current hp value, restore it (otherwise it remains at max)
+    card.hp = (typeof obj.hp === 'number') ? obj.hp : maxHp
+    return card
   }
 }
