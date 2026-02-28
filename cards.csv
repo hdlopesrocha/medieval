@@ -1,0 +1,88 @@
+ID,Name,Category,SubCategory,ATK,DEF,HP,Move,Map,Effect,Counter,MovementSlots,CastleDamage
+1,D. Afonso Henriques,King,Knight,4,4,6,3,Land,Allied Knights gain +1 ATK,Pikeman,3,1
+2,D. Dinis,King,Priest,2,4,6,2,Land,Heal 2 HP in Agriculture,Priest Silence,2,0
+3,D. João II,King,Soldier,3,5,6,2,Land,Cancel one enemy effect,Overwhelm,2,0
+4,D. Manuel I,King,Boat,4,4,6,3,Water,Boats gain +1 DEF,Fire,3,0
+5,D. Sebastião,King,Knight,5,2,6,3,Land,Charge +2 ATK first combat,Pikeman,3,1
+6,D. João IV,King,Knight,4,3,6,3,Land,Allied Knights +1 DEF,Archer,3,1
+7,D. Pedro I,King,Soldier,3,4,5,2,Land,Prevent one unit destruction,Cavalry,2,0
+8,D. João III,King,Priest,2,3,5,2,Land,Disable enemy priest,Counter-Priest,2,0
+9,D. José I,King,Knight,4,4,6,3,Land,Resist first ranged attack,Pikeman,3,1
+10,D. João VI,King,Boat,3,3,5,3,Water,Move 1 unit across water,Boarding,3,0
+
+11,Pedro Álvares Cabral,Hero,Boat,2,3,4,3,Water,Reveal next map tile,War Boat,3,0
+12,Vasco da Gama,Hero,Boat,4,3,4,3,Water,Ignore first damage,Fire Ship,3,0
+13,Fernão de Magalhães,Hero,Boat,3,2,4,3,Water,Move twice this turn,Storm,3,0
+14,Martim Moniz,Hero,Soldier,5,2,4,2,Land,Open castle breach,Shield Wall,2,1
+15,Afonso de Albuquerque,Hero,Knight,4,4,4,3,Land,Knights gain +1 DEF,Mass Archers,3,1
+16,Infante Dom Henrique,Hero,Soldier,4,3,4,2,Land,Rally Soldiers +1 ATK,Pikeman,2,0
+17,Nuno Álvares Pereira,Hero,Archer,4,2,3,2,Land,+1 ATK vs Heroes,Cavalry,2,0
+18,Bartolomeu Dias,Hero,Horseman with Bows,3,2,3,3,Land,Hit & run,Archer duel,3,0
+19,Mem de Sá,Hero,Horse with Spears,4,3,3,3,Land,First strike,Pikeman,3,0
+20,D. João de Castro,Hero,Horse with Spears,5,4,3,3,Land,Flank bonus,Arrows,3,0
+21,São João de Deus,Hero,Priest,2,4,4,2,Land,Heal adjacent units,Silence,2,0
+22,Santo António,Hero,Priest,1,3,3,2,Land,Search one card,Enemy steal,2,0
+23,São Francisco Xavier,Hero,Priest,2,3,4,2,Land,Convert adjacent enemy unit,Converted lost effect,2,0
+24,Francisco de Sá e Meneses,Hero,Pikeman,3,4,4,2,Land,+2 ATK vs Cavalry,Archers,2,0
+25,Diogo Cão,Hero,Boat,2,3,4,3,Water,Reveal new map tile,War Boat,3,0
+26,Tomé de Sousa,Hero,Soldier,4,3,4,2,Land,Rally adjacent Soldiers,Overwhelm,2,0
+27,Estêvão da Gama,Hero,Horseman with Bows,3,3,3,3,Land,Attack after move,Archer,3,0
+28,Gaspar Corte-Real,Hero,Boat,2,2,3,3,Water,Scout and reveal enemy hand,Fire,3,0
+29,Lourenço de Almeida,Hero,Boat,3,3,3,3,Water,Extra move for boat,Boarding,3,0
+30,Duarte Pacheco Pereira,Hero,Archer,3,2,3,2,Land,+1 range vs Knights,Shield Units,2,0
+
+31,Elite Soldier,Noble,Soldier,4,2,3,2,Land,+1 ATK when attacking,Pikeman,2,0
+32,Defensive Soldier,Noble,Soldier,2,4,3,2,Land,Block 1 damage,Archer,2,0
+33,Castle Guard,Noble,Soldier,2,5,4,2,Land,Castle +2 DEF,Siege,2,1
+34,Heavy Knight,Noble,Knight,4,4,3,3,Land,Resist arrows,Priest curse,3,1
+35,Light Knight,Noble,Knight,4,2,3,3,Land,Charge bonus,Pikeman,3,1
+36,Longbow Archer,Noble,Archer,3,1,2,2,Land,Range 2 attack,Cavalry,2,0
+37,Heavy Archer,Noble,Archer,3,2,2,2,Land,Ignore 1 DEF,Assassin,2,0
+38,Royal Archer,Noble,Archer,4,1,2,2,Land,Bonus vs Heroes,Shield Units,2,0
+39,Scout Archer,Noble,Archer,2,1,2,3,Land,Move after attack,Cavalry,2,0
+40,Pikeman,Noble,Pikeman,3,3,3,2,Land,+2 ATK vs Cavalry,Archers,2,0
+
+41,Elite Pikeman,Noble,Pikeman,4,3,3,2,Land,Hold position,Siege,2,0
+42,Guard Pikeman,Noble,Pikeman,2,4,4,2,Land,Protect adjacent unit,Archers,2,0
+43,Horse Archer,Noble,Horseman with Bows,3,2,3,3,Land,Attack after move,Archers,3,0
+44,Elite Horse Archer,Noble,Horseman with Bows,4,2,3,3,Land,Hit & run,Net Trap,3,0
+45,Lancer,Noble,Horse with Spears,4,3,3,3,Land,First strike,Pikeman,3,0
+46,Elite Lancer,Noble,Horse with Spears,5,3,3,3,Land,+2 ATK first attack,Pikeman,3,0
+47,Heavy Lancer,Noble,Horse with Spears,4,4,3,3,Land,Resist counterattack,Archer,3,0
+48,Light Lancer,Noble,Horse with Spears,4,2,3,3,Land,Flank bonus,Arrows,3,0
+
+49,Scout Boat,Noble,Boat,2,2,2,3,Water,Reveal enemy unit,War Boat,3,0
+50,Trade Ship,Noble,Boat,1,3,3,3,Water,Draw 1 card,Pirates,3,0
+51,Fast Transport,Noble,Boat,2,1,2,4,Water,Carry 1 land unit,Fire,3,0
+52,War Galley,Noble,Boat,4,3,3,3,Water,+2 ATK vs Boats,Boarding,3,0
+53,Heavy Warship,Noble,Boat,5,4,3,3,Water,Disable enemy Boat,Ram,3,0
+54,Fire Ship,Noble,Boat,4,1,2,3,Water,Burn enemy Boat,Fast Boats,3,0
+55,Coastal Defender,Noble,Boat,3,4,3,3,Water,+2 DEF near Castle,Catapult,3,0
+56,Boarding Vessel,Noble,Boat,3,3,3,3,Water,Capture enemy Boat,Priest Curse,3,0
+
+57,Naval Marine,Noble,Soldier,3,4,3,2,Both,Board ships,Archers,2,0
+58,Light Marine,Noble,Soldier,3,3,3,2,Both,Amphibious,Heavy Units,2,0
+59,Heroic Soldier,Hero,Soldier,4,3,4,2,Land,Rally nearby units,Assassination,2,0
+60,Heroic Archer,Hero,Archer,4,2,3,2,Land,Double shot,Cavalry,2,0
+61,Heroic Knight,Hero,Knight,5,4,4,3,Land,Ignore first counter,Pikeman,3,1
+62,Heroic Priest,Hero,Priest,2,4,4,2,Land,Mass heal 2,Silence,2,0
+
+63,Explorer Captain,Hero,Boat,3,3,4,3,Water,Draw 2 cards,War Boat,3,0
+64,Naval Commander,Hero,Boat,5,4,4,3,Water,Boats gain +1 ATK,Fire,3,0
+65,Siege Master,Hero,Catapult,4,2,4,1,Land,Catapults +1 ATK,Cavalry,1,3
+66,Defender Hero,Hero,Soldier,3,5,4,2,Land,Allies gain +1 DEF,Siege,2,0
+67,Royal Pikeman,Hero,Pikeman,4,4,4,2,Land,Stop Cavalry charge,Archers,2,0
+68,Royal Lancer,Hero,Horse with Spears,5,4,4,3,Land,First strike area,Pikeman,3,0
+69,Elite War Galley,Noble,Boat,5,3,3,3,Water,Double damage first hit,Fire,3,0
+70,Harpoon Boat,Noble,Boat,3,2,3,3,Water,Disable movement,Fast Boats,3,0
+
+71,Frontline Soldier,Noble,Soldier,3,3,3,2,Land,Hold ground,Catapult,2,0
+72,Shock Soldier,Noble,Soldier,5,1,3,2,Land,Armor break,Pikeman,2,0
+73,City Archer,Noble,Archer,3,2,2,2,Land,+1 DEF in city,Cavalry,2,0
+74,Sniper Archer,Noble,Archer,4,1,2,2,Land,Target Hero,Shield Units,2,0
+75,Mobile Catapult,Noble,Catapult,2,2,3,2,Land,Move then shoot,Fast Units,1,3
+76,Siege Tower,Noble,Catapult,3,3,4,1,Land,Ignore Castle DEF,Fire,1,3
+77,Faith Banner,Noble,Priest,1,2,2,2,Land,Allies +1 DEF,Dispel,2,0
+78,War Chaplain,Noble,Priest,3,3,2,2,Land,+1 ATK to Knights,Assassins,2,0
+79,Scout Cavalry,Noble,Horse with Spears,3,2,2,4,Land,Reveal map,Archers,3,0
+80,Guard Cavalry,Noble,Horse with Spears,3,4,3,3,Land,Protect Hero,Pikeman,3,0
