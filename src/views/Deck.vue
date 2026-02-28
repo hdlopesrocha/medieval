@@ -11,7 +11,7 @@
 
     <ion-content class="ion-padding deck-bg">
       <div class="deck-grid">
-        <CardItem v-for="(c, i) in deck" :key="i" :card="c" />
+        <CardItem v-for="(c, i) in deck" :key="i" :card="c" :show-export="true" />
       </div>
     </ion-content>
   </ion-page>

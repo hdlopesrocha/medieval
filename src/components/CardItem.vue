@@ -53,11 +53,14 @@ export default {
   name: 'CardItem',
   props: {
     card: { type: Object, required: true },
-    hidden: { type: Boolean, default: false }
+    hidden: { type: Boolean, default: false },
+    showExport: { type: Boolean, default: null }
   },
   components: { IonCard, IonCardHeader, IonCardTitle, IonCardContent, IonImg, IonChip },
   computed: {
     showExportButton() {
+      // explicit prop takes precedence; null means "auto-detect via route"
+      if (this.showExport !== null) return Boolean(this.showExport)
       try {
         return Boolean(this.$route && String(this.$route.path || '').toLowerCase().includes('deck'))
       } catch (e) {
