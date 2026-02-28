@@ -20,7 +20,6 @@ export type CardJSON = {
   defensePoints: number
   type: CardType
   hp: number
-  maxHp?: number
   velocity: number
   range: number
 }
@@ -40,7 +39,6 @@ export default class Card {
   private _defensePoints: number
   private _type: CardType
   private _hp: number
-  private _maxHp: number
   private _velocity: number
   private _range: number
 
@@ -63,8 +61,7 @@ export default class Card {
     this.attackPoints = attackPoints
     this.defensePoints = defensePoints
     this.type = type
-    // treat constructor hp as the unit's maximum HP and set current hp to max by default
-    this.maxHp = hp
+    // treat constructor hp as the unit's current HP
     this.hp = hp
     this.velocity = velocity
     this.range = range
@@ -101,10 +98,6 @@ export default class Card {
 
   get hp(): number {
     return this._hp
-  }
-
-  get maxHp(): number {
-    return this._maxHp
   }
 
   get velocity(): number {
@@ -160,11 +153,6 @@ export default class Card {
     this._hp = Math.trunc(value)
   }
 
-  set maxHp(value: number) {
-    if (!Number.isFinite(value) || value < 0) throw new RangeError('maxHp must be a non-negative number')
-    this._maxHp = Math.trunc(value)
-  }
-
   set velocity(value: number) {
     if (!Number.isFinite(value) || value < 0) throw new RangeError('velocity must be a non-negative number')
     this._velocity = Math.trunc(value)
@@ -186,7 +174,6 @@ export default class Card {
       defensePoints: this.defensePoints,
       type: this.type,
       hp: this.hp,
-      maxHp: this.maxHp,
       velocity: this.velocity,
       range: this.range,
     }
@@ -198,7 +185,7 @@ export default class Card {
     const typeCandidate = obj.type && (Object.values(CardType) as string[]).includes(obj.type as string)
       ? (obj.type as CardType)
       : CardType.SOLDIER
-    const maxHp = (typeof obj.maxHp === 'number') ? obj.maxHp : (obj.hp ?? 0)
+    const hpVal = (typeof obj.hp === 'number') ? obj.hp : 0
     const card = new Card(
       obj.imageUrl ?? '',
       obj.title ?? '',
@@ -207,12 +194,12 @@ export default class Card {
       obj.attackPoints ?? 0,
       obj.defensePoints ?? 0,
       typeCandidate,
-      maxHp,
+      hpVal,
       obj.velocity ?? 0,
       obj.range ?? 0
     )
     // if JSON stored a current hp value, restore it (otherwise it remains at max)
-    card.hp = (typeof obj.hp === 'number') ? obj.hp : maxHp
+    card.hp = (typeof obj.hp === 'number') ? obj.hp : hpVal
     return card
   }
 }

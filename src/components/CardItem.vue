@@ -10,13 +10,7 @@
           <ion-card-title class="card-title">{{ card.title }}</ion-card-title>
           <ion-chip class="card-type">{{ card.type }}</ion-chip>
         </div>
-        <div class="hp-section">
-          <div class="hp-label">HP</div>
-          <div class="hp-bar">
-            <div class="hp-remaining" :style="{ width: hpPercent + '%' }"></div>
-          </div>
-          <div class="hp-value">{{ card.hp }} / {{ card.maxHp ?? 10 }}</div>
-        </div>
+
       </ion-card-header>
       <ion-card-content>
         <ion-img :src="imageSrc" alt="card image" />
@@ -69,7 +63,7 @@ export default {
     },
     hpPercent() {
       const hp = Number(this.card.hp ?? 0)
-      const max = Number(this.card.maxHp ?? 10)
+      const max = 10
       const pct = max > 0 ? Math.round((hp / max) * 100) : 0
       return Math.max(0, Math.min(100, pct))
     },
@@ -195,9 +189,9 @@ ion-card {
 
 /* Enforce a 3:4 ratio for all card items */
 .card-item-wrapper ion-card {
-  width: 240px;
+  width: 320px;
   max-width: 100%;
-  aspect-ratio: 3 / 4;
+  aspect-ratio: 3 / 5;
   display: block;
   overflow: hidden;
 }

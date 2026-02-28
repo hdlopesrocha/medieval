@@ -20,7 +20,7 @@ others.set('Guardian Archangel', { onPlayed: (engine, g, playerId) => { for (con
 
 others.set('Wrath Archangel', { onPlayed: (engine, g, playerId, targetId) => { if (!targetId) return { ok: false, reason: 'no target' }; damageTarget(engine, targetId, (g.card.attackPoints || 0), true) } })
 
-others.set('Miracle', { onPlayed: (engine, g, playerId) => { for (const a of engine.cardsInPlay.filter((x: any) => x.ownerId === playerId)) a.card.hp = a.card.maxHp ?? 10 } })
+others.set('Miracle', { onPlayed: (engine, g, playerId) => { for (const a of engine.cardsInPlay.filter((x: any) => x.ownerId === playerId)) a.card.hp = 10 } })
 
 others.set('Total Siege', { onPlayed: (engine, g, playerId) => { for (const s of engine.cardsInPlay.filter((x: any) => x.ownerId === playerId && x.card.type === CardType.CATAPULT)) { const enemiesInCastle = engine.cardsInPlay.filter((x: any) => x.position === engine.ZONES.length - 1 && x.ownerId !== playerId); for (const ec of enemiesInCastle) ec.card.hp = Math.max(0, ec.card.hp - (s.card.attackPoints || 0) * 2) } } })
 
