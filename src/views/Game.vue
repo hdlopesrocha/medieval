@@ -16,16 +16,7 @@
         <input type="file" accept=".json" style="display:none" @change="onFileChange" ref="fileInput" />
       </div>
 
-      <section>
-        <h3>Market</h3>
-        <div style="display:flex;gap:8px;flex-wrap:wrap">
-          <div v-for="(c, i) in state.market" :key="i" style="width:140px;border:1px solid #ccc;padding:8px;border-radius:6px;text-align:center">
-            <CardItem :card="marketPlaceholder" :hidden="true" />
-            <div style="margin-top:8px">Cost: <strong>{{ c.cost }}</strong></div>
-            <ion-button size="small" @click="buy(i)">Buy</ion-button>
-          </div>
-        </div>
-      </section>
+      <!-- Market removed -->
 
       <section style="margin-top:16px">
         <h3>Table (cards in play)</h3>
@@ -42,12 +33,33 @@
                   <ion-button size="small" @click="moveCardUI(g.id)">Move</ion-button>
                   <ion-button size="small" @click="attackCardUI(g.id)">Attack</ion-button>
                   <ion-button size="small" v-if="g.card && g.card.type === 'PRIEST' && canConvert(g)" @click="convertCardUI(g.id)">Convert</ion-button>
+                  <ion-button size="small" @click="openAbilitySelector(g.id)">Use</ion-button>
+                  <ion-button size="small" fill="clear" @click="useAbilityNoTarget(g.id)">Use (no target)</ion-button>
                 </template>
               </div>
             </div>
           </div>
         </div>
       </section>
+
+      <!-- Selection overlay for choosing targets -->
+      <div v-if="selection.mode" class="selection-overlay">
+        <div class="selection-box">
+          <h3>Select target</h3>
+          <div class="candidates">
+            <div v-for="c in selection.candidates" :key="c.id" class="candidate">
+              <CardItem :card="c.card" :hidden="c.hidden && c.ownerId !== state.activePlayerId" />
+              <div style="display:flex;gap:8px;align-items:center;margin-top:6px">
+                <div style="flex:1">{{ c.card.title }} (pos {{ c.position }}, hp {{ c.card.hp }})</div>
+                <ion-button size="small" @click="selectTarget(c.id)">Select</ion-button>
+              </div>
+            </div>
+          </div>
+          <div style="margin-top:8px;text-align:right">
+            <ion-button fill="clear" @click="cancelSelection">Cancel</ion-button>
+          </div>
+        </div>
+      </div>
 
       <section style="margin-top:16px">
         <h3>Hands</h3>
@@ -102,11 +114,7 @@ export default {
       state.value = engine.getState()
     }
 
-    function buy(i) {
-      const res = engine.buyCard(state.value.activePlayerId || 0, i)
-      if (!res.ok) alert('Buy failed: ' + res.reason)
-      state.value = engine.getState()
-    }
+    // buy removed (market phase removed)
 
     function zoneName(pos) {
       return ZONES[pos] ?? ''
@@ -114,17 +122,6 @@ export default {
 
     const fileInput = ref(null)
 
-    const marketPlaceholder = {
-      imageUrl: '/images/card_back.jpg',
-      title: 'Card Back',
-      description: '',
-      attackPoints: 0,
-      defensePoints: 0,
-      type: 'SOLDIER',
-      hp: 10,
-      velocity: 0,
-      range: 0
-    }
 
     function exportState() {
       try {
@@ -179,32 +176,63 @@ export default {
       function attackCardUI(attackerId) {
         const attacker = state.value.cardsInPlay.find(x => x.id === attackerId)
         if (!attacker) return alert('attacker not found')
-        const targets = state.value.cardsInPlay.filter(x => x.ownerId !== state.value.activePlayerId)
-        if (!targets.length) return alert('no targets')
-        const choices = targets.map((t, idx) => `${idx}: ${t.card.title} (pos ${t.position}, hp ${t.card.hp})`).join('\n')
-        const sel = prompt(`Choose target:\n${choices}`, '0')
-        if (sel == null) return
-        const idx = Number(sel)
-        if (!Number.isFinite(idx) || idx < 0 || idx >= targets.length) return alert('invalid target')
-        const targetId = targets[idx].id
-        const res = engine.attackCard(attackerId, targetId, state.value.activePlayerId || 0)
-        if (!res.ok) return alert('Attack failed: ' + res.reason)
-        state.value = engine.getState()
+          // open target selector for attack
+          const targets = state.value.cardsInPlay.filter(x => x.ownerId !== state.value.activePlayerId)
+          if (!targets.length) return alert('no targets')
+          selection.value.mode = 'attack'
+          selection.value.sourceId = attackerId
+          selection.value.candidates = targets
       }
 
       function convertCardUI(attackerId) {
         const attacker = state.value.cardsInPlay.find(x => x.id === attackerId)
         if (!attacker) return alert('attacker not found')
-        const targets = state.value.cardsInPlay.filter(x => x.ownerId !== state.value.activePlayerId)
-        if (!targets.length) return alert('no targets')
-        const choices = targets.map((t, idx) => `${idx}: ${t.card.title} (pos ${t.position}, hp ${t.card.hp})`).join('\n')
-        const sel = prompt(`Choose target to convert:\n${choices}`, '0')
-        if (sel == null) return
-        const idx = Number(sel)
-        if (!Number.isFinite(idx) || idx < 0 || idx >= targets.length) return alert('invalid target')
-        const targetId = targets[idx].id
-        const res = engine.convertCard(attackerId, targetId, state.value.activePlayerId || 0)
-        if (!res.ok) return alert('Convert failed: ' + res.reason)
+          // open target selector for convert
+            const targets = state.value.cardsInPlay.filter(x => x.ownerId !== state.value.activePlayerId)
+            if (!targets.length) return alert('no targets')
+            selection.value.mode = 'convert'
+            selection.value.sourceId = attackerId
+            selection.value.candidates = targets
+      }
+
+      // Selection UI state and helpers
+      const selection = ref({ mode: null, sourceId: null, candidates: [] })
+
+      function cancelSelection() {
+        selection.value.mode = null
+        selection.value.sourceId = null
+        selection.value.candidates = []
+      }
+
+      async function selectTarget(targetId) {
+        const playerId = state.value.activePlayerId || 0
+        try {
+          if (selection.value.mode === 'attack') {
+            const res = engine.attackCard(selection.value.sourceId, targetId, playerId)
+            if (!res.ok) return alert('Attack failed: ' + res.reason)
+          } else if (selection.value.mode === 'convert') {
+            const res = engine.convertCard(selection.value.sourceId, targetId, playerId)
+            if (!res.ok) return alert('Convert failed: ' + res.reason)
+          } else if (selection.value.mode === 'ability') {
+            const res = engine.useCardAbility(selection.value.sourceId, playerId, targetId)
+            if (!res.ok) return alert('Ability failed: ' + res.reason)
+          }
+        } finally {
+          cancelSelection()
+          state.value = engine.getState()
+        }
+      }
+
+      function openAbilitySelector(cardId) {
+        selection.value.mode = 'ability'
+        selection.value.sourceId = cardId
+        selection.value.candidates = state.value.cardsInPlay || []
+      }
+
+      function useAbilityNoTarget(cardId) {
+        const playerId = state.value.activePlayerId || 0
+        const res = engine.useCardAbility(cardId, playerId)
+        if (!res.ok) return alert('Ability failed: ' + res.reason)
         state.value = engine.getState()
       }
 
@@ -229,10 +257,14 @@ export default {
       evt.dataTransfer.effectAllowed = 'copy'
     }
 
-    return { state, start, next, buy, zoneName, moveCardUI, attackCardUI, exportState, triggerImport, onFileChange, fileInput, marketPlaceholder, playFromHand, onHandDragStart, canConvert }
+    return { state, start, next, zoneName, moveCardUI, attackCardUI, exportState, triggerImport, onFileChange, fileInput, playFromHand, onHandDragStart, canConvert, selection, selectTarget, cancelSelection, openAbilitySelector, useAbilityNoTarget }
   }
 }
 </script>
 
 <style scoped>
+.selection-overlay { position: fixed; inset: 0; display:flex; align-items:center; justify-content:center; background: rgba(0,0,0,0.45); z-index: 2000 }
+.selection-box { background: #fff; padding: 16px; border-radius: 8px; width: min(960px, 92%); max-height: 80vh; overflow:auto }
+.candidates { display:flex; flex-wrap:wrap; gap:12px }
+.candidate { min-width:220px; border:1px solid #eee; padding:8px; border-radius:6px; background:#fafafa }
 </style>
