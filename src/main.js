@@ -30,8 +30,20 @@ const routes = [
 	,{ path: '/board', component: Board }
 ]
 
+// Compute a robust base at runtime: prefer Vite's BASE_URL, otherwise infer
+// the first path segment (useful when deployed under a repo name on GitHub Pages).
+let runtimeBase = import.meta.env.BASE_URL
+if (!runtimeBase || runtimeBase === '/') {
+	try {
+		const seg = window.location.pathname.split('/').filter(Boolean)[0]
+		if (seg) runtimeBase = `/${seg}/`
+	} catch (e) {
+		runtimeBase = '/'
+	}
+}
+
 const router = createRouter({
-	history: createWebHistory(import.meta.env.BASE_URL),
+	history: createWebHistory(runtimeBase),
 	routes
 })
 
