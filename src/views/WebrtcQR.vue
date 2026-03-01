@@ -23,8 +23,8 @@
             @click="setRole('client')"
             style="flex:1"
           >
-            <ion-icon :icon="phonePortraitOutline" slot="start"></ion-icon>
-            Client
+            <ion-icon :icon="phonePortraitOutline" style="font-size:128px;display:block;margin:0 auto"></ion-icon>
+            
           </ion-button>
         </div>
       </template>
