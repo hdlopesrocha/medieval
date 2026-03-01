@@ -15,12 +15,23 @@
       <template v-if="activeRole === 'server'">
         <div style="display:flex;flex-direction:column;width:100%;align-items:stretch">
           <h3>Server (create offer)</h3>
-          <ion-button @click="createOffer" color="primary" style="width:100%">Create Offer & QR</ion-button>
-          <div v-if="offerQr">
+          <ion-button v-if="!connectedHost" @click="createOffer" color="primary" style="width:100%">Create Offer & QR</ion-button>
+          <div v-if="!connectedHost && offerQr">
             <h4>Offer QR</h4>
             <img :src="offerQr" alt="offer-qr" style="width:100%;display:block"/>
+            <p v-if="offerQrParts.length" style="margin:6px 0 6px 0">Part {{ offerQrPartIndex + 1 }}/{{ offerQrParts.length }}</p>
+            <div v-if="offerQrParts.length" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
+              <div
+                v-for="idx in offerQrParts.length"
+                :key="`offer-part-${idx}`"
+                :style="`min-width:52px;padding:6px 8px;border-radius:6px;text-align:center;border:1px solid ${offerQrPartIndex === (idx - 1) ? '#198754' : '#ced4da'};background:${offerQrPartIndex === (idx - 1) ? '#e9f7ef' : '#f8f9fa'};color:${offerQrPartIndex === (idx - 1) ? '#198754' : '#adb5bd'};display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px`"
+              >
+                <ion-icon :icon="offerQrPartIndex === (idx - 1) ? cube : cubeOutline" style="font-size:18px"></ion-icon>
+                <span style="font-size:11px;line-height:1">{{ idx }}</span>
+              </div>
+            </div>
           </div>
-          <div style="margin-top:8px">
+          <div v-if="!connectedHost" style="margin-top:8px">
             <ion-button color="tertiary" @click="startScanner('answer')" style="width:100%">Scan Answer QR (camera)</ion-button>
           </div>
           <div v-if="connectedHost">
@@ -31,13 +42,10 @@
             <textarea v-model="hostOutgoingText" rows="2" style="width:100%"></textarea>
             <ion-button @click="connectAndSend(hostOutgoingText,'host')" style="margin-top:6px;width:100%">Connect + Send</ion-button>
           </div>
-          <div v-if="hostMessages.length" style="margin-top:8px">
-            <p>Messages:</p>
-            <div style="background:#f6f6f8;padding:8px;border-radius:6px;max-height:160px;overflow:auto">{{ hostMessages.join('\n') }}</div>
-          </div>
-          <div style="margin-top:12px">
+          <div v-if="!connectedHost" style="margin-top:12px">
             <p>Paste answer JSON here (from remote) and click <em>Apply Answer</em>:</p>
-            <ion-button @click="applyAnswer" style="margin-top:6px;width:100%">Apply Answer</ion-button>
+            <textarea v-model="sdpText" rows="4" style="width:100%;margin-top:6px"></textarea>
+            <ion-button @click="applyAnswer(sdpText)" style="margin-top:6px;width:100%">Apply Answer</ion-button>
           </div>
         </div>
       </template>
@@ -45,18 +53,24 @@
       <template v-if="activeRole === 'client'">
         <div style="display:flex;flex-direction:column;width:100%;align-items:stretch">
           <h3>Client</h3>
-          <div style="margin-top:8px">
+          <div v-if="!connectedClient" style="margin-top:8px">
             <ion-button color="tertiary" @click="startScanner('offer')" style="width:100%">Scan Server Offer QR (camera)</ion-button>
           </div>
 
-          <div v-if="remoteOfferText" style="margin-top:12px">
-            <textarea v-model="remoteOfferText" rows="6" style="width:100%"></textarea>
-            <ion-button @click="acceptOffer" color="secondary" style="margin-top:6px;width:100%">Create Answer (after scan)</ion-button>
-          </div>
-
-          <div v-if="answerQr" style="margin-top:12px">
+          <div v-if="!connectedClient && answerQr" style="margin-top:12px">
             <h4>Answer QR</h4>
             <img :src="answerQr" alt="answer-qr" style="width:100%;display:block"/>
+            <p v-if="answerQrParts.length" style="margin:6px 0 6px 0">Part {{ answerQrPartIndex + 1 }}/{{ answerQrParts.length }}</p>
+            <div v-if="answerQrParts.length" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
+              <div
+                v-for="idx in answerQrParts.length"
+                :key="`answer-part-${idx}`"
+                :style="`min-width:52px;padding:6px 8px;border-radius:6px;text-align:center;border:1px solid ${answerQrPartIndex === (idx - 1) ? '#198754' : '#ced4da'};background:${answerQrPartIndex === (idx - 1) ? '#e9f7ef' : '#f8f9fa'};color:${answerQrPartIndex === (idx - 1) ? '#198754' : '#adb5bd'};display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px`"
+              >
+                <ion-icon :icon="answerQrPartIndex === (idx - 1) ? cube : cubeOutline" style="font-size:18px"></ion-icon>
+                <span style="font-size:11px;line-height:1">{{ idx }}</span>
+              </div>
+            </div>
           </div>
 
           <div v-if="connectedClient" style="margin-top:12px">
@@ -69,19 +83,33 @@
           </div>
         </div>
       </template>
-      <div style="display:flex;flex-direction:column;width:100%;margin-top:16px;padding:12px;border:1px solid rgba(0,0,0,0.12);border-radius:8px;background:#fff" v-if="consoleLogger.length">
-        <div style="width:100%;background:#f6f6f8;padding:8px;border-radius:6px;max-height:160px;overflow:auto;font-size:12px;line-height:1.3">
-          <div v-for="(log, idx) in consoleLogger" :key="idx" style="white-space:pre-wrap">{{ log }}</div>
-        </div>
-      </div>
-      <div v-if="scanning" style="display:flex;flex-direction:column;width:100%;padding:12px;border:1px solid rgba(0,0,0,0.12);border-radius:8px;background:#fff">
+
+      <div v-if="scanning && !((activeRole === 'server' && connectedHost) || (activeRole === 'client' && connectedClient))" style="display:flex;flex-direction:column;width:100%;padding:12px;border:1px solid rgba(0,0,0,0.12);border-radius:8px;background:#fff">
         <p style="margin:0 0 8px 0"><strong>Camera Scanner</strong> ({{ scanMode || 'qr' }})</p>
-        <div id="qr-reader" style="width:100%;min-height:260px"></div>
+        <p style="margin:0 0 8px 0">Scanned parts: {{ scannedPartsCount }}/{{ scannedPartsExpected }}</p>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
+          <div
+            v-for="idx in scannedPartsExpected"
+            :key="idx"
+            :style="`min-width:52px;padding:6px 8px;border-radius:6px;text-align:center;border:1px solid ${scannedParts[idx - 1] ? '#495057' : '#ced4da'};background:${scannedParts[idx - 1] ? '#e9ecef' : '#f8f9fa'};color:${scannedParts[idx - 1] ? '#212529' : '#adb5bd'};display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px`"
+          >
+            <ion-icon :icon="scannedParts[idx - 1] ? cube : cubeOutline" style="font-size:18px"></ion-icon>
+            <span style="font-size:11px;line-height:1">{{ idx }}</span>
+          </div>
+        </div>
+        <div id="qr-reader" style="width:320px"></div>
         <p v-if="scanStatus" style="margin-top:8px">{{ scanStatus }}</p>
+        <ion-button color="medium" @click="resetScannedParts" style="margin-top:6px;width:100%">Clear Scanned Parts</ion-button>
         <ion-button color="danger" @click="stopScanner" style="margin-top:6px;width:100%">Stop Scanner</ion-button>
       </div>
       <div v-if="scanError" style="display:flex;flex-direction:column;width:100%;margin-top:12px;padding:10px;border:1px solid #f5c2c7;border-radius:8px;background:#fff5f5;color:#842029">
         {{ scanError }}
+      </div>
+      <div style="display:flex;flex-direction:column;width:100%;margin-top:16px;padding:12px;border:1px solid rgba(0,0,0,0.12);border-radius:8px;background:#fff" v-if="consoleLogger.length">
+        <p><strong>Logs</strong></p>
+        <div v-for="(log, idx) in consoleLogger" :key="idx" style="width:100%;background:#f6f6f8;white-space:pre-wrap; padding:8px;border-radius:6px;max-height:160px;overflow:auto;font-size:12px;line-height:1.3">
+          {{ log }}
+        </div>
       </div>
     </ion-content>
   </ion-page>
@@ -91,11 +119,12 @@
 import { ref, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import QRCode from 'qrcode'
 import { gzip, ungzip } from 'pako'
-import { IonPage, IonHeader, IonToolbar, IonTitle, IonContent, IonButton } from '@ionic/vue'
+import { cube, cubeOutline } from 'ionicons/icons'
+import { IonPage, IonHeader, IonToolbar, IonTitle, IonContent, IonButton, IonIcon } from '@ionic/vue'
 
 export default {
   name: 'WebrtcQR',
-  components: { IonPage, IonHeader, IonToolbar, IonTitle, IonContent, IonButton },
+  components: { IonPage, IonHeader, IonToolbar, IonTitle, IonContent, IonButton, IonIcon },
   setup() {
     const offerQr = ref('')
     const offerUrlQr = ref('')
@@ -103,10 +132,9 @@ export default {
     const answerQr = ref('')
     const offerJson = ref('')
     const answerJson = ref('')
-    const remoteOfferText = ref('')
+    const sdpText = ref('')
     const hostOutgoingText = ref('')
     const clientOutgoingText = ref('')
-    const hostMessages = ref([])
     const consoleLogger = ref([])
     const connectedHost = ref(false)
     const connectedClient = ref(false)
@@ -126,8 +154,142 @@ export default {
     const scanMode = ref('')
     const scanStatus = ref('')
     const scanError = ref('')
+    const scannedParts = ref([])
+    const scannedPartsCount = ref(0)
+    const scannedPartsExpected = ref(4)
+    const offerQrParts = ref([])
+    const answerQrParts = ref([])
+    const offerQrPartIndex = ref(0)
+    const answerQrPartIndex = ref(0)
+
+    const qrPartsTotal = 4
+    const qrPartMarker = 'qr-part-v1'
 
     let scannerInstance = null
+    let scannedPartsPacketId = ''
+    let offerQrRotationTimer = null
+    let answerQrRotationTimer = null
+
+    function stopOfferQrRotation() {
+      if (offerQrRotationTimer) {
+        clearInterval(offerQrRotationTimer)
+      }
+      offerQrRotationTimer = null
+    }
+
+    function stopAnswerQrRotation() {
+      if (answerQrRotationTimer) {
+        clearInterval(answerQrRotationTimer)
+      }
+      answerQrRotationTimer = null
+    }
+
+    function startOfferQrRotation() {
+      stopOfferQrRotation()
+      if (offerQrParts.value.length <= 1) return
+      offerQrRotationTimer = setInterval(() => {
+        offerQrPartIndex.value = (offerQrPartIndex.value + 1) % offerQrParts.value.length
+        offerQr.value = offerQrParts.value[offerQrPartIndex.value] || ''
+      }, 200)
+    }
+
+    function startAnswerQrRotation() {
+      stopAnswerQrRotation()
+      if (answerQrParts.value.length <= 1) return
+      answerQrRotationTimer = setInterval(() => {
+        answerQrPartIndex.value = (answerQrPartIndex.value + 1) % answerQrParts.value.length
+        answerQr.value = answerQrParts.value[answerQrPartIndex.value] || ''
+      }, 200)
+    }
+
+    function resetScannedParts(total = qrPartsTotal) {
+      const safeTotal = Math.max(1, Number(total) || qrPartsTotal)
+      scannedPartsExpected.value = safeTotal
+      scannedParts.value = Array.from({ length: safeTotal }, () => '')
+      scannedPartsCount.value = 0
+      scannedPartsPacketId = ''
+    }
+
+    function splitPayloadIntoParts(payload, total = qrPartsTotal) {
+      const text = String(payload || '')
+      const safeTotal = Math.max(1, Number(total) || qrPartsTotal)
+      const partSize = Math.max(1, Math.ceil(text.length / safeTotal))
+      const parts = []
+      for (let index = 0; index < safeTotal; index++) {
+        const start = index * partSize
+        const end = start + partSize
+        parts.push(text.slice(start, end))
+      }
+      return parts
+    }
+
+    function buildQrPartPayloads(payload, kind) {
+      const sequenceId = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
+      const parts = splitPayloadIntoParts(payload, qrPartsTotal)
+      return parts.map((part, index) => JSON.stringify({
+        qrm: qrPartMarker,
+        id: sequenceId,
+        kind,
+        index,
+        total: parts.length,
+        data: part
+      }))
+    }
+
+    function parseQrPartPayload(payload) {
+      try {
+        const parsed = JSON.parse(String(payload || ''))
+        if (!parsed || parsed.qrm !== qrPartMarker) return null
+        if (typeof parsed.id !== 'string' || !parsed.id) return null
+        if (typeof parsed.kind !== 'string' || !parsed.kind) return null
+        if (!Number.isInteger(parsed.index)) return null
+        if (!Number.isInteger(parsed.total)) return null
+        if (typeof parsed.data !== 'string') return null
+        return parsed
+      } catch (e) {
+        return null
+      }
+    }
+
+    function collectScannedPayload(payload, mode) {
+      const part = parseQrPartPayload(payload)
+      if (!part) {
+        return { ready: true, payload: String(payload || ''), status: 'Single QR payload scanned.' }
+      }
+
+      if (part.kind !== mode) {
+        return { ready: false, payload: '', status: `Scanned ${part.kind} part while expecting ${mode}.` }
+      }
+
+      const total = Math.max(1, Number(part.total) || qrPartsTotal)
+      const index = Number(part.index)
+
+      if (index < 0 || index >= total) {
+        return { ready: false, payload: '', status: 'Invalid QR part index.' }
+      }
+
+      if (!scannedPartsPacketId || scannedPartsPacketId !== part.id || scannedPartsExpected.value !== total) {
+        resetScannedParts(total)
+        scannedPartsPacketId = part.id
+      }
+
+      if (!scannedParts.value[index]) {
+        scannedParts.value[index] = part.data
+      }
+
+      scannedPartsCount.value = scannedParts.value.filter(Boolean).length
+
+      if (scannedPartsCount.value < scannedPartsExpected.value) {
+        return {
+          ready: false,
+          payload: '',
+          status: `Scanned parts: ${scannedPartsCount.value}/${scannedPartsExpected.value}`
+        }
+      }
+
+      const joined = scannedParts.value.join('')
+      return { ready: true, payload: joined, status: `Scanned parts: ${scannedPartsCount.value}/${scannedPartsExpected.value}` }
+    }
 
     function resetHostPeer() {
       try {
@@ -144,8 +306,11 @@ export default {
     function resetServerState() {
       resetHostPeer()
       hostOutgoingText.value = ''
-      hostMessages.value = []
+      sdpText.value = ''
+      stopOfferQrRotation()
       offerQr.value = ''
+      offerQrParts.value = []
+      offerQrPartIndex.value = 0
       offerJson.value = ''
       offerUrl.value = ''
       offerUrlQr.value = ''
@@ -155,8 +320,10 @@ export default {
       resetClientPeer()
       clientOutgoingText.value = ''
       consoleLogger.value = []
-      remoteOfferText.value = ''
+      stopAnswerQrRotation()
       answerQr.value = ''
+      answerQrParts.value = []
+      answerQrPartIndex.value = 0
       answerJson.value = ''
     }
 
@@ -191,7 +358,9 @@ export default {
       hostPc = pc
       hostDc = pc.createDataChannel('data')
       hostDc.onopen = () => { connectedHost.value = true }
-      hostDc.onmessage = (e) => { hostMessages.value.push('remote: ' + e.data) }
+      hostDc.onmessage = (e) => { 
+        consoleLogger.value.push('message: ' + e.data) 
+      }
 
       const offer = await pc.createOffer()
       await pc.setLocalDescription(offer)
@@ -202,9 +371,14 @@ export default {
       const signalling = { type: 'offer', sdp: pc.localDescription.sdp, candidates }
       const text = JSON.stringify(signalling)
       const qrPayload = gzipToToken(text)
-      consoleLogger.value.push('offer: ' + text)
+      const qrPayloadParts = buildQrPartPayloads(qrPayload, 'offer')
+      const qrImages = await Promise.all(qrPayloadParts.map((partPayload) => QRCode.toDataURL(partPayload)))
+      consoleLogger.value.push('createOffer: ' + text)
       offerJson.value = text
-      offerQr.value = await QRCode.toDataURL(qrPayload)
+      offerQrParts.value = qrImages
+      offerQrPartIndex.value = 0
+      offerQr.value = offerQrParts.value[0] || ''
+      startOfferQrRotation()
       offerUrl.value = buildOfferUrl(qrPayload)
       offerUrlQr.value = await QRCode.toDataURL(offerUrl.value)
     }
@@ -240,15 +414,25 @@ export default {
     }
 
     function gzipToToken(text) {
-      const encoded = new TextEncoder().encode(String(text || ''))
+      const encoded = new TextEncoder().encode(String(text))
       const compressed = gzip(encoded)
-      return `gz:${bytesToBase64Url(compressed)}`
+      return 'gz:' + bytesToBase64Url(compressed)
+    }
+
+    function extractGzipToken(value) {
+      const raw = String(value || '').trim()
+      if (!raw) return ''
+      if (raw.startsWith('gz:')) return raw
+      const match = raw.match(/gz:[A-Za-z0-9_-]+/)
+      return match ? match[0] : ''
     }
 
     function gunzipFromToken(token) {
-      const raw = String(token || '').trim()
-      if (!raw.startsWith('gz:')) return raw
-      const compressed = base64UrlToBytes(raw.slice(3))
+      const rawToken = extractGzipToken(token)
+      if (!rawToken) return String(token || '').trim()
+      const compactToken = rawToken.replace(/\s+/g, '')
+      if (!compactToken.startsWith('gz:')) return compactToken
+      const compressed = base64UrlToBytes(compactToken.slice(3))
       return String(ungzip(compressed, { to: 'string' }))
     }
 
@@ -268,7 +452,6 @@ export default {
     function preloadOfferFromUrl() {
       const offerFromUrl = extractOfferFromUrl()
       if (!offerFromUrl) return
-      remoteOfferText.value = normalizeOfferInput(offerFromUrl)
       if (autoAcceptOffers.value) {
         acceptOffer(offerFromUrl)
       }
@@ -286,7 +469,7 @@ export default {
       connectedClient.value = false
     }
 
-    function normalizeOfferInput(input) {
+    function normalizeSignalingInput(input) {
       let raw = String(input || '').trim()
       if (!raw) return ''
 
@@ -318,9 +501,10 @@ export default {
         }
       }
 
-      if (raw.startsWith('gz:')) {
+      const gzipToken = extractGzipToken(raw)
+      if (gzipToken) {
         try {
-          raw = gunzipFromToken(raw)
+          raw = gunzipFromToken(gzipToken)
         } catch (e) {
           // keep raw value for downstream validation/error
         }
@@ -338,41 +522,10 @@ export default {
       return raw.trim()
     }
 
-    function normalizeAnswerInput(input) {
-      let raw = String(input || '').trim()
-      if (!raw) return ''
-
-      for (let i = 0; i < 2 && !raw.startsWith('{'); i++) {
-        try {
-          raw = decodeURIComponent(raw)
-        } catch (e) {
-          break
-        }
-      }
-
-      if (raw.startsWith('gz:')) {
-        try {
-          raw = gunzipFromToken(raw)
-        } catch (e) {
-          // keep raw value for downstream validation/error
-        }
-      }
-
-      if (!raw.startsWith('{')) {
-        const start = raw.indexOf('{')
-        const end = raw.lastIndexOf('}')
-        if (start >= 0 && end > start) {
-          raw = raw.slice(start, end + 1)
-        }
-      }
-
-      return raw.trim()
-    }
-
     async function acceptOffer(message) {
+      console.log(message);
       if (!message) return alert('Paste offer JSON first')
-      const normalizedOffer = normalizeOfferInput(message)
-      consoleLogger.value.push('accept: ' + normalizedOffer)
+      const normalizedOffer = normalizeSignalingInput(message)
       let obj
       try {
         obj = JSON.parse(normalizedOffer)
@@ -380,7 +533,9 @@ export default {
         console.log(message);
         return alert('Invalid offer payload. Paste raw offer JSON, a valid offer URL, or a gzip-encoded offer token.')
       }
-      remoteOfferText.value = normalizedOffer
+      if (!obj || obj.type !== 'offer' || typeof obj.sdp !== 'string' || !obj.sdp.startsWith('v=')) {
+        return alert('Invalid offer payload structure. Expected offer SDP starting with v=.')
+      }
       await resetClientPeer()
       const { pc, candidates } = await createPeer()
       clientPc = pc
@@ -388,7 +543,9 @@ export default {
       pc.ondatachannel = (ev) => {
         clientDc = ev.channel
         clientDc.onopen = () => { connectedClient.value = true }
-        clientDc.onmessage = (e) => { consoleLogger.value.push('remote: ' + message) }
+        clientDc.onmessage = (e) => { 
+          consoleLogger.value.push('data: ' + e.data.toString()) 
+        }
       }
 
       await pc.setRemoteDescription({ type: 'offer', sdp: obj.sdp })
@@ -406,16 +563,25 @@ export default {
 
       const signalling = { type: 'answer', sdp: pc.localDescription.sdp, candidates }
       const text = JSON.stringify(signalling)
+      consoleLogger.value.push('acceptOffer: ' + text)
       const qrPayload = gzipToToken(text)
+      const qrPayloadParts = buildQrPartPayloads(qrPayload, 'answer')
+      const qrImages = await Promise.all(qrPayloadParts.map((partPayload) => QRCode.toDataURL(partPayload)))
       answerJson.value = text
-      answerQr.value = await QRCode.toDataURL(qrPayload)
+      answerQrParts.value = qrImages
+      answerQrPartIndex.value = 0
+      answerQr.value = answerQrParts.value[0] || ''
+      startAnswerQrRotation()
     }
 
     async function applyAnswer(message) {
       if (!hostPc) return alert('No host peer (create offer first)')
-      const normalizedAnswer = normalizeAnswerInput(message)
+      const normalizedAnswer = normalizeSignalingInput(message)
       let obj
       try { obj = JSON.parse(normalizedAnswer) } catch (e) { return alert('Invalid answer payload') }
+      if (!obj || obj.type !== 'answer' || typeof obj.sdp !== 'string' || !obj.sdp.startsWith('v=')) {
+        return alert('Invalid answer payload structure. Expected answer SDP starting with v=.')
+      }
       try {
         await hostPc.setRemoteDescription({ type: 'answer', sdp: obj.sdp })
       } catch (e) { console.warn(e) }
@@ -424,10 +590,6 @@ export default {
           try { await hostPc.addIceCandidate(c) } catch (e) { }
         }
       }
-      // optionally send a test message
-      setTimeout(() => {
-        if (hostDc && hostDc.readyState === 'open') hostDc.send('hello from host')
-      }, 500)
     }
 
     async function connectAndSend(message, role = 'host') {
@@ -445,12 +607,11 @@ export default {
           return alert('Host data channel is not open yet. Apply answer first.')
         }
         hostDc.send(text)
-        hostMessages.value.push('me: ' + text)
         textRef.value = ''
         return
       }
 
-      if ((!clientDc || clientDc.readyState !== 'open') && remoteOfferText.value && !clientPc) {
+      if ((!clientDc || clientDc.readyState !== 'open') && !clientPc) {
         await acceptOffer(message)
         await new Promise((resolve) => setTimeout(resolve, 250))
       }
@@ -488,6 +649,7 @@ export default {
       scanMode.value = mode
       scanStatus.value = 'Opening camera...'
       scanError.value = ''
+      resetScannedParts(qrPartsTotal)
       try {
         const host = String(window.location.hostname || '')
         const isLocalHost = /^(localhost|127\.0\.0\.1|::1)$/.test(host)
@@ -523,23 +685,29 @@ export default {
         configs.push({ facingMode: 'user' })
 
         let started = false
-        let consumed = false
+        let applied = false
+        let applying = false
         let lastErr = null
 
         const onSuccess = async (decodedText) => {
-          if (consumed) return
-          consumed = true
+          if (applied || applying) return
           try {
-            scanStatus.value = 'QR detected. Applying...'
+            scanError.value = ''
             const payload = mode === 'offer' ? extractOfferPayloadFromText(decodedText) : String(decodedText || '')
             if (!payload) throw new Error('Empty QR payload')
-            await onScanSuccess(payload, mode)
+            const scanned = collectScannedPayload(payload, mode)
+            scanStatus.value = scanned.status
+            if (!scanned.ready) return
+            applying = true
+            scanStatus.value = 'All parts scanned. Applying...'
+            await onScanSuccess(scanned.payload, mode)
+            applied = true
             scanStatus.value = 'Applied.'
+            await stopScanner()
           } catch (e) {
             console.error('Camera QR apply failed', e)
             scanError.value = 'Scanned QR could not be applied. Ensure you are scanning an Offer QR on client or an Answer QR on host.'
-          } finally {
-            await stopScanner()
+            applying = false
           }
         }
 
@@ -597,8 +765,8 @@ export default {
     
 
     async function onScanSuccess(decodedText, mode = 'offer') {
+      sdpText.value = String(decodedText).trim()
       // place decoded text into the correct textarea and auto-apply
-      consoleLogger.value.push('remote: ' + decodedText)
       if (mode === 'offer') {
         await acceptOffer(decodedText)
       } else if (mode === 'answer') {
@@ -616,15 +784,21 @@ export default {
     onBeforeUnmount(() => {
       window.removeEventListener('hashchange', preloadOfferFromUrl)
       window.removeEventListener('popstate', preloadOfferFromUrl)
+      stopOfferQrRotation()
+      stopAnswerQrRotation()
       stopScanner()
     })
 
     return {
-      offerQr, offerUrlQr, offerUrl, answerQr, offerJson, answerJson, remoteOfferText,
+      offerQr, offerUrlQr, offerUrl, answerQr, offerJson, answerJson,
+      sdpText,
       createOffer, acceptOffer, applyAnswer, connectAndSend,
-      hostMessages, consoleLogger, connectedHost, connectedClient,
+      consoleLogger, connectedHost, connectedClient,
       hostOutgoingText, clientOutgoingText,
       scanning, scanMode, scanStatus, scanError, startScanner, stopScanner,
+      scannedParts, scannedPartsCount, scannedPartsExpected, resetScannedParts,
+      offerQrParts, answerQrParts, offerQrPartIndex, answerQrPartIndex,
+      cube, cubeOutline,
       activeRole, setRole,
       autoAcceptOffers
     }
