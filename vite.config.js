@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
+import basicSsl from '@vitejs/plugin-basic-ssl'
 import fs from 'node:fs'
 import path from 'node:path'
 
@@ -40,6 +41,7 @@ function serveAssetFile(req, res, next) {
 export default defineConfig({
   base: '/medieval/',
   plugins: [
+    basicSsl(),
     vue(),
     {
       name: 'serve-src-assets-at-assets-path',
@@ -50,7 +52,8 @@ export default defineConfig({
   ],
   server: {
     host: true,
-    port: 8080,
-    strictPort: true
+    port: 8443,
+    strictPort: true,
+    https: true
   }
 })

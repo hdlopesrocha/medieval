@@ -14,11 +14,13 @@
     "html2canvas": "^1.4.1",
     "html5-qrcode": "^2.3.8",
     "ionicons": "latest",
+    "pako": "^2.1.0",
     "qrcode": "^1.5.4",
     "vue": "latest",
     "vue-router": "^4.6.4"
   },
   "devDependencies": {
+    "@vitejs/plugin-basic-ssl": "^2.1.4",
     "@vitejs/plugin-vue": "latest",
     "vite": "latest"
   }
