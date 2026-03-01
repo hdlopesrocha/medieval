@@ -3,7 +3,6 @@ import { createRouter, createWebHashHistory } from 'vue-router'
 import { IonicVue } from '@ionic/vue'
 import App from './App.vue'
 import Home from './views/Home.vue'
-import HelloWorld from './views/HelloWorld.vue'
 import Deck from './views/Deck.vue'
 import Table from './views/Table.vue'
 import Game from './views/Game.vue'
@@ -25,7 +24,6 @@ import './styles.css'
 const routes = [
 	{ path: '', component: Home },
 	{ path: '/', component: Home },
-	{ path: '/hello', component: HelloWorld },
 	{ path: '/deck', component: Deck }
 	,{ path: '/table', component: Table }
 	,{ path: '/game', component: Game }

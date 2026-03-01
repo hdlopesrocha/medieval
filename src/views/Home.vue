@@ -8,7 +8,6 @@
     <ion-content class="ion-padding">
         <h2>Welcome to Ionic + Vue</h2>
         <ion-button @click="showAlert">Show Alert</ion-button>
-        <ion-button @click="goHello" color="primary">Go to Hello</ion-button>
         <ion-button @click="goDeck" color="secondary">View Deck</ion-button>
         <ion-button @click="goTable" color="tertiary">Open Table</ion-button>
         <ion-button @click="goGame" color="success">Open Game</ion-button>
@@ -31,9 +30,6 @@ export default {
     const showAlert = () => {
       alert('Hello from Ionic + Vue')
     }
-    const goHello = () => {
-      router.push('/hello')
-    }
     const goDeck = () => {
       router.push('/deck')
     }
@@ -49,7 +45,7 @@ export default {
     const goWebrtc = () => {
       router.push('/webrtc')
     }
-    return { showAlert, goHello, goDeck, goTable, goGame, goBoard, goWebrtc }
+    return { showAlert, goDeck, goTable, goGame, goBoard, goWebrtc }
   }
 }
 </script>
