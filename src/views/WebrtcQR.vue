@@ -6,88 +6,98 @@
       </ion-toolbar>
     </ion-header>
     <ion-content class="ion-padding">
-      <div style="display:flex;flex-direction:column;width:100%;gap:8px;align-items:stretch;flex-wrap:nowrap;margin-bottom:12px">
-        <ion-button :color="activeRole === 'server' ? 'primary' : 'medium'" @click="setRole('server')" style="width:100%">Server</ion-button>
-        <ion-button :color="activeRole === 'client' ? 'primary' : 'medium'" @click="setRole('client')" style="width:100%">Client</ion-button>
-      </div>
+      <template v-if="!(connectedHost || connectedClient)">
+        <div style="display:flex;gap:10px;width:100%">
+          <ion-button
+            :color="activeRole === 'server' ? 'primary' : 'medium'"
+            :fill="activeRole === 'server' ? 'solid' : 'outline'"
+            @click="setRole('server')"
+            style="flex:1"
+          >
+            <ion-icon :icon="serverOutline" slot="start"></ion-icon>
+            Server
+          </ion-button>
+          <ion-button
+            :color="activeRole === 'client' ? 'primary' : 'medium'"
+            :fill="activeRole === 'client' ? 'solid' : 'outline'"
+            @click="setRole('client')"
+            style="flex:1"
+          >
+            <ion-icon :icon="phonePortraitOutline" slot="start"></ion-icon>
+            Client
+          </ion-button>
+        </div>
+      </template>
       <p v-if="!activeRole" style="margin:0 0 12px 0">Choose a role to continue.</p>
 
-      <template v-if="activeRole === 'server'">
-        <div style="display:flex;flex-direction:column;width:100%;align-items:stretch">
-          <h3>Server (create offer)</h3>
-          <ion-button v-if="!connectedHost" @click="createOffer" color="primary" style="width:100%">Create Offer & QR</ion-button>
-          <div v-if="!connectedHost && offerQr">
-            <h4>Offer QR</h4>
-            <img :src="offerQr" alt="offer-qr" style="width:100%;display:block"/>
-            <p v-if="offerQrParts.length" style="margin:6px 0 6px 0">Part {{ offerQrPartIndex + 1 }}/{{ offerQrParts.length }}</p>
-            <div v-if="offerQrParts.length" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
-              <div
-                v-for="idx in offerQrParts.length"
-                :key="`offer-part-${idx}`"
-                :style="`min-width:52px;padding:6px 8px;border-radius:6px;text-align:center;border:1px solid ${offerQrPartIndex === (idx - 1) ? '#198754' : '#ced4da'};background:${offerQrPartIndex === (idx - 1) ? '#e9f7ef' : '#f8f9fa'};color:${offerQrPartIndex === (idx - 1) ? '#198754' : '#adb5bd'};display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px`"
-              >
-                <ion-icon :icon="offerQrPartIndex === (idx - 1) ? cube : cubeOutline" style="font-size:18px"></ion-icon>
-                <span style="font-size:11px;line-height:1">{{ idx }}</span>
-              </div>
-            </div>
+      <template v-if="activeRole === 'server' && !connectedHost">      
+        <ion-button @click="createOffer" color="success" style="width:100%">Create Offer & QR</ion-button>
+        <div v-if="offerQrParts.length && !scanning" style="display:flex;gap:8px;flex-wrap:nowrap;overflow-x:auto;margin-top:8px">
+          <div
+            v-for="idx in offerQrParts.length"
+            :key="`offer-part-${idx}`"
+            :style="`min-width:52px;padding:6px 8px;border-radius:6px;text-align:center;border:1px solid ${scannedParts[idx - 1] ? '#495057' : '#ced4da'};background:${scannedParts[idx - 1] ? '#e9ecef' : '#f8f9fa'};color:${scannedParts[idx - 1] ? '#212529' : '#adb5bd'};display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px`"
+          >
+            <ion-icon :icon="offerQrPartIndex === (idx - 1) ? cube : cubeOutline" style="font-size:18px"></ion-icon>
+            <span style="font-size:11px;line-height:1">{{ idx }}</span>
           </div>
-          <div v-if="!connectedHost" style="margin-top:8px">
-            <ion-button color="tertiary" @click="startScanner('answer')" style="width:100%">Scan Answer QR (camera)</ion-button>
-          </div>
-          <div v-if="connectedHost">
-            <p><strong>Data channel open</strong></p>
-          </div>
-          <div v-if="connectedHost" style="margin-top:10px">
-            <p>Send message to peer:</p>
-            <textarea v-model="hostOutgoingText" rows="2" style="width:100%"></textarea>
-            <ion-button @click="connectAndSend(hostOutgoingText,'host')" style="margin-top:6px;width:100%">Connect + Send</ion-button>
-          </div>
-          <div v-if="!connectedHost" style="margin-top:12px">
-            <p>Paste answer JSON here (from remote) and click <em>Apply Answer</em>:</p>
-            <textarea v-model="sdpText" rows="4" style="width:100%;margin-top:6px"></textarea>
-            <ion-button @click="applyAnswer(sdpText)" style="margin-top:6px;width:100%">Apply Answer</ion-button>
-          </div>
+        </div>
+
+        <div v-if="offerQr && !scanning" style="margin-top:8px">
+          <img :src="offerQr" alt="offer-qr" style="width:100%;display:block"/>
+          <ion-button color="success" @click="startScanner('answer')" style="width:100%">Scan Answer QR (camera)</ion-button>
         </div>
       </template>
 
-      <template v-if="activeRole === 'client'">
-        <div style="display:flex;flex-direction:column;width:100%;align-items:stretch">
-          <h3>Client</h3>
-          <div v-if="!connectedClient" style="margin-top:8px">
-            <ion-button color="tertiary" @click="startScanner('offer')" style="width:100%">Scan Server Offer QR (camera)</ion-button>
-          </div>
 
-          <div v-if="!connectedClient && answerQr" style="margin-top:12px">
-            <h4>Answer QR</h4>
-            <img :src="answerQr" alt="answer-qr" style="width:100%;display:block"/>
-            <p v-if="answerQrParts.length" style="margin:6px 0 6px 0">Part {{ answerQrPartIndex + 1 }}/{{ answerQrParts.length }}</p>
-            <div v-if="answerQrParts.length" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
-              <div
-                v-for="idx in answerQrParts.length"
-                :key="`answer-part-${idx}`"
-                :style="`min-width:52px;padding:6px 8px;border-radius:6px;text-align:center;border:1px solid ${answerQrPartIndex === (idx - 1) ? '#198754' : '#ced4da'};background:${answerQrPartIndex === (idx - 1) ? '#e9f7ef' : '#f8f9fa'};color:${answerQrPartIndex === (idx - 1) ? '#198754' : '#adb5bd'};display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px`"
-              >
-                <ion-icon :icon="answerQrPartIndex === (idx - 1) ? cube : cubeOutline" style="font-size:18px"></ion-icon>
-                <span style="font-size:11px;line-height:1">{{ idx }}</span>
-              </div>
+
+
+      <template style="margin: 12px 0"
+        v-if="connectedClient || connectedHost">
+        <p><strong>Data channel open</strong></p>
+        <p>Send message to peer:</p>
+        <textarea v-model="outgoingText" rows="2" style="width:100%"></textarea>
+        <ion-button @click="sendMessage(activeRole === 'client' ? 'client' : 'host')" style="margin-top:6px;width:100%">Send</ion-button>
+      </template> 
+
+
+
+      <template style="margin:12px 0px"
+        v-if="activeRole === 'client' && !connectedClient">
+        <ion-button color="success" @click="startScanner('offer')" style="width:100%">Scan Server Offer QR (camera)</ion-button>
+        <div v-if="sdpText" style="margin:12px 0px">
+          <ion-button @click="acceptOffer(sdpText)" style="margin-top:6px;width:100%">Generate Answer QR</ion-button>
+        </div>
+        <div v-if="answerQrParts.length && !scanning"
+                    style="margin:12px 0px">
+          <img :src="answerQr" alt="answer-qr" style="width:100%;display:block"/>
+          <p v-if="answerQrParts.length" style="margin:6px 0 6px 0">Part {{ answerQrPartIndex + 1 }}/{{ answerQrParts.length }}</p>
+          <div v-if="answerQrParts.length" style="display:flex;gap:8px;flex-wrap:nowrap;overflow-x:auto">
+            <div
+              v-for="idx in answerQrParts.length"
+              :key="`answer-part-${idx}`"
+              :style="`min-width:52px;padding:6px 8px;border-radius:6px;text-align:center;border:1px solid ${scannedParts[idx - 1] ? '#495057' : '#ced4da'};background:${scannedParts[idx - 1] ? '#e9ecef' : '#f8f9fa'};color:${scannedParts[idx - 1] ? '#212529' : '#adb5bd'};display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px`"
+            >
+              <ion-icon :icon="answerQrPartIndex === (idx - 1) ? cube : cubeOutline" style="font-size:18px"></ion-icon>
+              <span style="font-size:11px;line-height:1">{{ idx }}</span>
             </div>
           </div>
-
-          <div v-if="connectedClient" style="margin-top:12px">
-            <p><strong>Data channel open (client)</strong></p>
-          </div>
-          <div v-if="connectedClient" style="margin-top:10px">
-            <p>Send message to peer:</p>
-            <textarea v-model="clientOutgoingText" rows="2" style="width:100%"></textarea>
-            <ion-button @click="connectAndSend(clientOutgoingText ,'client')" style="margin-top:6px;width:100%">Connect + Send</ion-button>
-          </div>
         </div>
+
+        <div v-if="connectedClient" style="margin:12px 0px">
+          <p><strong>Data channel open (client)</strong></p>
+        </div>
+        <div v-if="connectedClient" style="margin:12px 0px">
+          <p>Send message to peer:</p>
+          <textarea v-model="outgoingText" rows="2" style="width:100%"></textarea>
+          <ion-button @click="sendMessage('client')" style="margin-top:6px;width:100%">Send</ion-button>
+        </div>
+
       </template>
 
-      <div v-if="scanning && !((activeRole === 'server' && connectedHost) || (activeRole === 'client' && connectedClient))" style="display:flex;flex-direction:column;width:100%;padding:12px;border:1px solid rgba(0,0,0,0.12);border-radius:8px;background:#fff">
-        <p style="margin:0 0 8px 0"><strong>Camera Scanner</strong> ({{ scanMode || 'qr' }})</p>
-        <p style="margin:0 0 8px 0">Scanned parts: {{ scannedPartsCount }}/{{ scannedPartsExpected }}</p>
-        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
+      <template style="margin:12px 0"
+        v-if="scanning && !((activeRole === 'server' && connectedHost) || (activeRole === 'client' && connectedClient))">
+        <div style="display:flex;gap:8px;flex-wrap:nowrap;overflow-x:auto">
           <div
             v-for="idx in scannedPartsExpected"
             :key="idx"
@@ -98,19 +108,19 @@
           </div>
         </div>
         <div id="qr-reader" style="width:320px"></div>
-        <p v-if="scanStatus" style="margin-top:8px">{{ scanStatus }}</p>
-        <ion-button color="medium" @click="resetScannedParts" style="margin-top:6px;width:100%">Clear Scanned Parts</ion-button>
-        <ion-button color="danger" @click="stopScanner" style="margin-top:6px;width:100%">Stop Scanner</ion-button>
-      </div>
-      <div v-if="scanError" style="display:flex;flex-direction:column;width:100%;margin-top:12px;padding:10px;border:1px solid #f5c2c7;border-radius:8px;background:#fff5f5;color:#842029">
+        <p v-if="scanStatus">{{ scanStatus }}</p>
+        <ion-button color="medium" @click="resetScannedParts" style="margin:12px 0;width:100%">Clear Scanned Parts</ion-button>
+        <ion-button color="danger" @click="stopScanner" style="margin:12px 0;width:100%">Stop Scanner</ion-button>
+      </template>
+      <template v-if="scanError">
         {{ scanError }}
-      </div>
-      <div style="display:flex;flex-direction:column;width:100%;margin-top:16px;padding:12px;border:1px solid rgba(0,0,0,0.12);border-radius:8px;background:#fff" v-if="consoleLogger.length">
+      </template>
+      <template v-if="consoleLogger.length">
         <p><strong>Logs</strong></p>
         <div v-for="(log, idx) in consoleLogger" :key="idx" style="width:100%;background:#f6f6f8;white-space:pre-wrap; padding:8px;border-radius:6px;max-height:160px;overflow:auto;font-size:12px;line-height:1.3">
           {{ log }}
         </div>
-      </div>
+      </template>
     </ion-content>
   </ion-page>
 </template>
@@ -119,7 +129,7 @@
 import { ref, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import QRCode from 'qrcode'
 import { gzip, ungzip } from 'pako'
-import { cube, cubeOutline } from 'ionicons/icons'
+import { cube, cubeOutline, serverOutline, phonePortraitOutline } from 'ionicons/icons'
 import { IonPage, IonHeader, IonToolbar, IonTitle, IonContent, IonButton, IonIcon } from '@ionic/vue'
 
 export default {
@@ -133,8 +143,7 @@ export default {
     const offerJson = ref('')
     const answerJson = ref('')
     const sdpText = ref('')
-    const hostOutgoingText = ref('')
-    const clientOutgoingText = ref('')
+    const outgoingText = ref('')
     const consoleLogger = ref([])
     const connectedHost = ref(false)
     const connectedClient = ref(false)
@@ -305,7 +314,7 @@ export default {
 
     function resetServerState() {
       resetHostPeer()
-      hostOutgoingText.value = ''
+      outgoingText.value = ''
       sdpText.value = ''
       stopOfferQrRotation()
       offerQr.value = ''
@@ -318,7 +327,7 @@ export default {
 
     function resetClientState() {
       resetClientPeer()
-      clientOutgoingText.value = ''
+      outgoingText.value = ''
       consoleLogger.value = []
       stopAnswerQrRotation()
       answerQr.value = ''
@@ -467,6 +476,7 @@ export default {
       clientDc = null
       clientPc = null
       connectedClient.value = false
+      connectedHost.value = false
     }
 
     function normalizeSignalingInput(input) {
@@ -575,16 +585,18 @@ export default {
     }
 
     async function applyAnswer(message) {
-      if (!hostPc) return alert('No host peer (create offer first)')
+      if (!hostPc) throw new Error('No host peer (create offer first)')
       const normalizedAnswer = normalizeSignalingInput(message)
       let obj
-      try { obj = JSON.parse(normalizedAnswer) } catch (e) { return alert('Invalid answer payload') }
-      if (!obj || obj.type !== 'answer' || typeof obj.sdp !== 'string' || !obj.sdp.startsWith('v=')) {
-        return alert('Invalid answer payload structure. Expected answer SDP starting with v=.')
-      }
       try {
-        await hostPc.setRemoteDescription({ type: 'answer', sdp: obj.sdp })
-      } catch (e) { console.warn(e) }
+        obj = JSON.parse(normalizedAnswer)
+      } catch (e) {
+        throw new Error('Invalid answer payload')
+      }
+      if (!obj || obj.type !== 'answer' || typeof obj.sdp !== 'string' || !obj.sdp.startsWith('v=')) {
+        throw new Error('Invalid answer payload structure. Expected answer SDP starting with v=.')
+      }
+      await hostPc.setRemoteDescription({ type: 'answer', sdp: obj.sdp })
       if (Array.isArray(obj.candidates)) {
         for (const c of obj.candidates) {
           try { await hostPc.addIceCandidate(c) } catch (e) { }
@@ -592,31 +604,24 @@ export default {
       }
     }
 
-    async function connectAndSend(message, role = 'host') {
+    async function sendMessage(role = 'host') {
       const isHost = role === 'host'
-      const textRef = isHost ? hostOutgoingText : clientOutgoingText
+      const textRef = outgoingText
       const text = String(textRef.value || '').trim()
       if (!text) return alert('Type a message first')
 
       if (isHost) {
-        if ((!hostDc || hostDc.readyState !== 'open') && message) {
-          await applyAnswer(message)
-          await new Promise((resolve) => setTimeout(resolve, 250))
-        }
         if (!hostDc || hostDc.readyState !== 'open') {
-          return alert('Host data channel is not open yet. Apply answer first.')
+          return alert('Host data channel is not open yet. Complete signaling first.')
         }
         hostDc.send(text)
+        consoleLogger.value.push('me: ' + text)
         textRef.value = ''
         return
       }
 
-      if ((!clientDc || clientDc.readyState !== 'open') && !clientPc) {
-        await acceptOffer(message)
-        await new Promise((resolve) => setTimeout(resolve, 250))
-      }
       if (!clientDc || clientDc.readyState !== 'open') {
-        return alert('Client data channel is not open yet. Accept offer first.')
+        return alert('Client data channel is not open yet. Complete signaling first.')
       }
       clientDc.send(text)
       consoleLogger.value.push('me: ' + text)
@@ -792,13 +797,13 @@ export default {
     return {
       offerQr, offerUrlQr, offerUrl, answerQr, offerJson, answerJson,
       sdpText,
-      createOffer, acceptOffer, applyAnswer, connectAndSend,
+      createOffer, acceptOffer, applyAnswer, sendMessage,
       consoleLogger, connectedHost, connectedClient,
-      hostOutgoingText, clientOutgoingText,
+      outgoingText,
       scanning, scanMode, scanStatus, scanError, startScanner, stopScanner,
       scannedParts, scannedPartsCount, scannedPartsExpected, resetScannedParts,
       offerQrParts, answerQrParts, offerQrPartIndex, answerQrPartIndex,
-      cube, cubeOutline,
+      cube, cubeOutline, serverOutline, phonePortraitOutline,
       activeRole, setRole,
       autoAcceptOffers
     }
