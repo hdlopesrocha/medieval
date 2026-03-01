@@ -4,7 +4,7 @@ html, body, #app, ion-app {
 
 body {
   margin: 0;
-  background-image: url('../images/background.png');
+  background-image: url('/medieval/assets/background.png');
   background-size: cover;
   background-position: center center;
   background-repeat: no-repeat;
@@ -38,7 +38,7 @@ ion-app, .ion-page, #app {
 
 /* Deck view background */
 .deck-bg {
-  background-image: url('../images/country.png');
+  background-image: url('/medieval/assets/country.png');
   background-size: cover;
   background-position: center center;
 }
