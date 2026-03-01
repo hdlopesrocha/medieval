@@ -69,9 +69,15 @@ export default {
     },
     imageSrc() {
       const p = this.card?.imageUrl || ''
-      // If images are referenced under /images/..., map to /src/images/ so Vite serves them
-      if (p.startsWith('/images/')) return '/src' + p
-      return p
+      const base = import.meta.env.BASE_URL || '/'
+      if (!p) return ''
+      if (/^https?:\/\//.test(p)) return p
+      // If path is absolute, prefix with base (e.g. /medieval + /images/..)
+      if (p.startsWith('/')) {
+        return (base.replace(/\/$/, '') || '') + p
+      }
+      // relative path -> base + path
+      return base + p
     }
   }
   ,
