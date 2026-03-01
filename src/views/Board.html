@@ -1,0 +1,28 @@
+<ion-page>
+    <ion-header>
+      <ion-toolbar>
+        <ion-title>Board</ion-title>
+        <ion-buttons slot="end">
+          <ion-button @click="refresh">Refresh</ion-button>
+        </ion-buttons>
+      </ion-toolbar>
+    </ion-header>
+
+    <ion-content class="ion-padding">
+      <div class="board grid">
+        <div v-for="(zone, idx) in zones" :key="idx" class="zone" :class="{'player-zone': idx<4, 'enemy-zone': idx>=4, 'reachable': reachable.has(idx), 'hovered': hoveredZone===idx, 'shake': blockedShake===idx}" :data-zone-idx="idx" @dragover.prevent="onZoneDragOver($event, idx)" @dragleave="onZoneDragLeave" @drop="onDrop($event, idx)">
+          <div class="zone-header">
+            <div class="zone-index">{{ idx }}</div>
+            <div class="zone-title">{{ zone }}</div>
+          </div>
+          <div v-if="blockedZone===idx" class="blocked-overlay" :class="{ shake: blockedShake===idx }">You have already played this round</div>
+          <div :class="zoneClass(idx)" />
+          <div class="zone-cards">
+            <div v-for="g in cardsByZone(idx)" :key="g.id" class="card-wrap" :draggable="g.ownerId===state.activePlayerId" @dragstart="onDragStart($event,g.id)">
+              <CardItem :card="g.card" :hidden="g.hidden && g.ownerId !== state.activePlayerId" />
+            </div>
+          </div>
+        </div>
+      </div>
+    </ion-content>
+  </ion-page>

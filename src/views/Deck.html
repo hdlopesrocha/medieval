@@ -1,0 +1,16 @@
+<ion-page>
+    <ion-header>
+      <ion-toolbar>
+        <ion-buttons slot="start">
+          <ion-back-button default-href="/" />
+        </ion-buttons>
+        <ion-title>Deck</ion-title>
+      </ion-toolbar>
+    </ion-header>
+
+    <ion-content class="ion-padding deck-bg">
+      <div class="deck-grid">
+        <CardItem v-for="(c, i) in deck" :key="i" :card="c" :show-export="true" />
+      </div>
+    </ion-content>
+  </ion-page>

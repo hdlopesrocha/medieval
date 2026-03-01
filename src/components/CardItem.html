@@ -1,0 +1,38 @@
+<div class="card-item-wrapper">
+  <ion-card>
+    <div v-if="hidden" class="card-back">
+      <div class="card-back-text">Card Back</div>
+    </div>
+    <template v-else>
+      <ion-card-header>
+        <div class="card-header-row">
+          <ion-card-title class="card-title">{{ card.title }}</ion-card-title>
+          <ion-chip class="card-type">{{ card.type }}</ion-chip>
+        </div>
+
+      </ion-card-header>
+      <ion-card-content>
+        <ion-img :src="imageSrc" alt="card image" />
+
+        <div class="card-text-block">
+          <p class="description">{{ card.description }}</p>
+          <p v-if="card.effectDescription" class="effect-description"><strong>Effect:</strong> {{ card.effectDescription }}</p>
+        </div>
+        <div class="attributes">
+          <div class="attr"><span class="attr-icon">⚔️</span><span class="attr-label">ATK</span><span class="attr-value">{{ card.attackPoints }}</span></div>
+          <div class="attr"><span class="attr-icon">🛡️</span><span class="attr-label">DEF</span><span class="attr-value">{{ card.defensePoints }}</span></div>
+          <div class="attr hp-compact">
+            <span class="attr-icon">❤️</span>
+            <span class="attr-label">HP</span>
+            <span class="attr-value">{{ card.hp }}</span>
+          </div>
+          <div class="attr"><span class="attr-icon">💨</span><span class="attr-label">VEL</span><span class="attr-value">{{ card.velocity }}</span></div>
+          <div class="attr"><span class="attr-icon">🎯</span><span class="attr-label">RNG</span><span class="attr-value">{{ card.range }}</span></div>
+        </div>
+
+
+      </ion-card-content>
+    </template>
+  </ion-card>
+  <button v-if="showExportButton" class="export-btn" @click="exportCardToPng">Export PNG</button>
+</div>

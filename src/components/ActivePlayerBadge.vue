@@ -1,38 +1,6 @@
-<template>
-  <div class="active-badge" v-if="state.players && state.players.length">
-    <div class="dot" :class="dotClass"></div>
-    <div class="label">
-      <div class="title">Active: {{ activeName }}</div>
-      <div class="sub">Round {{ state.round ?? '?' }}</div>
-    </div>
-  </div>
-</template>
+<template src="./ActivePlayerBadge.html"></template>
 
-<script>
-import { ref, onMounted, onUnmounted, computed } from 'vue'
-import engine from '../game/engineInstance'
-
-export default {
-  name: 'ActivePlayerBadge',
-  setup() {
-    const state = ref(engine.getState())
-    let timer = null
-    onMounted(() => {
-      timer = setInterval(() => { state.value = engine.getState() }, 500)
-    })
-    onUnmounted(() => { clearInterval(timer) })
-
-    const activeId = computed(() => state.value.activePlayerId ?? 0)
-    const activeName = computed(() => {
-      const p = state.value.players && state.value.players[activeId.value]
-      return p ? p.name : `Player ${activeId.value}`
-    })
-    const dotClass = computed(() => activeId.value === 0 ? 'green' : 'red')
-
-    return { state, activeName, dotClass }
-  }
-}
-</script>
+<script lang="ts" src="./ActivePlayerBadge.ts"></script>
 
 <style scoped>
 .active-badge {

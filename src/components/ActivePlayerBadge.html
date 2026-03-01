@@ -1,0 +1,7 @@
+<div class="active-badge" v-if="state.players && state.players.length">
+    <div class="dot" :class="dotClass"></div>
+    <div class="label">
+      <div class="title">Active: {{ activeName }}</div>
+      <div class="sub">Round {{ state.round ?? '?' }}</div>
+    </div>
+  </div>

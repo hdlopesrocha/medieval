@@ -1,0 +1,84 @@
+<ion-page>
+  <ion-header>
+    <ion-toolbar>
+      <ion-title>Game</ion-title>
+    </ion-toolbar>
+  </ion-header>
+
+  <ion-content class="ion-padding">
+    <div style="display:flex;gap:12px;margin-bottom:12px">
+      <ion-button @click="start">Start Game</ion-button>
+      <ion-button @click="next">Next Phase</ion-button>
+      <ion-button @click="endTurn">End Turn</ion-button>
+      <ion-button @click="exportState">Export State</ion-button>
+      <ion-button @click="triggerImport">Import State</ion-button>
+      <input type="file" accept=".json" style="display:none" @change="onFileChange" ref="fileInput" />
+    </div>
+
+    <!-- Market removed -->
+
+    <section style="margin-top:16px">
+      <h3>Table (cards in play)</h3>
+      <div v-if="state.cardsInPlay.length === 0">No cards in play</div>
+      <div v-else style="display:flex;flex-wrap:wrap;gap:8px">
+        <div v-for="g in state.cardsInPlay" :key="g.id" style="border:1px solid #ddd;padding:8px;border-radius:6px;min-width:200px;display:flex;gap:8px;align-items:flex-start">
+          <CardItem :card="g.card" :hidden="g.hidden && g.ownerId !== state.activePlayerId" />
+          <div style="flex:1">
+            <div><strong>Owner:</strong> {{ g.ownerId === state.activePlayerId ? 'Active' : (g.ownerId === 0 ? 'You' : 'Enemy') }}</div>
+            <div><strong>Pos:</strong> {{ g.position }} ({{ zoneName(g.position) }})</div>
+            <div><strong>HP:</strong> {{ (g.ownerId === state.activePlayerId || !g.hidden) ? g.card.hp : '??' }}</div>
+            <div style="margin-top:8px">
+              <template v-if="g.ownerId === state.activePlayerId">
+                <ion-button size="small" @click="moveCardUI(g.id)">Move</ion-button>
+                <ion-button size="small" @click="attackCardUI(g.id)">Attack</ion-button>
+                <ion-button size="small" v-if="g.card && g.card.type === 'PRIEST' && canConvert(g)" @click="convertCardUI(g.id)">Convert</ion-button>
+                <ion-button size="small" @click="openAbilitySelector(g.id)">Use</ion-button>
+                <ion-button size="small" fill="clear" @click="useAbilityNoTarget(g.id)">Use (no target)</ion-button>
+              </template>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Selection overlay for choosing targets -->
+    <div v-if="selection.mode" class="selection-overlay">
+      <div class="selection-box">
+        <h3>Select target</h3>
+        <div class="candidates">
+          <div v-for="c in selection.candidates" :key="c.id" class="candidate">
+            <CardItem :card="c.card" :hidden="c.hidden && c.ownerId !== state.activePlayerId" />
+            <div style="display:flex;gap:8px;align-items:center;margin-top:6px">
+              <div style="flex:1">{{ c.card.title }} (pos {{ c.position }}, hp {{ c.card.hp }})</div>
+              <ion-button size="small" @click="selectTarget(c.id)">Select</ion-button>
+            </div>
+          </div>
+        </div>
+        <div style="margin-top:8px;text-align:right">
+          <ion-button fill="clear" @click="cancelSelection">Cancel</ion-button>
+        </div>
+      </div>
+    </div>
+
+    <section style="margin-top:16px">
+      <h3>Hands</h3>
+      <div v-for="p in state.players" :key="p.id" style="margin-bottom:12px">
+          <div v-if="p.id === state.activePlayerId">
+          <div style="font-weight:700">Your Hand ({{ (state.hands && state.hands[p.id]) ? state.hands[p.id].length : 0 }})</div>
+          <div v-if="state.playedThisRound && state.playedThisRound[state.activePlayerId]" style="color:#666;margin-top:6px">You have played this round</div>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px">
+            <div v-for="(c, idx) in (state.hands && state.hands[p.id]) || []" :key="idx" style="min-width:200px; display:flex; flex-direction:column; gap:6px" :draggable="!state.playedThisRound || !state.playedThisRound[state.activePlayerId]" @dragstart.prevent="onHandDragStart($event, idx, c)">
+              <CardItem :card="c" />
+              <div style="display:flex;gap:6px;justify-content:flex-end">
+                <ion-button size="small" @click="playFromHand(idx)" :disabled="state.playedThisRound && state.playedThisRound[state.activePlayerId]">Play</ion-button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div v-else>
+          <div style="font-weight:700">{{ p.name }} hand: {{ (state.hands && state.hands[p.id] && state.hands[p.id].count) ? state.hands[p.id].count : (state.hands && state.hands[p.id] ? state.hands[p.id].length : 0) }}</div>
+        </div>
+      </div>
+    </section>
+  </ion-content>
+</ion-page>

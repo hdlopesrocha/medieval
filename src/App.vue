@@ -1,16 +1,3 @@
-<template>
-  <ion-app>
-    <ActivePlayerBadge />
-    <router-view />
-  </ion-app>
-</template>
+<template src="./App.html"></template>
 
-<script>
-import { IonApp } from '@ionic/vue'
-import ActivePlayerBadge from './components/ActivePlayerBadge.vue'
-
-export default {
-  name: 'App',
-  components: { IonApp, ActivePlayerBadge }
-}
-</script>
+<script lang="ts" src="./App.ts"></script>
