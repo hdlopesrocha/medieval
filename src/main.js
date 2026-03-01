@@ -23,6 +23,7 @@ import '@ionic/vue/css/display.css'
 import './styles.css'
 
 const routes = [
+	{ path: '', component: Home },
 	{ path: '/', component: Home },
 	{ path: '/hello', component: HelloWorld },
 	{ path: '/deck', component: Deck }

@@ -138,7 +138,7 @@ export default {
 
     const localIps = ref([])
     const selectedIp = ref('')
-    const serverPort = ref(window.location.port || '5173')
+    const serverPort = ref(window.location.port || '8080')
     const serverQr = ref('')
     const serverUrl = ref('')
     const detecting = ref(false)
