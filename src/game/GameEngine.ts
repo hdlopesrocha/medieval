@@ -1,7 +1,7 @@
 import Card from '../models/Card'
 import { CardType } from '../models/Card'
 import { getCommandFor } from './commands/registry'
-import { createInitialDeck } from '../data/sampleDeck'
+import deckService from '../services/deckService'
 
 
 export const ZONES = [
@@ -79,7 +79,7 @@ export default class GameEngine {
     // reset players and create a fresh deck from the sample deck
     this.players = playerNames.map((n, i) => ({ id: i, name: n }))
     // create a fresh randomized deck
-    this.deck = createInitialDeck()
+    this.deck = deckService.createDeck()
     // shuffle the deck so order is randomized at game start
     this.shuffleDeck()
     this.cardsInPlay = []
