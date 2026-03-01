@@ -22,6 +22,11 @@ dev:
 
 build:
 	$(NPM) run build
+	@if [ -d src/images ]; then \
+		mkdir -p dist/src && cp -r src/images dist/src/images; \
+		cp -r src/images dist/images; \
+		echo "Copied src/images -> dist/src/images and dist/images"; \
+	fi
 
 preview:
 	$(NPM) run preview

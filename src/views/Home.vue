@@ -13,6 +13,7 @@
         <ion-button @click="goTable" color="tertiary">Open Table</ion-button>
         <ion-button @click="goGame" color="success">Open Game</ion-button>
         <ion-button @click="goBoard" color="medium">Open Board</ion-button>
+        <ion-button @click="goWebrtc" color="dark">WebRTC QR</ion-button>
       </ion-content>
   </ion-page>
 </template>
@@ -45,7 +46,10 @@ export default {
     const goBoard = () => {
       router.push('/board')
     }
-    return { showAlert, goHello, goDeck, goTable, goGame, goBoard }
+    const goWebrtc = () => {
+      router.push('/webrtc')
+    }
+    return { showAlert, goHello, goDeck, goTable, goGame, goBoard, goWebrtc }
   }
 }
 </script>

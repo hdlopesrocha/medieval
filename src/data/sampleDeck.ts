@@ -1,4 +1,5 @@
 import Card, { CardType } from '../models/Card'
+import { asset } from '../utils/asset'
 
 // Manually authored initial deck: 80 explicit Card instances.
 // Optional `imageFor(title)` callback can provide per-card image URLs.
@@ -6,16 +7,16 @@ export function createInitialDeck(imageFor?: (title: string) => string): Card[] 
   const imgFor = (title: string) => (typeof imageFor === 'function' ? imageFor(title) : '') || ''
 
   const cards: Card[] = [
-    new Card('/src/images/afonsohenriques.jpg', 'D. Afonso Henriques', 'First King of Portugal, leading his armies to conquer castles.', '+2 Attack against enemy castle.', 2, 2, CardType.KING, 6, 2, 1),
-    new Card('/src/images/dinis.jpg', 'D. Dinis', 'Wise poet king nurturing his lands and troops.', 'Heal 1 Life to all units in Agriculture.', 1, 2, CardType.KING, 6, 2, 1),
-    new Card('/src/images/joao1.jpg', 'D. João I', 'Protector of the realm and founder of the House of Avis.', 'Soldiers +1 Defense in Civilization.', 2, 3, CardType.KING, 6, 2, 1),
-    new Card('/src/images/joao2.jpg', 'D. João II', 'The “Perfect Prince”, eliminating threats with strategy.', 'Remove 1 enemy unit.', 2, 2, CardType.KING, 5, 2, 1),
-    new Card('/src/images/manuel1.jpg', 'D. Manuel I', 'The Expansion King, gaining advantage in every turn.', 'Play 1 extra card.', 1, 2, CardType.KING, 6, 2, 1),
-    new Card('/src/images/sebastiao1.jpg', 'D. Sebastião', 'Young king leading brave but risky cavalry charges.', 'Cavalry +2 Attack, lose 1 Life (king).', 3, 1, CardType.KING, 5, 2, 1),
-    new Card('/src/images/joao4.jpg', 'D. João IV', 'Restorer of Independence, bringing troops back from defeat.', 'Revive 1 allied unit.', 2, 2, CardType.KING, 6, 2, 1),
-    new Card('/src/images/pedro1.jpg', 'D. Pedro I', 'Justice king who punishes enemies when allies fall.', 'Drain 1 Life from enemy (to this unit).', 2, 2, CardType.KING, 5, 2, 1),
-    new Card('/src/images/afonso5.jpg', 'D. Afonso V', '“The African” king, swift and aggressive on the battlefield.', 'Cavalry +1 Movement.', 2, 1, CardType.KING, 5, 2, 1),
-    new Card('/src/images/joao3.jpg', 'D. João III', 'Inquisitor king, silencing enemy priests.', 'Enemy priests lose effects (reduce their stats).', 1, 2, CardType.KING, 5, 2, 1),
+    new Card('images/afonsohenriques.jpg', 'D. Afonso Henriques', 'First King of Portugal, leading his armies to conquer castles.', '+2 Attack against enemy castle.', 2, 2, CardType.KING, 6, 2, 1),
+    new Card('images/dinis.jpg', 'D. Dinis', 'Wise poet king nurturing his lands and troops.', 'Heal 1 Life to all units in Agriculture.', 1, 2, CardType.KING, 6, 2, 1),
+    new Card('images/joao1.jpg', 'D. João I', 'Protector of the realm and founder of the House of Avis.', 'Soldiers +1 Defense in Civilization.', 2, 3, CardType.KING, 6, 2, 1),
+    new Card('images/joao2.jpg', 'D. João II', 'The “Perfect Prince”, eliminating threats with strategy.', 'Remove 1 enemy unit.', 2, 2, CardType.KING, 5, 2, 1),
+    new Card('images/manuel1.jpg', 'D. Manuel I', 'The Expansion King, gaining advantage in every turn.', 'Play 1 extra card.', 1, 2, CardType.KING, 6, 2, 1),
+    new Card('images/sebastiao1.jpg', 'D. Sebastião', 'Young king leading brave but risky cavalry charges.', 'Cavalry +2 Attack, lose 1 Life (king).', 3, 1, CardType.KING, 5, 2, 1),
+    new Card('images/joao4.jpg', 'D. João IV', 'Restorer of Independence, bringing troops back from defeat.', 'Revive 1 allied unit.', 2, 2, CardType.KING, 6, 2, 1),
+    new Card('images/pedro1.jpg', 'D. Pedro I', 'Justice king who punishes enemies when allies fall.', 'Drain 1 Life from enemy (to this unit).', 2, 2, CardType.KING, 5, 2, 1),
+    new Card('images/afonso5.jpg', 'D. Afonso V', '“The African” king, swift and aggressive on the battlefield.', 'Cavalry +1 Movement.', 2, 1, CardType.KING, 5, 2, 1),
+    new Card('images/joao3.jpg', 'D. João III', 'Inquisitor king, silencing enemy priests.', 'Enemy priests lose effects (reduce their stats).', 1, 2, CardType.KING, 5, 2, 1),
     new Card(imgFor('D. José I'), 'D. José I', 'King overseeing recovery after disasters.', 'Remove all negative effects (heal allies).', 1, 2, CardType.KING, 6, 2, 1),
     new Card(imgFor('D. João VI'), 'D. João VI', 'King who moves troops strategically across the land.', 'Move any allied unit.', 1, 2, CardType.KING, 6, 2, 1),
     new Card(imgFor('D. Pedro IV'), 'D. Pedro IV', 'Liberal king empowering soldiers to strike quickly.', 'Units attack immediately.', 2, 2, CardType.KING, 5, 2, 1),

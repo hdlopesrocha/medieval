@@ -12,7 +12,9 @@
     "@ionic/vue": "latest",
     "@ionic/vue-router": "latest",
     "html2canvas": "^1.4.1",
+    "html5-qrcode": "^2.3.8",
     "ionicons": "latest",
+    "qrcode": "^1.5.4",
     "vue": "latest",
     "vue-router": "^4.6.4"
   },

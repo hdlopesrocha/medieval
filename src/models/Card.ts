@@ -112,7 +112,7 @@ export default class Card {
   set imageUrl(value: string) {
     if (!value || typeof value !== 'string') {
       // fallback to default card back image when none provided
-      this._imageUrl = '/images/backface.jpg'
+      this._imageUrl = 'images/backface.jpg'
       return
     }
     this._imageUrl = value

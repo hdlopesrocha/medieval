@@ -69,15 +69,22 @@ export default {
     },
     imageSrc() {
       const p = this.card?.imageUrl || ''
-      const base = import.meta.env.BASE_URL || '/'
       if (!p) return ''
       if (/^https?:\/\//.test(p)) return p
-      // If path is absolute, prefix with base (e.g. /medieval + /images/..)
+      const base = import.meta.env.BASE_URL || '/'
+      const isProd = Boolean(import.meta.env.PROD)
+
+      // Absolute paths starting with `/` should remain absolute during dev,
+      // but in production we need to prefix with the configured base.
       if (p.startsWith('/')) {
-        return (base.replace(/\/$/, '') || '') + p
+        return isProd ? (base.replace(/\/$/, '') || '') + p : p
       }
-      // relative path -> base + path
-      return base + p
+
+      // Normalize common dev paths like `src/...` or `public/...` to a relative path.
+      const normalized = p.replace(/^\/?(?:src|public)\//, '')
+
+      // Only apply the runtime base in production (when `dist` was built).
+      return isProd ? base + normalized : normalized || p
     }
   }
   ,
