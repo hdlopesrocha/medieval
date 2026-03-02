@@ -37,3 +37,11 @@ deploy: build
 
 clean:
 	rm -rf node_modules dist
+
+cloc:
+	@echo "Running cloc to count lines of code..."
+	@if command -v cloc >/dev/null 2>&1; then \
+		cloc src \
+	else \
+		echo "cloc not found on PATH. Install it (e.g. sudo apt install cloc) to get a detailed LOC report."; \
+	fi

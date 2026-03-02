@@ -15,3 +15,11 @@ Build:
 npm run build
 npm run preview
 ```
+
+Deploy:
+```
+make deploy
+```
+
+Test:
+https://hdlopesrocha.github.io/medieval/
