@@ -1,5 +1,11 @@
-<div class="current-player-board">
 
+
+<ion-button v-if="!boardVisible" size="small" fill="dark" style="margin-bottom: 8px; background: #222; color: #fff;" @click="toggleBoardVisible">
+  <ion-icon slot="start" :icon="expandOutline"></ion-icon>
+  Show Player Board
+</ion-button>
+
+<div v-if="boardVisible" class="current-player-board">
   <nav class="current-player-navbar" aria-label="Primary">
     <div class="current-player-navbar-links">
       <ion-button size="small" :fill="isActive('/deck') ? 'solid' : 'outline'" @click="go('/deck')">
@@ -52,6 +58,14 @@
           <ion-icon slot="start" :icon="fullscreenIcon"></ion-icon>
           {{ fullscreenLabel }}
         </ion-button>
+        <ion-button v-if="boardVisible" size="small" fill="clear" style="margin-top: 8px;" @click="toggleBoardVisible">
+          <ion-icon slot="start" :icon="contractOutline"></ion-icon>
+          Hide Player Board
+        </ion-button>
+        <ion-button v-if="!boardVisible" size="small" fill="dark" style="margin-top: 8px;" @click="toggleBoardVisible">
+          <ion-icon slot="start" :icon="expandOutline"></ion-icon>
+          Show Player Board
+        </ion-button>
       </div>
       </ion-popover>
     </div>
@@ -64,5 +78,5 @@
     <div><strong>Enemy Castle HP:</strong> {{ enemyCastleHp }}</div>
     <div><strong>{{ turnIcon }}</strong> {{ turnLabel }}</div>
   </div>
-
 </div>
+
