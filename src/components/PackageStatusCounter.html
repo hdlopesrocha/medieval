@@ -1,0 +1,16 @@
+<div class="package-status-counter-wrap">
+  <div class="package-status-counter">
+    <div
+      v-for="idx in safeTotal"
+      :key="`${keyPrefix}-${idx}`"
+      class="package-status-item"
+      :class="{
+        'is-scanned': isScanned(idx - 1),
+        'is-active': isActive(idx - 1)
+      }"
+    >
+      <ion-icon :icon="isActive(idx - 1) ? cube : cubeOutline" class="package-status-icon"></ion-icon>
+      <span class="package-status-label">{{ idx }}</span>
+    </div>
+  </div>
+</div>

@@ -20,8 +20,24 @@ ion-page {
 
 /* Ensure ion-content expands to viewport height so pages can contain tall content */
 ion-content {
+  --background: transparent;
+  background: transparent;
   min-height: 100vh;
   box-sizing: border-box;
+}
+
+ion-content::part(background) {
+  background: transparent;
+}
+
+ion-content::part(scroll) {
+  overflow-x: auto;
+  overflow-y: auto;
+}
+
+ion-router-outlet,
+ion-router-outlet > * {
+  background: transparent;
 }
 
 /* Make sure Ionic root fills viewport */

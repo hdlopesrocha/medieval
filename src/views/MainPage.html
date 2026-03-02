@@ -1,36 +1,33 @@
 <ion-page>
-  <ion-header>
-    <ion-toolbar>
-      <ion-title>Main Page</ion-title>
-    </ion-toolbar>
-  </ion-header>
-  <ion-content class="ion-padding">
-    <CurrentPlayerBoard />
+  <ion-content ref="mainContentRef" class="ion-padding">
     <template v-if="!(connectedHost || connectedClient)">
-      <div style="display:flex;text-align: center; gap:10px;width:100%;height:256px">
+      <div style="display:flex;text-align: center; gap:10px;width:100%;height:128px">
         <ion-button
+          class="role-switch-button"
           :color="activeRole === 'server' ? 'primary' : 'medium'"
           :fill="activeRole === 'server' ? 'solid' : 'outline'"
           @click="setRole('server')"
           style="flex:1"
         >
-          <ion-icon :icon="serverOutline" style="font-size:128px;display:block;margin:0 auto"></ion-icon>
+          <ion-icon :icon="serverOutline" style="font-size:64px;display:block;margin:0 auto"></ion-icon>
         </ion-button>
         <ion-button
+          class="role-switch-button"
           :color="activeRole === 'client' ? 'primary' : 'medium'"
           :fill="activeRole === 'client' ? 'solid' : 'outline'"
           @click="setRole('client')"
           style="flex:1"
         >
-          <ion-icon :icon="phonePortraitOutline" style="font-size:128px;display:block;margin:0 auto"></ion-icon>
+          <ion-icon :icon="phonePortraitOutline" style="font-size:64px;display:block;margin:0 auto"></ion-icon>
         </ion-button>
         <ion-button
+          class="role-switch-button"
           :color="activeRole === 'local' ? 'primary' : 'medium'"
           :fill="activeRole === 'local' ? 'solid' : 'outline'"
           @click="goHandPage"
           style="flex:1"
         >
-          <ion-icon :icon="cubeOutline" style="font-size:128px;display:block;margin:0 auto"></ion-icon>
+          <ion-icon :icon="cubeOutline" style="font-size:64px;display:block;margin:0 auto"></ion-icon>
         </ion-button>
       </div>
     </template>
@@ -38,19 +35,26 @@
 
     <template v-if="activeRole === 'server' && !connectedHost">      
       <ion-button @click="createOffer" color="success" style="width:100%">Create Offer & QR</ion-button>
-      <div v-if="offerQrParts.length && !scanning" style="display:flex;gap:8px;flex-wrap:nowrap;overflow-x:auto;margin-top:8px">
-        <div
-          v-for="idx in offerQrParts.length"
-          :key="`offer-part-${idx}`"
-          :style="`min-width:52px;padding:6px 8px;border-radius:6px;text-align:center;border:1px solid ${scannedParts[idx - 1] ? '#495057' : '#ced4da'};background:${scannedParts[idx - 1] ? '#e9ecef' : '#f8f9fa'};color:${scannedParts[idx - 1] ? '#212529' : '#adb5bd'};display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px`"
-        >
-          <ion-icon :icon="offerQrPartIndex === (idx - 1) ? cube : cubeOutline" style="font-size:18px"></ion-icon>
-          <span style="font-size:11px;line-height:1">{{ idx }}</span>
-        </div>
+      <div v-if="offerQrParts.length && !scanning" style="margin-top:8px">
+        <PackageStatusCounter
+          :total="offerQrParts.length"
+          :scannedParts="scannedParts"
+          :activeIndex="offerQrPartIndex"
+          keyPrefix="offer-part"
+        />
       </div>
 
       <div v-if="offerQr && !scanning" style="margin-top:8px">
-        <img :src="offerQr" alt="offer-qr" style="width:100%;display:block"/>
+        <div class="qr-image-wrap">
+          <img
+            ref="offerQrImageRef"
+            :src="offerQr"
+            alt="offer-qr"
+            class="qr-image"
+            tabindex="-1"
+            @load="onQrImageLoad('offer')"
+          />
+        </div>
         <ion-button color="success" @click="startScanner('answer')" style="width:100%">Scan Answer QR (camera)</ion-button>
       </div>
     </template>
@@ -71,24 +75,30 @@
 
     <template style="margin:12px 0px"
       v-if="activeRole === 'client' && !connectedClient">
-      <ion-button color="success" @click="startScanner('offer')" style="width:100%">Scan Server Offer QR (camera)</ion-button>
+      <ion-button ref="scanOfferButtonRef" color="success" @click="startOfferScanner" style="width:100%">Scan Server Offer QR (camera)</ion-button>
       <div v-if="sdpText" style="margin:12px 0px">
         <ion-button @click="acceptOffer(sdpText)" style="margin-top:6px;width:100%">Generate Answer QR</ion-button>
       </div>
       <div v-if="answerQrParts.length && !scanning"
                   style="margin:12px 0px">
-        <img :src="answerQr" alt="answer-qr" style="width:100%;display:block"/>
-        <p v-if="answerQrParts.length" style="margin:6px 0 6px 0">Part {{ answerQrPartIndex + 1 }}/{{ answerQrParts.length }}</p>
-        <div v-if="answerQrParts.length" style="display:flex;gap:8px;flex-wrap:nowrap;overflow-x:auto">
-          <div
-            v-for="idx in answerQrParts.length"
-            :key="`answer-part-${idx}`"
-            :style="`min-width:52px;padding:6px 8px;border-radius:6px;text-align:center;border:1px solid ${scannedParts[idx - 1] ? '#495057' : '#ced4da'};background:${scannedParts[idx - 1] ? '#e9ecef' : '#f8f9fa'};color:${scannedParts[idx - 1] ? '#212529' : '#adb5bd'};display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px`"
-          >
-            <ion-icon :icon="answerQrPartIndex === (idx - 1) ? cube : cubeOutline" style="font-size:18px"></ion-icon>
-            <span style="font-size:11px;line-height:1">{{ idx }}</span>
-          </div>
+        <div class="qr-image-wrap">
+          <img
+            ref="answerQrImageRef"
+            :src="answerQr"
+            alt="answer-qr"
+            class="qr-image"
+            tabindex="-1"
+            @load="onQrImageLoad('answer')"
+          />
         </div>
+        <p v-if="answerQrParts.length" style="margin:6px 0 6px 0">Part {{ answerQrPartIndex + 1 }}/{{ answerQrParts.length }}</p>
+        <PackageStatusCounter
+          v-if="answerQrParts.length"
+          :total="answerQrParts.length"
+          :scannedParts="scannedParts"
+          :activeIndex="answerQrPartIndex"
+          keyPrefix="answer-part"
+        />
       </div>
 
       <div v-if="connectedClient" style="margin:12px 0px">
@@ -104,17 +114,14 @@
 
     <template style="margin:12px 0"
       v-if="scanning && !((activeRole === 'server' && connectedHost) || (activeRole === 'client' && connectedClient))">
-      <div style="display:flex;gap:8px;flex-wrap:nowrap;overflow-x:auto">
-        <div
-          v-for="idx in scannedPartsExpected"
-          :key="idx"
-          :style="`min-width:52px;padding:6px 8px;border-radius:6px;text-align:center;border:1px solid ${scannedParts[idx - 1] ? '#495057' : '#ced4da'};background:${scannedParts[idx - 1] ? '#e9ecef' : '#f8f9fa'};color:${scannedParts[idx - 1] ? '#212529' : '#adb5bd'};display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px`"
-        >
-          <ion-icon :icon="scannedParts[idx - 1] ? cube : cubeOutline" style="font-size:18px"></ion-icon>
-          <span style="font-size:11px;line-height:1">{{ idx }}</span>
-        </div>
+      <PackageStatusCounter
+        :total="scannedPartsExpected"
+        :scannedParts="scannedParts"
+        keyPrefix="scan-part"
+      />
+      <div class="scanner-reader-wrap">
+        <div id="qr-reader" class="scanner-reader"></div>
       </div>
-      <div id="qr-reader" style="width:100%"></div>
       <p v-if="scanStatus">{{ scanStatus }}</p>
       <ion-button color="medium" @click="resetScannedParts" style="margin:12px 0;width:100%">Clear Scanned Parts</ion-button>
       <ion-button color="danger" @click="stopScanner" style="margin:12px 0;width:100%">Stop Scanner</ion-button>
