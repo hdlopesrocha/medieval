@@ -2,17 +2,19 @@ import { ref, onMounted, onUnmounted } from 'vue'
 import CardItem from '../components/CardItem.vue'
 import engine from '../game/engineInstance'
 import { ZONES } from '../game/GameEngine'
+import { useGameStateService } from '../services/gameStateService'
 
 export default {
   name: 'BoardView',
   components: { CardItem },
   setup() {
+    const gameState = useGameStateService()
     const zones = ZONES
     const state = ref(engine.getState())
-    let timer = null
+    let timer: ReturnType<typeof setInterval> | null = null
 
-    const dragged = ref(null) // { id, pos, vel }
-    const reachable = ref(new Set())
+    const dragged = ref<{ id: string, pos: number, vel: number } | null>(null) // { id, pos, vel }
+    const reachable = ref<Set<number>>(new Set())
     const hoveredZone = ref(-1)
     const blockedZone = ref(-1)
     const blockedShake = ref(-1)
@@ -30,23 +32,29 @@ export default {
       for (let i = start; i <= max; i++) reachable.value.add(i)
     }
 
-    function cardsByZone(idx) {
-      return engine.cardsInPlay.filter(g => g.position === idx)
+    function cardsByZone(idx: number) {
+      return (state.value.cardsInPlay || []).filter((g: any) => g.position === idx)
     }
 
-    function onDragStart(evt, cardId) {
-      const g = engine.cardsInPlay.find(x => x.id === cardId)
+    function handCountForPlayer(playerId: number) {
+      return gameState.getPlayerCards(playerId, 'game').length
+    }
+
+    function onDragStart(evt: DragEvent, cardId: string) {
+      const g = (engine.cardsInPlay as any[]).find(x => x.id === cardId)
       if (!g) return
       dragged.value = { id: cardId, pos: g.position, vel: g.card.velocity ?? 0 }
       computeReachable()
+      if (!evt.dataTransfer) return
       evt.dataTransfer.setData('text/plain', cardId)
       evt.dataTransfer.effectAllowed = 'move'
     }
 
-    function onZoneDragOver(evt, idx) {
+    function onZoneDragOver(evt: DragEvent, idx: number) {
       // show hovered zone and allow drop only if reachable
       hoveredZone.value = idx
       blockedZone.value = -1
+      if (!evt.dataTransfer) return
       // If dragging a hand card, mark all zones reachable so player can drop to any zone
       try {
         const dt = evt.dataTransfer.getData('text/plain') || ''
@@ -63,7 +71,7 @@ export default {
             evt.preventDefault()
             return
           }
-          const all = new Set()
+          const all = new Set<number>()
           for (let i = 0; i < ZONES.length; i++) all.add(i)
           reachable.value = all
         }
@@ -79,7 +87,8 @@ export default {
       handDragVel.value = null
     }
 
-    function onDrop(evt, targetZone) {
+    function onDrop(evt: DragEvent, targetZone: number) {
+      if (!evt.dataTransfer) return
       const payload = evt.dataTransfer.getData('text/plain')
       if (!payload) return
 
@@ -90,6 +99,7 @@ export default {
         const playerId = Number(parts[1])
         const handIndex = Number(parts[2])
         if (playerId !== state.value.activePlayerId) return alert('not your hand')
+        if (handIndex < 0 || handIndex >= handCountForPlayer(playerId)) return alert('invalid hand index')
         if (state.value.playedThisRound && state.value.playedThisRound[playerId]) {
           // trigger shake and haptic feedback
           blockedShake.value = targetZone
@@ -113,7 +123,7 @@ export default {
 
       // otherwise, moving an existing card in play
       const cardId = payload
-      const g = engine.cardsInPlay.find(x => x.id === cardId)
+      const g = (engine.cardsInPlay as any[]).find(x => x.id === cardId)
       if (!g) return alert('card not found')
       if (g.ownerId !== state.value.activePlayerId) return alert('you can only move your own cards')
       const steps = targetZone - g.position
@@ -128,7 +138,7 @@ export default {
       refresh()
     }
 
-    function zoneClass(idx) {
+    function zoneClass(idx: number) {
       // if dragging an in-play card, color by distance from start
       if (dragged.value && Number.isFinite(dragged.value.pos)) {
         const start = dragged.value.pos
@@ -147,7 +157,9 @@ export default {
     onMounted(() => {
       timer = setInterval(refresh, 700)
     })
-    onUnmounted(() => { clearInterval(timer) })
+    onUnmounted(() => {
+      if (timer) clearInterval(timer)
+    })
 
     return { zones, state, refresh, cardsByZone, onDragStart, onZoneDragOver, onZoneDragLeave, onDrop, reachable, hoveredZone }
   }

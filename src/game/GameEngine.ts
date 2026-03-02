@@ -1,6 +1,7 @@
 import Card from '../models/Card'
 import { CardType } from '../models/Card'
 import { getCommandFor } from './commands/registry'
+import gameStateService from '../services/gameStateService'
 import deckService from '../services/deckService'
 
 
@@ -43,8 +44,18 @@ export default class GameEngine {
   hands: { [playerId: number]: Card[] } = {}
   playedThisRound: { [playerId: number]: boolean } = {}
 
+  syncGameStateService() {
+    gameStateService.setDeck(this.deck.map(d => d.toJSON()), 'game')
+    const handsPayload: Record<string, any[]> = {}
+    for (const playerId of Object.keys(this.hands || {})) {
+      handsPayload[playerId] = (this.hands[Number(playerId)] || []).map(c => c.toJSON())
+    }
+    gameStateService.setAllPlayerCards(handsPayload, 'game')
+  }
+
   constructor(deck: Card[]) {
     this.deck = [...deck]
+    gameStateService.setDeck(this.deck.map(d => d.toJSON()), 'game')
     // attempt to restore persisted state (if running in browser)
     try {
       const restored = this.loadState()
@@ -52,8 +63,10 @@ export default class GameEngine {
         // persist initial deck so randomized HP is kept
         this.saveState()
       }
+      this.syncGameStateService()
     } catch (e) {
       // ignore storage errors
+      this.syncGameStateService()
     }
   }
 
@@ -80,6 +93,7 @@ export default class GameEngine {
     this.players = playerNames.map((n, i) => ({ id: i, name: n }))
     // create a fresh randomized deck
     this.deck = deckService.createDeck()
+    gameStateService.setDeck(this.deck.map(d => d.toJSON()), 'game')
     // shuffle the deck so order is randomized at game start
     this.shuffleDeck()
     this.cardsInPlay = []
@@ -250,6 +264,7 @@ export default class GameEngine {
 
   // Persist internal state to localStorage (browser). Silent on failure.
   saveState() {
+    this.syncGameStateService()
     try {
       if (typeof window === 'undefined' || !window.localStorage) return false
       const payload = {
@@ -337,12 +352,6 @@ export default class GameEngine {
       // market removed
       players: this.players,
       cardsInPlay: this.cardsInPlay.map(g => ({ id: g.id, ownerId: g.ownerId, position: g.position, hidden: !!g.hidden, card: g.card.toJSON() })),
-      // hands: expose full cards only to active player; others get counts
-      hands: Object.fromEntries(this.players.map(p => {
-        const arr = this.hands[p.id] || []
-        return [p.id, p.id === this.activePlayerId ? arr.map(c => c.toJSON()) : { count: arr.length }]
-      }))
-      ,
       playedThisRound: this.playedThisRound || {}
     }
   }
