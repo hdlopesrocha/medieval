@@ -1,5 +1,27 @@
 <div class="current-player-board">
-  <div><strong>Current Player:</strong> {{ currentPlayerLabel }}</div>
-  <div><strong>Round:</strong> {{ roundNumber }}</div>
-  <div><strong>{{ turnIcon }}</strong> {{ turnLabel }}</div>
+  <div class="current-player-board-row">
+    <div><strong>Current Player:</strong> {{ currentPlayerLabel }}</div>
+    <div><strong>Round:</strong> {{ roundNumber }}</div>
+    <div><strong>Player Castle HP:</strong> {{ playerCastleHp }}</div>
+    <div><strong>Enemy Castle HP:</strong> {{ enemyCastleHp }}</div>
+    <div><strong>{{ turnIcon }}</strong> {{ turnLabel }}</div>
+  </div>
+  <div class="current-player-board-tabs">
+    <ion-button size="small" :fill="isActive('/deck') ? 'solid' : 'outline'" @click="go('/deck')">
+      <ion-icon slot="start" :icon="albumsOutline"></ion-icon>
+      Deck
+    </ion-button>
+    <ion-button size="small" :fill="isActive('/hand') ? 'solid' : 'outline'" @click="go('/hand')">
+      <ion-icon slot="start" :icon="handLeftOutline"></ion-icon>
+      Hand
+    </ion-button>
+    <ion-button size="small" :fill="isActive('/table') ? 'solid' : 'outline'" @click="go('/table')">
+      <ion-icon slot="start" :icon="gridOutline"></ion-icon>
+      Table
+    </ion-button>
+    <ion-button size="small" :fill="isActive('/map') ? 'solid' : 'outline'" @click="go('/map')">
+      <ion-icon slot="start" :icon="mapOutline"></ion-icon>
+      Map
+    </ion-button>
+  </div>
 </div>

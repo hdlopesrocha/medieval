@@ -1,11 +1,17 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { IonButton, IonIcon } from '@ionic/vue'
+import { albumsOutline, handLeftOutline, gridOutline, mapOutline } from 'ionicons/icons'
+import { useRoute, useRouter } from 'vue-router'
 import engine from '../game/engineInstance'
 import { useWebrtcQrService } from '../services/webrtcQrService'
 
 export default {
   name: 'CurrentPlayerBoard',
+  components: { IonButton, IonIcon },
   setup() {
     const webrtcQr = useWebrtcQrService()
+    const router = useRouter()
+    const route = useRoute()
     const state = ref<any>({ activePlayerId: 0, currentUser: 0, round: 1, players: [] })
     let timer: ReturnType<typeof setInterval> | null = null
 
@@ -31,6 +37,15 @@ export default {
       return role.value === 'client' ? 1 : 0
     })
     const isLocalPlayersTurn = computed(() => Number(localPlayerId.value) === Number(activePlayerId.value))
+    const playerCastleHp = computed(() => {
+      const hpByPlayer = (state.value && state.value.castleHpByPlayer) || {}
+      return Number(hpByPlayer[localPlayerId.value] ?? hpByPlayer[String(localPlayerId.value)] ?? 0)
+    })
+    const enemyCastleHp = computed(() => {
+      const enemyId = Number(localPlayerId.value) === 0 ? 1 : 0
+      const hpByPlayer = (state.value && state.value.castleHpByPlayer) || {}
+      return Number(hpByPlayer[enemyId] ?? hpByPlayer[String(enemyId)] ?? 0)
+    })
     const currentPlayerLabel = computed(() => {
       const player = (state.value.players || []).find((entry: any) => Number(entry.id) === currentUserId.value)
       if (player?.name) return `${player.name} (Player ${currentUserId.value})`
@@ -41,6 +56,15 @@ export default {
       if (isLocalPlayersTurn.value) return 'Your turn'
       return `Waiting for your turn (Player ${activePlayerId.value} is playing)`
     })
+
+    function go(path: string) {
+      if (route.path === path) return
+      router.push(path)
+    }
+
+    function isActive(path: string) {
+      return route.path === path
+    }
 
     onMounted(() => {
       refresh()
@@ -54,8 +78,16 @@ export default {
     return {
       currentPlayerLabel,
       roundNumber,
+      playerCastleHp,
+      enemyCastleHp,
       turnIcon,
-      turnLabel
+      turnLabel,
+      albumsOutline,
+      handLeftOutline,
+      gridOutline,
+      mapOutline,
+      go,
+      isActive
     }
   }
 }

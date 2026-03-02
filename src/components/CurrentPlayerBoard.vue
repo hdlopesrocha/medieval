@@ -11,7 +11,21 @@
   color: #0b3d69;
   font-weight: 700;
   display: flex;
+  gap: 10px;
+  flex-direction: column;
+}
+
+.current-player-board-row {
+  display: flex;
   gap: 16px;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+.current-player-board-tabs {
+  display: flex;
+  gap: 8px;
   flex-wrap: wrap;
   align-items: center;
   justify-content: flex-start;
