@@ -4,6 +4,7 @@ import { gzip, ungzip } from 'pako'
 import { cube, cubeOutline, serverOutline, phonePortraitOutline } from 'ionicons/icons'
 import { useGameStateService } from './gameStateService'
 import deckService from './deckService'
+import engine from '../game/engineInstance'
 
 let serviceInstance = null
 
@@ -32,6 +33,12 @@ function createWebrtcQrService() {
   const clientHandCards = computed(() => gameStateService.getPlayerCards(clientHandKey, webrtcContext))
   const serverDeckCards = computed(() => gameStateService.getPlayerCards(serverDeckKey, webrtcContext))
   const serverHandCards = computed(() => gameStateService.getPlayerCards(serverHandKey, webrtcContext))
+  const isRealtimeGameActive = computed(() => {
+    const role = String(activeRole.value || '')
+    const connected = Boolean(connectedHost.value || connectedClient.value)
+    return connected && (role === 'server' || role === 'client')
+  })
+  const lastGameError = ref('')
 
   let hostPc = null
   let clientPc = null
@@ -75,7 +82,6 @@ function createWebrtcQrService() {
       effectDescription: card.effectDescription || '',
       attackPoints: Number(card.attackPoints || 0),
       defensePoints: Number(card.defensePoints || 0),
-      type: card.type || 'SOLDIER',
       hp: Number(card.hp || 0),
       velocity: Number(card.velocity || 0),
       range: Number(card.range || 0),
@@ -117,6 +123,93 @@ function createWebrtcQrService() {
     gameStateService.setPlayerCards(serverDeckKey, shuffledDeck, webrtcContext)
     gameStateService.setPlayerCards(serverHandKey, hand, webrtcContext)
     consoleLogger.value.push(`server: sent shuffled deck (${shuffledDeck.length}) and hand (${hand.length})`)
+  }
+
+  function serializeGameState() {
+    try {
+      return engine.exportState()
+    } catch (_e) {
+      return null
+    }
+  }
+
+  function applyRemoteGameState(snapshot) {
+    if (!snapshot || typeof snapshot !== 'object') return false
+    try {
+      const result = engine.importState(snapshot)
+      if (result && result.ok === false) {
+        lastGameError.value = String(result.reason || 'failed to import remote state')
+        consoleLogger.value.push('client: failed importing remote state: ' + lastGameError.value)
+        return false
+      }
+      return true
+    } catch (e) {
+      lastGameError.value = String(e)
+      consoleLogger.value.push('client: import error: ' + lastGameError.value)
+      return false
+    }
+  }
+
+  function syncGameStateToClient(reason = 'sync') {
+    if (!hostDc || hostDc.readyState !== 'open') return false
+    const state = serializeGameState()
+    if (!state) return false
+    hostDc.send(JSON.stringify({ type: 'game-state', reason, state }))
+    consoleLogger.value.push(`server: synced game state (${reason})`)
+    return true
+  }
+
+  function executeServerGameAction(action, payload = {}) {
+    const safeAction = String(action || '')
+    if (safeAction === 'startGame') {
+      engine.startGame(['Server', 'Client'])
+      return { ok: true }
+    }
+    if (safeAction === 'playCard') {
+      return engine.playCard(Number(payload.playerId || 0), Number(payload.handIndex || 0))
+    }
+    if (safeAction === 'moveCard') {
+      return engine.moveCard(String(payload.cardId || ''), Number(payload.playerId || 0), Number(payload.steps || 0))
+    }
+    if (safeAction === 'attackCard') {
+      return engine.attackCard(String(payload.attackerId || ''), String(payload.targetId || ''), Number(payload.playerId || 0))
+    }
+    if (safeAction === 'endTurn') {
+      return engine.endTurn()
+    }
+    return { ok: false, reason: `unsupported action: ${safeAction}` }
+  }
+
+  function requestGameAction(action, payload = {}) {
+    if (!clientDc || clientDc.readyState !== 'open') {
+      lastGameError.value = 'client channel not open'
+      consoleLogger.value.push('client: action request failed (channel closed)')
+      return false
+    }
+    clientDc.send(JSON.stringify({ type: 'game-action', action: String(action || ''), payload }))
+    consoleLogger.value.push('client: requested action ' + String(action || ''))
+    return true
+  }
+
+  function requestStartGame() {
+    return requestGameAction('startGame', {})
+  }
+
+  function sendHistoryToClient() {
+    if (!hostDc || hostDc.readyState !== 'open') return
+    const history = gameStateService.getHistory('game')
+    hostDc.send(JSON.stringify({ type: 'history-response', history }))
+    consoleLogger.value.push(`server: sent history (${history.length})`)
+  }
+
+  function requestHistoryFromServer() {
+    if (!clientDc || clientDc.readyState !== 'open') {
+      consoleLogger.value.push('client: history request skipped (data channel not open)')
+      return false
+    }
+    clientDc.send(JSON.stringify({ type: 'history-request' }))
+    consoleLogger.value.push('client: requested history')
+    return true
   }
 
   function stopOfferQrRotation() {
@@ -318,10 +411,34 @@ function createWebrtcQrService() {
     hostDc = pc.createDataChannel('data')
     hostDc.onopen = () => {
       connectedHost.value = true
+      if (!engine.getState().players?.length) {
+        engine.startGame(['Server', 'Client'])
+      }
       sendInitialDeckToClient()
+      syncGameStateToClient('connected')
     }
     hostDc.onmessage = (e) => {
-      consoleLogger.value.push('message: ' + e.data)
+      const raw = String(e?.data ?? '')
+      try {
+        const parsed = JSON.parse(raw)
+        if (parsed?.type === 'history-request') {
+          sendHistoryToClient()
+          return
+        }
+        if (parsed?.type === 'game-action') {
+          const result = executeServerGameAction(parsed.action, parsed.payload || {})
+          if (!result?.ok) {
+            hostDc.send(JSON.stringify({ type: 'game-action-result', ok: false, action: String(parsed.action || ''), reason: String(result?.reason || 'invalid action') }))
+            return
+          }
+          hostDc.send(JSON.stringify({ type: 'game-action-result', ok: true, action: String(parsed.action || '') }))
+          syncGameStateToClient(String(parsed.action || 'action'))
+          return
+        }
+      } catch (_err) {
+        // keep as plain message below
+      }
+      consoleLogger.value.push('message: ' + raw)
     }
 
     const offer = await pc.createOffer()
@@ -516,6 +633,26 @@ function createWebrtcQrService() {
             gameStateService.setPlayerCards(clientDeckKey, receivedDeck, webrtcContext)
             gameStateService.setPlayerCards(clientHandKey, receivedHand, webrtcContext)
             consoleLogger.value.push(`client: received initial deck (${receivedDeck.length}) and hand (${receivedHand.length})`)
+            return
+          }
+          if (parsed?.type === 'history-response') {
+            const receivedHistory = Array.isArray(parsed.history) ? parsed.history : []
+            gameStateService.setHistory(receivedHistory, 'game')
+            consoleLogger.value.push(`client: received history (${receivedHistory.length})`)
+            return
+          }
+          if (parsed?.type === 'game-state') {
+            applyRemoteGameState(parsed.state)
+            consoleLogger.value.push('client: received game state sync')
+            return
+          }
+          if (parsed?.type === 'game-action-result') {
+            if (!parsed.ok) {
+              lastGameError.value = String(parsed.reason || 'action rejected')
+              consoleLogger.value.push(`client: action rejected (${lastGameError.value})`)
+            } else {
+              lastGameError.value = ''
+            }
             return
           }
         } catch (_err) {
@@ -777,6 +914,12 @@ function createWebrtcQrService() {
     clientDeckCards, clientHandCards, serverDeckCards, serverHandCards,
     activeRole, setRole,
     autoAcceptOffers,
+    isRealtimeGameActive,
+    lastGameError,
+    syncGameStateToClient,
+    requestGameAction,
+    requestStartGame,
+    requestHistoryFromServer,
     attach, detach
   }
 }

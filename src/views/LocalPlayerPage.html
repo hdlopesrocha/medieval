@@ -5,41 +5,106 @@
     </ion-toolbar>
   </ion-header>
 
-  <ion-content class="ion-padding">
-    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px">
-      <div><strong>Player Castle HP:</strong> {{ castleHp(0) }}</div>
-      <div><strong>Enemy Castle HP:</strong> {{ castleHp(1) }}</div>
-      <div><strong>Round:</strong> {{ state.round }}</div>
-      <div><strong>Active Player:</strong> {{ state.activePlayerId }}</div>
+  <ion-content>
+    <CurrentPlayerBoard />
+    <div v-if="pendingConfirmation" class="confirm-page">
+      <h2>Confirm Action</h2>
+      <div style="margin-bottom:8px"><strong>Current player:</strong> {{ currentPlayingUserLabel }}</div>
+      <div style="margin-bottom:10px"><strong>Action:</strong> {{ pendingConfirmation.actionLabel }}</div>
+      <div v-if="pendingConfirmation.summaryLines && pendingConfirmation.summaryLines.length" style="margin-bottom:12px">
+        <div v-for="(line, index) in pendingConfirmation.summaryLines" :key="`summary-${index}`">• {{ line }}</div>
+      </div>
+      <div
+        v-if="pendingConfirmation.kind === 'move-card'"
+        style="display:flex;flex-direction:column;gap:6px;margin-bottom:12px;max-width:360px"
+      >
+        <label style="font-weight:700">Move steps (0 to {{ pendingConfirmation.maxSteps ?? 0 }})</label>
+        <input
+          type="range"
+          :min="0"
+          :max="pendingConfirmation.maxSteps ?? 0"
+          :value="pendingConfirmation.steps ?? 0"
+          @input="setPendingMoveSteps($event.target && $event.target.value)"
+        />
+        <input
+          type="number"
+          :min="0"
+          :max="pendingConfirmation.maxSteps ?? 0"
+          :value="pendingConfirmation.steps ?? 0"
+          @input="setPendingMoveSteps($event.target && $event.target.value)"
+          style="padding:6px 8px;border:1px solid #ddd;border-radius:6px;width:120px"
+        />
+      </div>
+      <div v-if="pendingConfirmation.card" class="confirm-card-wrap">
+        <CardItem :card="pendingConfirmation.card" :showExport="false" />
+        <div class="confirm-card-actions">
+          <ion-button fill="clear" @click="cancelPendingConfirmation">Cancel</ion-button>
+          <ion-button color="primary" @click="confirmPendingConfirmation">Confirm</ion-button>
+        </div>
+      </div>
+      <div v-else class="confirm-actions-row">
+        <ion-button fill="clear" @click="cancelPendingConfirmation">Cancel</ion-button>
+        <ion-button color="primary" @click="confirmPendingConfirmation">Confirm</ion-button>
+      </div>
     </div>
-    <div v-if="state.gameOver" style="margin-bottom:12px;color:#b00020;font-weight:700">
-      Game Over — Loser: Player {{ state.loserPlayerId }} | Winner: Player {{ state.winnerPlayerId }}
+
+    <div v-else-if="selection.mode" class="selection-page">
+      <h2>Select Target</h2>
+      <div style="margin-bottom:8px"><strong>Current player:</strong> {{ currentPlayingUserLabel }}</div>
+      <div style="margin-bottom:12px"><strong>Action:</strong> {{ selection.mode }}</div>
+      <div class="candidates">
+        <div v-for="c in selection.candidates" :key="c.id" class="candidate">
+          <CardItem :card="c.card" :hidden="c.hidden && c.ownerId !== state.activePlayerId" />
+          <div style="display:flex;gap:8px;align-items:center;margin-top:6px">
+            <div style="flex:1">{{ c.card.title }} (pos {{ c.position }}, hp {{ c.card.hp }})</div>
+            <ion-button size="small" @click="selectTarget(c.id)">Select</ion-button>
+          </div>
+        </div>
+      </div>
+      <div style="margin-top:12px;display:flex;justify-content:flex-end">
+        <ion-button fill="clear" @click="cancelSelection">Cancel</ion-button>
+      </div>
     </div>
-    <div style="display:flex;gap:12px;margin-bottom:12px">
-      <ion-button @click="start">Start Game</ion-button>
-      <ion-button @click="next">Next Phase</ion-button>
-      <ion-button @click="endTurn">End Turn</ion-button>
-      <ion-button @click="exportState">Export State</ion-button>
-      <ion-button @click="triggerImport">Import State</ion-button>
-      <input type="file" accept=".json" style="display:none" @change="onFileChange" ref="fileInput" />
-    </div>
+
+    <template v-else>
+      <div class="main-page-wrap">
+      <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px">
+        <div><strong>Player Castle HP:</strong> {{ castleHp(0) }}</div>
+        <div><strong>Enemy Castle HP:</strong> {{ castleHp(1) }}</div>
+        <div><strong>Round:</strong> {{ state.round }}</div>
+        <div><strong>Active Player:</strong> {{ state.activePlayerId }}</div>
+      </div>
+      <div v-if="state.gameOver" style="margin-bottom:12px;color:#b00020;font-weight:700">
+        Game Over — Loser: Player {{ state.loserPlayerId }} | Winner: Player {{ state.winnerPlayerId }}
+      </div>
+      <div style="display:flex;gap:12px;margin-bottom:12px">
+        <ion-button @click="start">Start Game</ion-button>
+        <ion-button @click="next">Next Phase</ion-button>
+        <ion-button v-if="multiplayerMode && isLocalPlayersTurn && !state.gameOver" @click="endTurn">End Turn</ion-button>
+        <ion-button @click="goHistory" color="medium">View History</ion-button>
+        <ion-button @click="goMap" color="medium">View Map</ion-button>
+        <ion-button @click="exportState">Export State</ion-button>
+        <ion-button @click="triggerImport">Import State</ion-button>
+        <input type="file" accept=".json" style="display:none" @change="onFileChange" ref="fileInput" />
+      </div>
 
     <section style="margin-top:16px">
       <h3>Table (cards in play)</h3>
       <div v-if="state.cardsInPlay.length === 0">No cards in play</div>
       <div v-else style="display:flex;flex-wrap:wrap;gap:8px">
-        <div v-for="g in state.cardsInPlay" :key="g.id" style="border:1px solid #ddd;padding:8px;border-radius:6px;min-width:200px;display:flex;gap:8px;align-items:flex-start">
+        <div
+          v-for="g in tableCardsInPlay"
+          :key="g.id"
+          :style="`border:1px solid #ddd;padding:8px;border-radius:6px;min-width:200px;display:flex;flex-direction:column;gap:6px;${g.ownerId !== state.activePlayerId ? 'opacity:0.55;filter:grayscale(25%);' : ''}`"
+        >
           <CardItem :card="g.card" :hidden="g.hidden && g.ownerId !== state.activePlayerId" />
-          <div style="flex:1">
-            <div><strong>Owner:</strong> {{ g.ownerId === state.activePlayerId ? 'Active' : (g.ownerId === 0 ? 'You' : 'Enemy') }}</div>
+          <div>
             <div><strong>Pos:</strong> {{ g.position }} ({{ zoneName(g.position) }})</div>
-            <div><strong>HP:</strong> {{ (g.ownerId === state.activePlayerId || !g.hidden) ? g.card.hp : '??' }}</div>
-            <div style="margin-top:8px">
-              <template v-if="g.ownerId === state.activePlayerId">
+            <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">
+              <template v-if="g.ownerId === state.activePlayerId && isLocalPlayersTurn && !state.gameOver">
                 <ion-button size="small" @click="moveCardUI(g.id)">Move</ion-button>
                 <ion-button size="small" @click="attackCardUI(g.id)">Attack</ion-button>
-                <ion-button size="small" color="tertiary" @click="defendCardUI(g.id)">Defend</ion-button>
-                <ion-button size="small" v-if="g.card && g.card.type === 'PRIEST' && canConvert(g)" @click="convertCardUI(g.id)">Convert</ion-button>
+                <ion-button size="small" v-if="g.card && g.card.category === 'priest' && canConvert(g)" @click="convertCardUI(g.id)">Convert</ion-button>
                 <ion-button size="small" @click="openAbilitySelector(g.id)">Use</ion-button>
                 <ion-button size="small" fill="clear" @click="useAbilityNoTarget(g.id)">Use (no target)</ion-button>
               </template>
@@ -49,43 +114,27 @@
       </div>
     </section>
 
-    <div v-if="selection.mode" class="selection-overlay">
-      <div class="selection-box">
-        <h3>Select target</h3>
-        <div class="candidates">
-          <div v-for="c in selection.candidates" :key="c.id" class="candidate">
-            <CardItem :card="c.card" :hidden="c.hidden && c.ownerId !== state.activePlayerId" />
-            <div style="display:flex;gap:8px;align-items:center;margin-top:6px">
-              <div style="flex:1">{{ c.card.title }} (pos {{ c.position }}, hp {{ c.card.hp }})</div>
-              <ion-button size="small" @click="selectTarget(c.id)">Select</ion-button>
-            </div>
-          </div>
-        </div>
-        <div style="margin-top:8px;text-align:right">
-          <ion-button fill="clear" @click="cancelSelection">Cancel</ion-button>
-        </div>
-      </div>
-    </div>
-
     <section style="margin-top:16px">
       <h3>Hands</h3>
-      <div v-for="p in state.players" :key="p.id" style="margin-bottom:12px">
-        <div v-if="p.id === state.activePlayerId">
-          <div style="font-weight:700">Your Hand ({{ activeHandCards.length }})</div>
-          <div v-if="state.playedThisRound && state.playedThisRound[state.activePlayerId]" style="color:#666;margin-top:6px">You have played this round</div>
-          <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px">
-            <div v-for="(c, idx) in playerHandCards(p.id)" :key="idx" style="min-width:200px; display:flex; flex-direction:column; gap:6px" :draggable="!state.playedThisRound || !state.playedThisRound[state.activePlayerId]" @dragstart.prevent="onHandDragStart($event, idx, c)">
-              <CardItem :card="c" />
-              <div style="display:flex;gap:6px;justify-content:flex-end">
-                <ion-button size="small" @click="playFromHand(idx)" :disabled="state.playedThisRound && state.playedThisRound[state.activePlayerId]">Play</ion-button>
-              </div>
+      <div style="margin-bottom:12px">
+        <div style="font-weight:700">Your Hand ({{ localHandCards.length }})</div>
+        <div v-if="state.playedThisRound && state.playedThisRound[localPlayerId]" style="color:#666;margin-top:6px">You have played this round</div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px">
+          <div v-for="(c, idx) in localHandCards" :key="idx" style="min-width:200px; display:flex; flex-direction:column; gap:6px" :draggable="isLocalPlayersTurn && (!state.playedThisRound || !state.playedThisRound[localPlayerId])" @dragstart.prevent="onHandDragStart($event, idx, c)">
+            <CardItem :card="c" />
+            <div v-if="isLocalPlayersTurn && !state.gameOver" style="display:flex;gap:6px;justify-content:flex-end">
+              <ion-button size="small" @click="playFromHand(idx)" :disabled="state.playedThisRound && state.playedThisRound[localPlayerId]">Play</ion-button>
             </div>
           </div>
         </div>
-        <div v-else>
+      </div>
+      <div v-for="p in state.players" :key="p.id" style="margin-bottom:12px">
+        <div v-if="p.id !== localPlayerId">
           <div style="font-weight:700">{{ p.name }} hand: {{ handCountByPlayer(p.id) }}</div>
         </div>
       </div>
     </section>
+    </div>
+    </template>
   </ion-content>
 </ion-page>
