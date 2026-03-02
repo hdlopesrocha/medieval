@@ -1,6 +1,6 @@
-<template src="./Game.html"></template>
+<template src="./LocalPlayerPage.html"></template>
 
-<script lang="ts" src="./Game.ts"></script>
+<script lang="ts" src="./LocalPlayerPage.ts"></script>
 
 <style scoped>
 .selection-overlay { position: fixed; inset: 0; display:flex; align-items:center; justify-content:center; background: rgba(0,0,0,0.45); z-index: 2000 }

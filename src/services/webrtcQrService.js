@@ -1,11 +1,20 @@
-import { ref, nextTick } from 'vue'
+import { ref, nextTick, computed } from 'vue'
 import QRCode from 'qrcode'
 import { gzip, ungzip } from 'pako'
 import { cube, cubeOutline, serverOutline, phonePortraitOutline } from 'ionicons/icons'
+import { useGameStateService } from './gameStateService'
+import deckService from './deckService'
 
 let serviceInstance = null
 
 function createWebrtcQrService() {
+  const gameStateService = useGameStateService()
+  const webrtcContext = 'webrtc'
+  const clientDeckKey = 'client-deck'
+  const clientHandKey = 'client-hand'
+  const serverDeckKey = 'server-deck'
+  const serverHandKey = 'server-hand'
+
   const offerQr = ref('')
   const offerUrlQr = ref('')
   const offerUrl = ref('')
@@ -19,6 +28,10 @@ function createWebrtcQrService() {
   const connectedClient = ref(false)
   const autoAcceptOffers = ref(true)
   const activeRole = ref('')
+  const clientDeckCards = computed(() => gameStateService.getPlayerCards(clientDeckKey, webrtcContext))
+  const clientHandCards = computed(() => gameStateService.getPlayerCards(clientHandKey, webrtcContext))
+  const serverDeckCards = computed(() => gameStateService.getPlayerCards(serverDeckKey, webrtcContext))
+  const serverHandCards = computed(() => gameStateService.getPlayerCards(serverHandKey, webrtcContext))
 
   let hostPc = null
   let clientPc = null
@@ -49,6 +62,59 @@ function createWebrtcQrService() {
   let offerQrRotationTimer = null
   let answerQrRotationTimer = null
   let subscribers = 0
+
+  function cardToPayload(card) {
+    if (!card) return null
+    if (typeof card.toJSON === 'function') {
+      return card.toJSON()
+    }
+    return {
+      imageUrl: card.imageUrl || '',
+      title: card.title || '',
+      description: card.description || '',
+      effectDescription: card.effectDescription || '',
+      attackPoints: Number(card.attackPoints || 0),
+      defensePoints: Number(card.defensePoints || 0),
+      type: card.type || 'SOLDIER',
+      hp: Number(card.hp || 0),
+      velocity: Number(card.velocity || 0),
+      range: Number(card.range || 0)
+    }
+  }
+
+  function shuffleCards(cards) {
+    const copy = Array.isArray(cards) ? cards.slice() : []
+    for (let index = copy.length - 1; index > 0; index--) {
+      const swapIndex = Math.floor(Math.random() * (index + 1))
+      const temp = copy[index]
+      copy[index] = copy[swapIndex]
+      copy[swapIndex] = temp
+    }
+    return copy
+  }
+
+  function sendInitialDeckToClient() {
+    if (!hostDc || hostDc.readyState !== 'open') return
+    gameStateService.ensureDeck(webrtcContext)
+    let deck = gameStateService.getDeck(webrtcContext)
+    if (!Array.isArray(deck) || !deck.length) {
+      deck = deckService.createDeck()
+    }
+    const normalizedDeck = deck.map(cardToPayload).filter(Boolean)
+    const shuffledDeck = shuffleCards(normalizedDeck)
+    const handSize = Math.min(5, shuffledDeck.length)
+    const hand = shuffledDeck.slice(0, handSize)
+    const payload = {
+      type: 'initial-deck',
+      deck: shuffledDeck,
+      hand
+    }
+    hostDc.send(JSON.stringify(payload))
+    gameStateService.setDeck(shuffledDeck, webrtcContext)
+    gameStateService.setPlayerCards(serverDeckKey, shuffledDeck, webrtcContext)
+    gameStateService.setPlayerCards(serverHandKey, hand, webrtcContext)
+    consoleLogger.value.push(`server: sent shuffled deck (${shuffledDeck.length}) and hand (${hand.length})`)
+  }
 
   function stopOfferQrRotation() {
     if (offerQrRotationTimer) {
@@ -194,6 +260,11 @@ function createWebrtcQrService() {
     offerJson.value = ''
     offerUrl.value = ''
     offerUrlQr.value = ''
+    gameStateService.setDeck([], webrtcContext)
+    gameStateService.setPlayerCards(clientDeckKey, [], webrtcContext)
+    gameStateService.setPlayerCards(clientHandKey, [], webrtcContext)
+    gameStateService.setPlayerCards(serverDeckKey, [], webrtcContext)
+    gameStateService.setPlayerCards(serverHandKey, [], webrtcContext)
   }
 
   function resetClientState() {
@@ -205,6 +276,11 @@ function createWebrtcQrService() {
     answerQrParts.value = []
     answerQrPartIndex.value = 0
     answerJson.value = ''
+    gameStateService.setDeck([], webrtcContext)
+    gameStateService.setPlayerCards(clientDeckKey, [], webrtcContext)
+    gameStateService.setPlayerCards(clientHandKey, [], webrtcContext)
+    gameStateService.setPlayerCards(serverDeckKey, [], webrtcContext)
+    gameStateService.setPlayerCards(serverHandKey, [], webrtcContext)
   }
 
   function setRole(role) {
@@ -237,7 +313,10 @@ function createWebrtcQrService() {
     const { pc, candidates } = await createPeer()
     hostPc = pc
     hostDc = pc.createDataChannel('data')
-    hostDc.onopen = () => { connectedHost.value = true }
+    hostDc.onopen = () => {
+      connectedHost.value = true
+      sendInitialDeckToClient()
+    }
     hostDc.onmessage = (e) => {
       consoleLogger.value.push('message: ' + e.data)
     }
@@ -345,6 +424,11 @@ function createWebrtcQrService() {
     clientPc = null
     connectedClient.value = false
     connectedHost.value = false
+    gameStateService.setDeck([], webrtcContext)
+    gameStateService.setPlayerCards(clientDeckKey, [], webrtcContext)
+    gameStateService.setPlayerCards(clientHandKey, [], webrtcContext)
+    gameStateService.setPlayerCards(serverDeckKey, [], webrtcContext)
+    gameStateService.setPlayerCards(serverHandKey, [], webrtcContext)
   }
 
   function normalizeSignalingInput(input) {
@@ -419,7 +503,22 @@ function createWebrtcQrService() {
       clientDc = ev.channel
       clientDc.onopen = () => { connectedClient.value = true }
       clientDc.onmessage = (e) => {
-        consoleLogger.value.push('data: ' + e.data.toString())
+        const raw = String(e?.data ?? '')
+        try {
+          const parsed = JSON.parse(raw)
+          if (parsed?.type === 'initial-deck') {
+            const receivedDeck = Array.isArray(parsed.deck) ? parsed.deck : []
+            const receivedHand = Array.isArray(parsed.hand) ? parsed.hand : []
+            gameStateService.setDeck(receivedDeck, webrtcContext)
+            gameStateService.setPlayerCards(clientDeckKey, receivedDeck, webrtcContext)
+            gameStateService.setPlayerCards(clientHandKey, receivedHand, webrtcContext)
+            consoleLogger.value.push(`client: received initial deck (${receivedDeck.length}) and hand (${receivedHand.length})`)
+            return
+          }
+        } catch (_err) {
+          // non-JSON payloads are handled as plain messages
+        }
+        consoleLogger.value.push('data: ' + raw)
       }
     }
 
@@ -672,6 +771,7 @@ function createWebrtcQrService() {
     scannedParts, scannedPartsCount, scannedPartsExpected, resetScannedParts,
     offerQrParts, answerQrParts, offerQrPartIndex, answerQrPartIndex,
     cube, cubeOutline, serverOutline, phonePortraitOutline,
+    clientDeckCards, clientHandCards, serverDeckCards, serverHandCards,
     activeRole, setRole,
     autoAcceptOffers,
     attach, detach

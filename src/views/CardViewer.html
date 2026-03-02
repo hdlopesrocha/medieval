@@ -1,0 +1,13 @@
+<ion-page>
+  <ion-header>
+    <ion-toolbar>
+      <ion-title>{{ titleText }}</ion-title>
+    </ion-toolbar>
+  </ion-header>
+
+  <ion-content class="ion-padding deck-bg">
+    <div class="deck-grid">
+      <CardItem v-for="(c, i) in cardsToShow" :key="i" :card="c" :show-export="true" />
+    </div>
+  </ion-content>
+</ion-page>

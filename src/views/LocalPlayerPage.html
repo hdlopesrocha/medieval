@@ -1,7 +1,7 @@
 <ion-page>
   <ion-header>
     <ion-toolbar>
-      <ion-title>Game</ion-title>
+      <ion-title>Local Player</ion-title>
     </ion-toolbar>
   </ion-header>
 
@@ -14,8 +14,6 @@
       <ion-button @click="triggerImport">Import State</ion-button>
       <input type="file" accept=".json" style="display:none" @change="onFileChange" ref="fileInput" />
     </div>
-
-    <!-- Market removed -->
 
     <section style="margin-top:16px">
       <h3>Table (cards in play)</h3>
@@ -41,7 +39,6 @@
       </div>
     </section>
 
-    <!-- Selection overlay for choosing targets -->
     <div v-if="selection.mode" class="selection-overlay">
       <div class="selection-box">
         <h3>Select target</h3>
@@ -63,11 +60,11 @@
     <section style="margin-top:16px">
       <h3>Hands</h3>
       <div v-for="p in state.players" :key="p.id" style="margin-bottom:12px">
-          <div v-if="p.id === state.activePlayerId">
-          <div style="font-weight:700">Your Hand ({{ (state.hands && state.hands[p.id]) ? state.hands[p.id].length : 0 }})</div>
+        <div v-if="p.id === state.activePlayerId">
+          <div style="font-weight:700">Your Hand ({{ activeHandCards.length }})</div>
           <div v-if="state.playedThisRound && state.playedThisRound[state.activePlayerId]" style="color:#666;margin-top:6px">You have played this round</div>
           <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px">
-            <div v-for="(c, idx) in (state.hands && state.hands[p.id]) || []" :key="idx" style="min-width:200px; display:flex; flex-direction:column; gap:6px" :draggable="!state.playedThisRound || !state.playedThisRound[state.activePlayerId]" @dragstart.prevent="onHandDragStart($event, idx, c)">
+            <div v-for="(c, idx) in playerHandCards(p.id)" :key="idx" style="min-width:200px; display:flex; flex-direction:column; gap:6px" :draggable="!state.playedThisRound || !state.playedThisRound[state.activePlayerId]" @dragstart.prevent="onHandDragStart($event, idx, c)">
               <CardItem :card="c" />
               <div style="display:flex;gap:6px;justify-content:flex-end">
                 <ion-button size="small" @click="playFromHand(idx)" :disabled="state.playedThisRound && state.playedThisRound[state.activePlayerId]">Play</ion-button>
@@ -76,7 +73,7 @@
           </div>
         </div>
         <div v-else>
-          <div style="font-weight:700">{{ p.name }} hand: {{ (state.hands && state.hands[p.id] && state.hands[p.id].count) ? state.hands[p.id].count : (state.hands && state.hands[p.id] ? state.hands[p.id].length : 0) }}</div>
+          <div style="font-weight:700">{{ p.name }} hand: {{ handCountByPlayer(p.id) }}</div>
         </div>
       </div>
     </section>

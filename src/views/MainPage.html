@@ -1,10 +1,11 @@
 <ion-page>
   <ion-header>
     <ion-toolbar>
-      <ion-title>WebRTC QR Signaling</ion-title>
+      <ion-title>Main Page</ion-title>
     </ion-toolbar>
   </ion-header>
   <ion-content class="ion-padding">
+    <ion-button color="secondary" @click="goViewDeck" style="width:100%;margin-bottom:12px">View Deck</ion-button>
     <template v-if="!(connectedHost || connectedClient)">
       <div style="display:flex;text-align: center; gap:10px;width:100%;height:256px">
         <ion-button
@@ -22,6 +23,14 @@
           style="flex:1"
         >
           <ion-icon :icon="phonePortraitOutline" style="font-size:128px;display:block;margin:0 auto"></ion-icon>
+        </ion-button>
+        <ion-button
+          :color="activeRole === 'local' ? 'primary' : 'medium'"
+          :fill="activeRole === 'local' ? 'solid' : 'outline'"
+          @click="goLocalPlayer"
+          style="flex:1"
+        >
+          <ion-icon :icon="cubeOutline" style="font-size:128px;display:block;margin:0 auto"></ion-icon>
         </ion-button>
       </div>
     </template>
@@ -49,6 +58,22 @@
     <template style="margin: 12px 0"
       v-if="connectedClient || connectedHost">
       <p><strong>Data channel open</strong></p>
+      <div v-if="activeRole === 'client' && clientHandCards.length" style="margin:12px 0px">
+        <p><strong>Your initial 5 cards</strong></p>
+        <div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:6px">
+          <div v-for="(card, idx) in clientHandCards" :key="`client-hand-${idx}-${card.title || 'card'}`" style="min-width:230px;max-width:230px;flex:0 0 auto">
+            <CardItem :card="card" :showExport="false" />
+          </div>
+        </div>
+      </div>
+      <div v-if="activeRole === 'server' && serverHandCards.length" style="margin:12px 0px">
+        <p><strong>Server dealt cards</strong></p>
+        <div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:6px">
+          <div v-for="(card, idx) in serverHandCards" :key="`server-hand-${idx}-${card.title || 'card'}`" style="min-width:230px;max-width:230px;flex:0 0 auto">
+            <CardItem :card="card" :showExport="false" />
+          </div>
+        </div>
+      </div>
       <p>Send message to peer:</p>
       <textarea v-model="outgoingText" rows="2" style="width:100%"></textarea>
       <ion-button @click="sendMessage(activeRole === 'client' ? 'client' : 'host')" style="margin-top:6px;width:100%">Send</ion-button>

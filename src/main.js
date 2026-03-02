@@ -2,12 +2,11 @@ import { createApp } from 'vue'
 import { createRouter, createWebHashHistory } from 'vue-router'
 import { IonicVue } from '@ionic/vue'
 import App from './App.vue'
-import Home from './views/Home.vue'
-import Deck from './views/Deck.vue'
+import MainPage from './views/MainPage.vue'
+import CardViewer from './views/CardViewer.vue'
 import Table from './views/Table.vue'
-import Game from './views/Game.vue'
+import LocalPlayerPage from './views/LocalPlayerPage.vue'
 import Board from './views/Board.vue'
-import WebrtcQR from './views/WebrtcQR.vue'
 
 /* Core CSS required for Ionic components to work properly */
 import '@ionic/vue/css/core.css'
@@ -22,13 +21,16 @@ import '@ionic/vue/css/display.css'
 import './styles.css'
 
 const routes = [
-	{ path: '', component: Home },
-	{ path: '/', component: Home },
-	{ path: '/deck', component: Deck }
+	{ path: '', component: MainPage },
+	{ path: '/', component: MainPage },
+	{ path: '/deck', component: CardViewer, props: { mode: 'deck' } }
+	,{ path: '/hand', component: CardViewer, props: { mode: 'hand' } }
 	,{ path: '/table', component: Table }
-	,{ path: '/game', component: Game }
+	,{ path: '/local', component: LocalPlayerPage }
+	,{ path: '/game', component: LocalPlayerPage }
 	,{ path: '/board', component: Board }
-	,{ path: '/webrtc', component: WebrtcQR }
+	,{ path: '/main', component: MainPage }
+	,{ path: '/webrtc', component: MainPage }
 ]
 
 // Compute a robust base at runtime: prefer Vite's BASE_URL, otherwise infer

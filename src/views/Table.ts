@@ -1,11 +1,11 @@
 import CardItem from '../components/CardItem.vue'
 import { ref, onMounted, onUnmounted } from 'vue'
 import engine from '../game/engineInstance'
-import { IonPage, IonHeader, IonToolbar, IonTitle, IonContent, IonButtons, IonBackButton, IonButton } from '@ionic/vue'
+import { IonPage, IonHeader, IonToolbar, IonTitle, IonContent, IonButton } from '@ionic/vue'
 
 export default {
   name: 'Table',
-  components: { CardItem, IonPage, IonHeader, IonToolbar, IonTitle, IonContent, IonButtons, IonBackButton, IonButton },
+  components: { CardItem, IonPage, IonHeader, IonToolbar, IonTitle, IonContent, IonButton },
   setup() {
     const state = ref(engine.getState())
     let timer = null
