@@ -124,7 +124,11 @@ export default {
         const playerId = Number(parts[1])
         const handIndex = Number(parts[2])
         if (playerId !== state.value.activePlayerId) return alert('not your hand')
-        if (handIndex < 0 || handIndex >= handCountForPlayer(playerId)) return alert('invalid hand index')
+        const hand = gameState.getPlayerCards(playerId, 'game')
+        window.alert('DEBUG: playerId ' + playerId + ' handIndex ' + handIndex + ' handCount ' + hand.length + ' hand ' + JSON.stringify(hand))
+        console.error('DEBUG: playerId', playerId, 'handIndex', handIndex, 'handCount', hand.length, 'hand', hand)
+        if (handIndex < 0 || handIndex >= hand.length) 
+          return alert('invalid hand index')
         if (state.value.playedThisRound && state.value.playedThisRound[playerId]) {
           // trigger shake and haptic feedback
           blockedShake.value = targetZone
