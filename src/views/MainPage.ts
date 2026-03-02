@@ -12,18 +12,6 @@ export default {
     const router = useRouter()
     const webrtcQr = useWebrtcQrService()
 
-    const goViewDeck = () => {
-      router.push('/deck')
-    }
-
-    const goHandPage = () => {
-      router.push('/hand')
-    }
-
-    const goTablePage = () => {
-      router.push('/table')
-    }
-
     const goLocalPlayer = () => {
       webrtcQr.setRole('local')
       router.push('/local')
@@ -35,14 +23,6 @@ export default {
 
     const goHistory = () => {
       router.push('/history')
-    }
-
-    const goMap = () => {
-      router.push('/map')
-    }
-
-    const goShare = () => {
-      router.push('/share')
     }
 
     const requestHistory = () => {
@@ -57,6 +37,6 @@ export default {
       webrtcQr.detach()
     })
 
-    return { ...webrtcQr, goViewDeck, goHandPage, goTablePage, goLocalPlayer, goRealtimeGame, goHistory, goMap, goShare, requestHistory }
+    return { ...webrtcQr, goLocalPlayer, goRealtimeGame, goHistory, requestHistory }
   }
 }

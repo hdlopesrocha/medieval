@@ -44,6 +44,7 @@ export default {
     }
 
     const titleText = computed(() => (props.mode === 'hand' ? 'Hand' : 'Deck'))
+    const isHandMode = computed(() => props.mode === 'hand')
     const cardsToShow = computed(() => {
       if (Array.isArray(props.cards) && props.cards.length) {
         return props.cards.map(cloneCard).filter(Boolean)
@@ -60,6 +61,18 @@ export default {
       router.push('/main')
     }
 
-    return { titleText, cardsToShow, goMain }
+    function goTable() {
+      router.push('/table')
+    }
+
+    function goHand() {
+      router.push('/hand')
+    }
+
+    function goDeck() {
+      router.push('/deck')
+    }
+
+    return { titleText, isHandMode, cardsToShow, goMain, goTable, goHand, goDeck }
   }
 }

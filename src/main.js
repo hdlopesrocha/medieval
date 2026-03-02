@@ -24,8 +24,8 @@ import '@ionic/vue/css/display.css'
 import './styles.css'
 
 const routes = [
-	{ path: '', redirect: '/hand' },
-	{ path: '/', redirect: '/hand' },
+	{ path: '', component: MainPage },
+	{ path: '/', component: MainPage },
 	{ path: '/deck', component: CardViewer, props: { mode: 'deck' } }
 	,{ path: '/hand', component: CardViewer, props: { mode: 'hand' } }
 	,{ path: '/table', component: Table }
@@ -36,7 +36,6 @@ const routes = [
 	,{ path: '/map', component: MapPage }
 	,{ path: '/share', component: SharePage }
 	,{ path: '/main', component: MainPage }
-	,{ path: '/webrtc', component: MainPage }
 ]
 
 // Compute a robust base at runtime: prefer Vite's BASE_URL, otherwise infer
