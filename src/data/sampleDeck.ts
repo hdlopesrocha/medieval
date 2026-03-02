@@ -1,6 +1,143 @@
 import Card, { CardType } from '../models/Card'
 import { asset } from '../utils/asset'
 
+type CardTaxonomy = {
+  category: 'king' | 'priest' | 'saint' | 'hero' | 'noble'
+  subCategory:
+    | 'swordShield'
+    | 'greatSword'
+    | 'archer'
+    | 'horseArcher'
+    | 'horsePikeman'
+    | 'lightKnight'
+    | 'heavyKnight'
+    | 'pikeman'
+    | 'catapult'
+    | 'transportBoat'
+    | 'fishBoat'
+    | 'warBoat'
+  element: 'earth' | 'water'
+}
+
+const EXPLICIT_TAXONOMY_BY_TITLE: Record<string, CardTaxonomy> = {
+  'D. Afonso Henriques': { category: 'king', subCategory: 'swordShield', element: 'earth' },
+  'D. Dinis': { category: 'king', subCategory: 'swordShield', element: 'earth' },
+  'D. João I': { category: 'king', subCategory: 'swordShield', element: 'earth' },
+  'D. João II': { category: 'king', subCategory: 'swordShield', element: 'earth' },
+  'D. Manuel I': { category: 'king', subCategory: 'swordShield', element: 'earth' },
+  'D. Sebastião': { category: 'king', subCategory: 'swordShield', element: 'earth' },
+  'D. João IV': { category: 'king', subCategory: 'swordShield', element: 'earth' },
+  'D. Pedro I': { category: 'king', subCategory: 'swordShield', element: 'earth' },
+  'D. Afonso V': { category: 'king', subCategory: 'swordShield', element: 'earth' },
+  'D. João III': { category: 'king', subCategory: 'swordShield', element: 'earth' },
+  'D. José I': { category: 'king', subCategory: 'swordShield', element: 'earth' },
+  'D. João VI': { category: 'king', subCategory: 'swordShield', element: 'earth' },
+  'D. Pedro IV': { category: 'king', subCategory: 'swordShield', element: 'earth' },
+  'D. Miguel I': { category: 'king', subCategory: 'swordShield', element: 'earth' },
+  'D. Manuel II': { category: 'king', subCategory: 'swordShield', element: 'earth' },
+
+  'Santo António de Lisboa': { category: 'saint', subCategory: 'swordShield', element: 'earth' },
+  'Santa Isabel de Portugal': { category: 'saint', subCategory: 'swordShield', element: 'earth' },
+  'São João de Deus': { category: 'saint', subCategory: 'swordShield', element: 'earth' },
+  'São Nuno de Santa Maria': { category: 'saint', subCategory: 'swordShield', element: 'earth' },
+  'São Vicente': { category: 'saint', subCategory: 'swordShield', element: 'earth' },
+  'São Francisco Xavier': { category: 'saint', subCategory: 'swordShield', element: 'earth' },
+  'Santa Rita de Cássia': { category: 'saint', subCategory: 'swordShield', element: 'earth' },
+  'São Gonçalo de Amarante': { category: 'saint', subCategory: 'swordShield', element: 'earth' },
+  'Santa Joana Princesa': { category: 'saint', subCategory: 'swordShield', element: 'earth' },
+  'São Roque': { category: 'saint', subCategory: 'swordShield', element: 'earth' },
+  'São Teotónio': { category: 'saint', subCategory: 'swordShield', element: 'earth' },
+  'São José': { category: 'saint', subCategory: 'swordShield', element: 'earth' },
+  'Santa Luzia': { category: 'saint', subCategory: 'swordShield', element: 'earth' },
+  'São Bento': { category: 'saint', subCategory: 'swordShield', element: 'earth' },
+  'Nossa Senhora de Fátima': { category: 'saint', subCategory: 'swordShield', element: 'earth' },
+
+  'Line Soldier': { category: 'noble', subCategory: 'swordShield', element: 'earth' },
+  'Siege Soldier': { category: 'noble', subCategory: 'swordShield', element: 'earth' },
+  'Devoted Soldier': { category: 'noble', subCategory: 'swordShield', element: 'earth' },
+
+  'Shock Cavalry': { category: 'noble', subCategory: 'horsePikeman', element: 'earth' },
+  'Guard Cavalry': { category: 'noble', subCategory: 'heavyKnight', element: 'earth' },
+  'Wandering Cavalry': { category: 'noble', subCategory: 'horseArcher', element: 'earth' },
+
+  'Siege Catapult': { category: 'noble', subCategory: 'catapult', element: 'earth' },
+  'Fire Catapult': { category: 'noble', subCategory: 'catapult', element: 'earth' },
+  'Destruction Catapult': { category: 'noble', subCategory: 'catapult', element: 'earth' },
+
+  'Transport Ship': { category: 'noble', subCategory: 'transportBoat', element: 'water' },
+  'Assault Ship': { category: 'noble', subCategory: 'warBoat', element: 'water' },
+  'Strategic Caravel': { category: 'noble', subCategory: 'warBoat', element: 'water' },
+
+  'Healing Priest': { category: 'priest', subCategory: 'swordShield', element: 'earth' },
+  'Inquisitor Priest': { category: 'priest', subCategory: 'swordShield', element: 'earth' },
+
+  'Guardian Archangel': { category: 'hero', subCategory: 'greatSword', element: 'earth' },
+  'Wrath Archangel': { category: 'hero', subCategory: 'greatSword', element: 'earth' },
+
+  'Miracle': { category: 'hero', subCategory: 'swordShield', element: 'earth' },
+  'Total Siege': { category: 'hero', subCategory: 'catapult', element: 'earth' },
+  'Forced March': { category: 'hero', subCategory: 'horseArcher', element: 'earth' },
+  'Betrayal': { category: 'hero', subCategory: 'swordShield', element: 'earth' },
+
+  'Reserve Soldier 1': { category: 'noble', subCategory: 'swordShield', element: 'earth' },
+  'Reserve Soldier 2': { category: 'noble', subCategory: 'swordShield', element: 'earth' },
+  'Reserve Soldier 3': { category: 'noble', subCategory: 'swordShield', element: 'earth' },
+  'Reserve Soldier 4': { category: 'noble', subCategory: 'swordShield', element: 'earth' },
+  'Reserve Soldier 5': { category: 'noble', subCategory: 'swordShield', element: 'earth' },
+  'Reserve Soldier 6': { category: 'noble', subCategory: 'swordShield', element: 'earth' },
+  'Reserve Soldier 7': { category: 'noble', subCategory: 'swordShield', element: 'earth' },
+  'Reserve Soldier 8': { category: 'noble', subCategory: 'swordShield', element: 'earth' },
+  'Reserve Soldier 9': { category: 'noble', subCategory: 'swordShield', element: 'earth' },
+  'Reserve Soldier 10': { category: 'noble', subCategory: 'swordShield', element: 'earth' },
+  'Reserve Soldier 11': { category: 'noble', subCategory: 'swordShield', element: 'earth' },
+  'Reserve Soldier 12': { category: 'noble', subCategory: 'swordShield', element: 'earth' },
+  'Reserve Soldier 13': { category: 'noble', subCategory: 'swordShield', element: 'earth' },
+  'Reserve Soldier 14': { category: 'noble', subCategory: 'swordShield', element: 'earth' },
+  'Reserve Soldier 15': { category: 'noble', subCategory: 'swordShield', element: 'earth' },
+  'Reserve Soldier 16': { category: 'noble', subCategory: 'swordShield', element: 'earth' },
+  'Reserve Soldier 17': { category: 'noble', subCategory: 'swordShield', element: 'earth' },
+  'Reserve Soldier 18': { category: 'noble', subCategory: 'swordShield', element: 'earth' },
+  'Reserve Soldier 19': { category: 'noble', subCategory: 'swordShield', element: 'earth' },
+  'Reserve Soldier 20': { category: 'noble', subCategory: 'swordShield', element: 'earth' },
+  'Reserve Soldier 21': { category: 'noble', subCategory: 'swordShield', element: 'earth' },
+  'Reserve Soldier 22': { category: 'noble', subCategory: 'swordShield', element: 'earth' },
+  'Reserve Soldier 23': { category: 'noble', subCategory: 'swordShield', element: 'earth' },
+  'Reserve Soldier 24': { category: 'noble', subCategory: 'swordShield', element: 'earth' },
+  'Reserve Soldier 25': { category: 'noble', subCategory: 'swordShield', element: 'earth' },
+  'Reserve Soldier 26': { category: 'noble', subCategory: 'swordShield', element: 'earth' },
+  'Reserve Soldier 27': { category: 'noble', subCategory: 'swordShield', element: 'earth' },
+  'Reserve Soldier 28': { category: 'noble', subCategory: 'swordShield', element: 'earth' },
+  'Reserve Soldier 29': { category: 'noble', subCategory: 'swordShield', element: 'earth' },
+  'Reserve Soldier 30': { category: 'noble', subCategory: 'swordShield', element: 'earth' }
+}
+
+function buildExplicitTaxonomy(card: Card): CardTaxonomy {
+  const taxonomy = EXPLICIT_TAXONOMY_BY_TITLE[card.title]
+  if (!taxonomy) throw new Error(`missingExplicitTaxonomy:${card.title}`)
+  return taxonomy
+}
+
+function withExplicitTaxonomy(cards: Card[]): Card[] {
+  return cards.map((card) => {
+    const taxonomy = buildExplicitTaxonomy(card)
+    return new Card(
+      card.imageUrl,
+      card.title,
+      card.description,
+      card.effectDescription,
+      card.attackPoints,
+      card.defensePoints,
+      card.type,
+      card.hp,
+      card.velocity,
+      card.range,
+      taxonomy.category,
+      taxonomy.subCategory,
+      taxonomy.element
+    )
+  })
+}
+
 // Manually authored initial deck: 80 explicit Card instances.
 // Optional `imageFor(title)` callback can provide per-card image URLs.
 export function createInitialDeck(imageFor?: (title: string) => string): Card[] {
@@ -100,5 +237,5 @@ export function createInitialDeck(imageFor?: (title: string) => string): Card[] 
     new Card(img('assets/noface.jpg'), 'Reserve Soldier 30', 'Reserve troops called to the front.', 'No special effect.', 1, 1, CardType.SOLDIER, 3, 2, 1)
   ]
 
-  return cards
+  return withExplicitTaxonomy(cards)
 }

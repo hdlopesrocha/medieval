@@ -78,7 +78,10 @@ function createWebrtcQrService() {
       type: card.type || 'SOLDIER',
       hp: Number(card.hp || 0),
       velocity: Number(card.velocity || 0),
-      range: Number(card.range || 0)
+      range: Number(card.range || 0),
+      category: card.category || 'noble',
+      subCategory: card.subCategory || 'swordShield',
+      element: card.element === 'water' ? 'water' : 'earth'
     }
   }
 

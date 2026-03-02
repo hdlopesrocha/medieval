@@ -6,6 +6,15 @@
   </ion-header>
 
   <ion-content class="ion-padding">
+    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px">
+      <div><strong>Player Castle HP:</strong> {{ castleHp(0) }}</div>
+      <div><strong>Enemy Castle HP:</strong> {{ castleHp(1) }}</div>
+      <div><strong>Round:</strong> {{ state.round }}</div>
+      <div><strong>Active Player:</strong> {{ state.activePlayerId }}</div>
+    </div>
+    <div v-if="state.gameOver" style="margin-bottom:12px;color:#b00020;font-weight:700">
+      Game Over — Loser: Player {{ state.loserPlayerId }} | Winner: Player {{ state.winnerPlayerId }}
+    </div>
     <div style="display:flex;gap:12px;margin-bottom:12px">
       <ion-button @click="start">Start Game</ion-button>
       <ion-button @click="next">Next Phase</ion-button>
@@ -29,6 +38,7 @@
               <template v-if="g.ownerId === state.activePlayerId">
                 <ion-button size="small" @click="moveCardUI(g.id)">Move</ion-button>
                 <ion-button size="small" @click="attackCardUI(g.id)">Attack</ion-button>
+                <ion-button size="small" color="tertiary" @click="defendCardUI(g.id)">Defend</ion-button>
                 <ion-button size="small" v-if="g.card && g.card.type === 'PRIEST' && canConvert(g)" @click="convertCardUI(g.id)">Convert</ion-button>
                 <ion-button size="small" @click="openAbilitySelector(g.id)">Use</ion-button>
                 <ion-button size="small" fill="clear" @click="useAbilityNoTarget(g.id)">Use (no target)</ion-button>

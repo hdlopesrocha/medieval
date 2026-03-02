@@ -6,14 +6,25 @@ import deckService from '../services/deckService'
 
 
 export const ZONES = [
-  'My Castle',
-  'My Village',
-  'My Farm',
-  'My Country (Open Field)',
-  'Enemy Country (Open Field)',
-  'Enemy Farms',
-  'Enemy Village',
-  'Enemy Castle'
+  'PlayerCastle',
+  'PlayerVillage',
+  'PlayerFarm',
+  'PlayerOpenFields',
+  'EnemyOpenFields',
+  'EnemyFarm',
+  'EnemyVillage',
+  'EnemyCastle'
+]
+
+export const ZONE_ELEMENTS: Array<'earth' | 'water'> = [
+  'earth',
+  'earth',
+  'earth',
+  'water',
+  'water',
+  'earth',
+  'earth',
+  'earth'
 ]
 
 export type GameCard = {
@@ -34,6 +45,7 @@ function uuid() {
 }
 
 export default class GameEngine {
+  ZONES = ZONES
   deck: Card[] = []
   // market removed: cards are drawn/played directly from deck
   players: PlayerState[] = []
@@ -43,6 +55,11 @@ export default class GameEngine {
   round: number = 1
   hands: { [playerId: number]: Card[] } = {}
   playedThisRound: { [playerId: number]: boolean } = {}
+  castleMaxHp: number = 20
+  castleHpByPlayer: { [playerId: number]: number } = { 0: 20, 1: 20 }
+  gameOver: boolean = false
+  loserPlayerId: number | null = null
+  winnerPlayerId: number | null = null
 
   syncGameStateService() {
     gameStateService.setDeck(this.deck.map(d => d.toJSON()), 'game')
@@ -51,6 +68,18 @@ export default class GameEngine {
       handsPayload[playerId] = (this.hands[Number(playerId)] || []).map(c => c.toJSON())
     }
     gameStateService.setAllPlayerCards(handsPayload, 'game')
+    gameStateService.setWorkflow({
+      started: (this.players || []).length > 0,
+      activePlayerId: this.activePlayerId,
+      round: this.round,
+      lastAction: '',
+      actionByPlayer: Object.fromEntries(Object.entries(this.playedThisRound || {}).map(([k, v]) => [k, v ? 'action-taken' : ''])),
+      castleHpByPlayer: Object.fromEntries(Object.entries(this.castleHpByPlayer || {}).map(([k, v]) => [k, Number(v)])),
+      castleMaxHp: this.castleMaxHp,
+      gameOver: this.gameOver,
+      loserPlayerId: this.loserPlayerId,
+      winnerPlayerId: this.winnerPlayerId
+    }, 'game')
   }
 
   constructor(deck: Card[]) {
@@ -74,8 +103,68 @@ export default class GameEngine {
   reviveTopToCastle(owner: number) {
     if (!this.deck.length) return false
     const c = this.deck.shift()!
-    this.cardsInPlay.push({ id: uuid(), card: c, ownerId: owner, position: 0, hidden: false })
+    this.cardsInPlay.push({ id: uuid(), card: c, ownerId: owner, position: this.getSpawnZone(c, owner), hidden: false })
     return true
+  }
+
+  getOwnCastleZone(playerId: number) {
+    return playerId === 0 ? 0 : ZONES.length - 1
+  }
+
+  getEnemyCastleZone(playerId: number) {
+    return playerId === 0 ? ZONES.length - 1 : 0
+  }
+
+  getSpawnZone(card: Card, playerId: number) {
+    if (String((card as any)?.element || 'earth') === 'water') {
+      return playerId === 0 ? 3 : 4
+    }
+    return this.getOwnCastleZone(playerId)
+  }
+
+  isWaterCard(card: Card) {
+    return String((card as any)?.element || 'earth') === 'water'
+  }
+
+  canAct(playerId: number) {
+    if (this.gameOver) return { ok: false, reason: 'game is over' }
+    if (playerId !== this.activePlayerId) return { ok: false, reason: 'not your turn' }
+    if (this.playedThisRound[playerId]) return { ok: false, reason: 'already played this round' }
+    return { ok: true }
+  }
+
+  recordActionAndEndTurn(playerId: number) {
+    this.playedThisRound[playerId] = true
+    this.saveState()
+    const et = this.endTurn()
+    return { ok: true, endTurn: et }
+  }
+
+  applyDamageToCard(attackerAtk: number, target: GameCard) {
+    const atk = Math.max(0, Number(attackerAtk || 0))
+    const hp = Math.max(0, Number(target.card.hp || 0))
+    const def = Math.max(0, Number(target.card.defensePoints || 0))
+    if (hp + def < atk) {
+      target.card.hp = 0
+      return
+    }
+    const damage = Math.max(0, atk - def)
+    target.card.hp = Math.max(0, hp - damage)
+  }
+
+  applyCastleDamageFromOwner(ownerId: number) {
+    const enemyCastleZone = this.getEnemyCastleZone(ownerId)
+    const attackers = this.cardsInPlay.filter(g => g.ownerId === ownerId && g.position === enemyCastleZone)
+    if (!attackers.length) return
+    const enemyId = this.players.find(p => p.id !== ownerId)?.id
+    if (enemyId == null) return
+    const totalAtk = attackers.reduce((sum, g) => sum + Math.max(0, Number(g.card.attackPoints || 0)), 0)
+    this.castleHpByPlayer[enemyId] = Math.max(0, (this.castleHpByPlayer[enemyId] ?? this.castleMaxHp) - totalAtk)
+    if (this.castleHpByPlayer[enemyId] <= 0) {
+      this.gameOver = true
+      this.loserPlayerId = enemyId
+      this.winnerPlayerId = ownerId
+    }
   }
 
   shuffleDeck() {
@@ -88,7 +177,7 @@ export default class GameEngine {
     this.saveState()
   }
 
-  startGame(playerNames: string[] = ['You', 'Enemy']) {
+  startGame(playerNames: string[] = ['Server', 'Client']) {
     // reset players and create a fresh deck from the sample deck
     this.players = playerNames.map((n, i) => ({ id: i, name: n }))
     // create a fresh randomized deck
@@ -109,6 +198,11 @@ export default class GameEngine {
     this.activePlayerId = 0
     this.round = 1
     this.playedThisRound = {}
+    this.castleHpByPlayer = {}
+    for (let i = 0; i < this.players.length; i++) this.castleHpByPlayer[i] = this.castleMaxHp
+    this.gameOver = false
+    this.loserPlayerId = null
+    this.winnerPlayerId = null
     this.saveState()
   }
 
@@ -116,44 +210,52 @@ export default class GameEngine {
 
   // Play a card from hand onto the board (position 0). Reveals the card.
   playCard(playerId: number, handIndex: number) {
-    if (playerId !== this.activePlayerId) return { ok: false, reason: 'not your turn' }
-    if (this.playedThisRound[playerId]) return { ok: false, reason: 'already played this round' }
+    const can = this.canAct(playerId)
+    if (!can.ok) return can
     const hand = this.hands[playerId] || []
     if (handIndex < 0 || handIndex >= hand.length) return { ok: false, reason: 'invalid hand index' }
     const card = hand.splice(handIndex, 1)[0]
-    this.cardsInPlay.push({ id: uuid(), card, ownerId: playerId, position: 0, hidden: false })
-    this.playedThisRound[playerId] = true
-    this.saveState()
-    const et = this.endTurn()
-    return { ok: true, endTurn: et }
+    this.cardsInPlay.push({ id: uuid(), card, ownerId: playerId, position: this.getSpawnZone(card, playerId), hidden: false })
+    return this.recordActionAndEndTurn(playerId)
   }
 
   // Play a card from hand onto the board at a specific position (zone)
   playCardTo(playerId: number, handIndex: number, position: number) {
-    if (playerId !== this.activePlayerId) return { ok: false, reason: 'not your turn' }
-    if (this.playedThisRound[playerId]) return { ok: false, reason: 'already played this round' }
+    const can = this.canAct(playerId)
+    if (!can.ok) return can
     const hand = this.hands[playerId] || []
     if (handIndex < 0 || handIndex >= hand.length) return { ok: false, reason: 'invalid hand index' }
     if (!Number.isFinite(position) || position < 0 || position >= ZONES.length) return { ok: false, reason: 'invalid position' }
+    const spawn = this.getOwnCastleZone(playerId)
+    if (position !== spawn) return { ok: false, reason: 'cards must be played in your castle' }
     const card = hand.splice(handIndex, 1)[0]
-    this.cardsInPlay.push({ id: uuid(), card, ownerId: playerId, position: position, hidden: false })
-    this.playedThisRound[playerId] = true
-    this.saveState()
-    const et = this.endTurn()
-    return { ok: true, endTurn: et }
+    this.cardsInPlay.push({ id: uuid(), card, ownerId: playerId, position: this.getSpawnZone(card, playerId), hidden: false })
+    return this.recordActionAndEndTurn(playerId)
   }
 
   // Move a specific card by up to `steps` positions (must be non-negative)
   moveCard(cardId: string, playerId: number, steps: number) {
-    if (playerId !== this.activePlayerId) return { ok: false, reason: 'not your turn' }
+    const can = this.canAct(playerId)
+    if (!can.ok) return can
     const g = this.cardsInPlay.find(c => c.id === cardId)
     if (!g) return { ok: false, reason: 'card not found' }
     if (g.ownerId !== playerId) return { ok: false, reason: 'not your card' }
     if (!Number.isFinite(steps) || steps < 0) return { ok: false, reason: 'invalid steps' }
     const maxSteps = g.card.velocity ?? 0
     if (steps > maxSteps) return { ok: false, reason: 'exceeds velocity' }
-    const maxPos = ZONES.length - 1
-    g.position = Math.min(maxPos, g.position + Math.trunc(steps))
+    const direction = playerId === 0 ? 1 : -1
+    const pathPositions: number[] = []
+    let next = g.position
+    for (let i = 0; i < Math.trunc(steps); i++) {
+      next += direction
+      if (next < 0 || next >= ZONES.length) break
+      pathPositions.push(next)
+    }
+    if (this.isWaterCard(g.card)) {
+      const invalid = pathPositions.some(pos => ZONE_ELEMENTS[pos] !== 'water')
+      if (invalid) return { ok: false, reason: 'boats can only move through water zones' }
+    }
+    if (pathPositions.length) g.position = pathPositions[pathPositions.length - 1]
     // trigger onMoved command if present
     try {
       const cmd = getCommandFor(g.card.title || '')
@@ -161,14 +263,13 @@ export default class GameEngine {
     } catch (e) {
       // ignore command errors
     }
-    this.saveState()
-    const et = this.endTurn()
-    return { ok: true, endTurn: et }
+    return this.recordActionAndEndTurn(playerId)
   }
 
   // Attack a target card with an attacker card (both must be in play)
   attackCard(attackerId: string, targetId: string, playerId: number) {
-    if (playerId !== this.activePlayerId) return { ok: false, reason: 'not your turn' }
+    const can = this.canAct(playerId)
+    if (!can.ok) return can
     const attacker = this.cardsInPlay.find(c => c.id === attackerId)
     const target = this.cardsInPlay.find(c => c.id === targetId)
     if (!attacker || !target) return { ok: false, reason: 'card not found' }
@@ -193,19 +294,27 @@ export default class GameEngine {
       // ignore
     }
     if (!handled) {
-      // default damage
-      target.card.hp = Math.max(0, target.card.hp - (attacker.card.attackPoints ?? 0))
+      this.applyDamageToCard(attacker.card.attackPoints ?? 0, target)
     }
     // remove dead cards
     this.cardsInPlay = this.cardsInPlay.filter(g => g.card.hp > 0)
-    this.saveState()
-    const et = this.endTurn()
-    return { ok: true, endTurn: et }
+    return this.recordActionAndEndTurn(playerId)
+  }
+
+  defendCard(cardId: string, playerId: number) {
+    const can = this.canAct(playerId)
+    if (!can.ok) return can
+    const g = this.cardsInPlay.find(c => c.id === cardId)
+    if (!g) return { ok: false, reason: 'card not found' }
+    if (g.ownerId !== playerId) return { ok: false, reason: 'not your card' }
+    g.card.defensePoints = Math.max(0, Number(g.card.defensePoints || 0) + 1)
+    return this.recordActionAndEndTurn(playerId)
   }
 
   // Convert (steal) a target card into the attacker's ownership when attacker is a PRIEST
   convertCard(attackerId: string, targetId: string, playerId: number) {
-    if (playerId !== this.activePlayerId) return { ok: false, reason: 'not your turn' }
+    const can = this.canAct(playerId)
+    if (!can.ok) return can
     const g = this.cardsInPlay.find(c => c.id === attackerId)
     if (!g) return { ok: false, reason: 'card not found' }
     if (g.ownerId !== playerId) return { ok: false, reason: 'not your card' }
@@ -222,11 +331,11 @@ export default class GameEngine {
     }
     // cleanup dead units and persist
     this.cardsInPlay = this.cardsInPlay.filter(g2 => g2.card.hp > 0)
-    this.saveState()
-    return { ok: true }
+    return this.recordActionAndEndTurn(playerId)
   }
 
   nextPhase() {
+    if (this.gameOver) return
     // Enemy automatic movement: move only non-player cards (ownerId !== 0)
     const maxPos = ZONES.length - 1
     for (const g of this.cardsInPlay.filter(c => c.ownerId !== 0)) {
@@ -252,6 +361,16 @@ export default class GameEngine {
 
   // Advance active player (end current player's turn)
   endTurn() {
+    if (this.gameOver) {
+      this.saveState()
+      return { ok: true, activePlayerId: this.activePlayerId, round: this.round, gameOver: true, winnerPlayerId: this.winnerPlayerId, loserPlayerId: this.loserPlayerId }
+    }
+    const previousPlayerId = this.activePlayerId
+    this.applyCastleDamageFromOwner(previousPlayerId)
+    if (this.gameOver) {
+      this.saveState()
+      return { ok: true, activePlayerId: this.activePlayerId, round: this.round, gameOver: true, winnerPlayerId: this.winnerPlayerId, loserPlayerId: this.loserPlayerId }
+    }
     if (!this.players || !this.players.length) return { ok: false, reason: 'no players' }
     this.activePlayerId = (this.activePlayerId + 1) % this.players.length
     if (this.activePlayerId === 0) {
@@ -259,7 +378,7 @@ export default class GameEngine {
       this.playedThisRound = {}
     }
     this.saveState()
-    return { ok: true, activePlayerId: this.activePlayerId, round: this.round }
+    return { ok: true, activePlayerId: this.activePlayerId, round: this.round, gameOver: false }
   }
 
   // Persist internal state to localStorage (browser). Silent on failure.
@@ -274,7 +393,12 @@ export default class GameEngine {
         hands: Object.fromEntries(Object.entries(this.hands || {}).map(([k, arr]) => [k, arr.map(c => c.toJSON())])),
         activePlayerId: this.activePlayerId,
         round: this.round,
-        playedThisRound: this.playedThisRound || {}
+        playedThisRound: this.playedThisRound || {},
+        castleMaxHp: this.castleMaxHp,
+        castleHpByPlayer: this.castleHpByPlayer,
+        gameOver: this.gameOver,
+        loserPlayerId: this.loserPlayerId,
+        winnerPlayerId: this.winnerPlayerId
       }
       window.localStorage.setItem(this.storageKey, JSON.stringify(payload))
       return true
@@ -303,6 +427,11 @@ export default class GameEngine {
       this.activePlayerId = obj.activePlayerId ?? this.activePlayerId
       this.round = obj.round ?? this.round
       this.playedThisRound = obj.playedThisRound || {}
+      this.castleMaxHp = Number(obj.castleMaxHp || this.castleMaxHp)
+      this.castleHpByPlayer = obj.castleHpByPlayer || this.castleHpByPlayer
+      this.gameOver = !!obj.gameOver
+      this.loserPlayerId = obj.loserPlayerId == null ? null : Number(obj.loserPlayerId)
+      this.winnerPlayerId = obj.winnerPlayerId == null ? null : Number(obj.winnerPlayerId)
       return true
     } catch (e) {
       return false
@@ -318,7 +447,12 @@ export default class GameEngine {
       hands: Object.fromEntries(Object.entries(this.hands || {}).map(([k, arr]) => [k, arr.map((c: Card) => c.toJSON())])),
       activePlayerId: this.activePlayerId,
       round: this.round,
-      playedThisRound: this.playedThisRound || {}
+      playedThisRound: this.playedThisRound || {},
+      castleMaxHp: this.castleMaxHp,
+      castleHpByPlayer: this.castleHpByPlayer,
+      gameOver: this.gameOver,
+      loserPlayerId: this.loserPlayerId,
+      winnerPlayerId: this.winnerPlayerId
     }
   }
 
@@ -337,6 +471,11 @@ export default class GameEngine {
       this.activePlayerId = obj.activePlayerId ?? this.activePlayerId
       this.round = obj.round ?? this.round
       this.playedThisRound = obj.playedThisRound || {}
+      this.castleMaxHp = Number(obj.castleMaxHp || this.castleMaxHp)
+      this.castleHpByPlayer = obj.castleHpByPlayer || this.castleHpByPlayer
+      this.gameOver = !!obj.gameOver
+      this.loserPlayerId = obj.loserPlayerId == null ? null : Number(obj.loserPlayerId)
+      this.winnerPlayerId = obj.winnerPlayerId == null ? null : Number(obj.winnerPlayerId)
       this.saveState()
       return { ok: true }
     } catch (e) {
@@ -352,7 +491,12 @@ export default class GameEngine {
       // market removed
       players: this.players,
       cardsInPlay: this.cardsInPlay.map(g => ({ id: g.id, ownerId: g.ownerId, position: g.position, hidden: !!g.hidden, card: g.card.toJSON() })),
-      playedThisRound: this.playedThisRound || {}
+      playedThisRound: this.playedThisRound || {},
+      castleMaxHp: this.castleMaxHp,
+      castleHpByPlayer: this.castleHpByPlayer,
+      gameOver: this.gameOver,
+      loserPlayerId: this.loserPlayerId,
+      winnerPlayerId: this.winnerPlayerId
     }
   }
 }

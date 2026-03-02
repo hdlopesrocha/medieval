@@ -40,6 +40,10 @@ export default {
       state.value = engine.getState()
     }
 
+    function castleHp(playerId: number) {
+      return Number((state.value as any).castleHpByPlayer?.[playerId] ?? 0)
+    }
+
     function zoneName(pos: number) {
       return ZONES[pos] ?? ''
     }
@@ -92,7 +96,7 @@ export default {
       if (input == null) return
       const steps = Number(input)
       const res = engine.moveCard(cardId, state.value.activePlayerId || 0, steps)
-      if (!res.ok) return alert('Move failed: ' + res.reason)
+      if (!res.ok) return alert('Move failed: ' + ((res as any).reason || 'invalid action'))
       state.value = engine.getState()
     }
 
@@ -104,6 +108,13 @@ export default {
       selection.value.mode = 'attack'
       selection.value.sourceId = attackerId
       selection.value.candidates = targets
+    }
+
+    function defendCardUI(cardId: string) {
+      const playerId = state.value.activePlayerId || 0
+      const res = (engine as any).defendCard(cardId, playerId)
+      if (!res.ok) return alert('Defend failed: ' + res.reason)
+      state.value = engine.getState()
     }
 
     function convertCardUI(attackerId: string) {
@@ -131,7 +142,7 @@ export default {
       try {
         if (selection.value.mode === 'attack') {
           const res = engine.attackCard(sourceId, targetId, playerId)
-          if (!res.ok) return alert('Attack failed: ' + res.reason)
+          if (!res.ok) return alert('Attack failed: ' + ((res as any).reason || 'invalid action'))
         } else if (selection.value.mode === 'convert') {
           const res = engine.convertCard(sourceId, targetId, playerId)
           if (!res.ok) return alert('Convert failed: ' + res.reason)
@@ -167,7 +178,7 @@ export default {
     function playFromHand(idx: number) {
       const playerId = state.value.activePlayerId || 0
       const res = engine.playCard(playerId, idx)
-      if (!res.ok) return alert('Play failed: ' + res.reason)
+      if (!res.ok) return alert('Play failed: ' + ((res as any).reason || 'invalid action'))
       state.value = engine.getState()
     }
 
@@ -184,11 +195,13 @@ export default {
       activeHandCards,
       playerHandCards,
       handCountByPlayer,
+      castleHp,
       start,
       next,
       zoneName,
       moveCardUI,
       attackCardUI,
+      defendCardUI,
       exportState,
       triggerImport,
       onFileChange,

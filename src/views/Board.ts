@@ -28,8 +28,12 @@ export default {
       reachable.value = new Set()
       if (!dragged.value) return
       const start = dragged.value.pos
-      const max = Math.min(ZONES.length - 1, start + (dragged.value.vel || 0))
-      for (let i = start; i <= max; i++) reachable.value.add(i)
+      const active = Number(state.value.activePlayerId || 0)
+      const direction = active === 0 ? 1 : -1
+      for (let i = 0; i <= (dragged.value.vel || 0); i++) {
+        const pos = start + (direction * i)
+        if (pos >= 0 && pos < ZONES.length) reachable.value.add(pos)
+      }
     }
 
     function cardsByZone(idx: number) {
@@ -55,7 +59,7 @@ export default {
       hoveredZone.value = idx
       blockedZone.value = -1
       if (!evt.dataTransfer) return
-      // If dragging a hand card, mark all zones reachable so player can drop to any zone
+      // If dragging a hand card, only own castle is a valid drop target.
       try {
         const dt = evt.dataTransfer.getData('text/plain') || ''
         if (dt.startsWith('hand:')) {
@@ -71,9 +75,8 @@ export default {
             evt.preventDefault()
             return
           }
-          const all = new Set<number>()
-          for (let i = 0; i < ZONES.length; i++) all.add(i)
-          reachable.value = all
+          const ownCastle = playerId === 0 ? 0 : ZONES.length - 1
+          reachable.value = new Set<number>([ownCastle])
         }
       } catch (e) {
         // ignore
@@ -112,7 +115,7 @@ export default {
           return
         }
         const res = engine.playCardTo(playerId, handIndex, targetZone)
-        if (!res.ok) return alert('Play failed: ' + res.reason)
+        if (!res.ok) return alert('Play failed: ' + ((res as any).reason || 'invalid action'))
         reachable.value = new Set()
         hoveredZone.value = -1
         blockedZone.value = -1
@@ -126,12 +129,13 @@ export default {
       const g = (engine.cardsInPlay as any[]).find(x => x.id === cardId)
       if (!g) return alert('card not found')
       if (g.ownerId !== state.value.activePlayerId) return alert('you can only move your own cards')
-      const steps = targetZone - g.position
+      const direction = state.value.activePlayerId === 0 ? 1 : -1
+      const steps = (targetZone - g.position) * direction
       if (steps < 0) return alert('cannot move backwards')
       if (steps === 0) return
       if (!reachable.value.has(targetZone)) return alert('target out of reach')
       const res = engine.moveCard(cardId, state.value.activePlayerId, steps)
-      if (!res.ok) return alert('Move failed: ' + res.reason)
+      if (!res.ok) return alert('Move failed: ' + ((res as any).reason || 'invalid action'))
       dragged.value = null
       reachable.value = new Set()
       hoveredZone.value = -1
@@ -146,9 +150,12 @@ export default {
         const dist = idx - start
         if (dist >= 0 && dist <= vel) return `in-range range-${Math.min(8, dist)}`
       }
-      // if dragging from hand, use handDragVel to colour from player's castle (pos 0)
+      // if dragging from hand, use handDragVel to colour from active player's castle
       if (handDragVel.value != null) {
-        const dist = idx - 0
+        const active = Number(state.value.activePlayerId || 0)
+        const start = active === 0 ? 0 : (ZONES.length - 1)
+        const direction = active === 0 ? 1 : -1
+        const dist = (idx - start) * direction
         if (dist >= 0 && dist <= (handDragVel.value || 0)) return `in-range range-${Math.min(8, dist)}`
       }
       return ''
@@ -161,6 +168,20 @@ export default {
       if (timer) clearInterval(timer)
     })
 
-    return { zones, state, refresh, cardsByZone, onDragStart, onZoneDragOver, onZoneDragLeave, onDrop, reachable, hoveredZone }
+    return {
+      zones,
+      state,
+      refresh,
+      cardsByZone,
+      onDragStart,
+      onZoneDragOver,
+      onZoneDragLeave,
+      onDrop,
+      reachable,
+      hoveredZone,
+      blockedZone,
+      blockedShake,
+      zoneClass
+    }
   }
 }
