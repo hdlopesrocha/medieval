@@ -1,4 +1,18 @@
-import { IonCard, IonCardHeader, IonCardTitle, IonCardContent, IonImg, IonChip } from '@ionic/vue'
+import { IonCard, IonCardHeader, IonCardTitle, IonCardContent, IonImg, IonChip, IonIcon } from '@ionic/vue'
+import {
+  shieldHalfOutline,
+  flashOutline,
+  locateOutline,
+  navigateOutline,
+  gitMergeOutline,
+  speedometerOutline,
+  shieldOutline,
+  removeOutline,
+  constructOutline,
+  boatOutline,
+  fishOutline,
+  helpCircleOutline
+} from 'ionicons/icons'
 import html2canvas from 'html2canvas'
 
 export default {
@@ -8,8 +22,21 @@ export default {
     hidden: { type: Boolean, default: false },
     showExport: { type: Boolean, default: null }
   },
-  components: { IonCard, IonCardHeader, IonCardTitle, IonCardContent, IonImg, IonChip },
+  components: { IonCard, IonCardHeader, IonCardTitle, IonCardContent, IonImg, IonChip, IonIcon },
   computed: {
+    effectDescriptionText() {
+      return String(this.card?.effectDescription || '').trim()
+    },
+    hasEffectDescription() {
+      const normalized = this.effectDescriptionText.toLowerCase()
+      if (!normalized) return false
+      if (normalized === 'no effect') return false
+      if (normalized === 'no special effect') return false
+      if (normalized === 'none') return false
+      if (normalized === 'n/a') return false
+      if (normalized === '-') return false
+      return true
+    },
     showExportButton() {
       // explicit prop takes precedence; null means "auto-detect via route"
       if (this.showExport !== null) return Boolean(this.showExport)
@@ -43,6 +70,26 @@ export default {
 
       // Only apply the runtime base in production (when `dist` was built).
       return isProd ? base + normalized : normalized || p
+    },
+    subCategoryIconItems() {
+      const key = String(this.card?.subCategory || '').trim()
+      if (!key) return []
+      const icons: Record<string, { icon: string, label: string }> = {
+        swordShield: { icon: shieldHalfOutline, label: 'Sword & Shield' },
+        greatSword: { icon: flashOutline, label: 'Great Sword' },
+        archer: { icon: locateOutline, label: 'Archer' },
+        horseArcher: { icon: navigateOutline, label: 'Horse Archer' },
+        horsePikeman: { icon: gitMergeOutline, label: 'Horse Pikeman' },
+        lightKnight: { icon: speedometerOutline, label: 'Light Knight' },
+        heavyKnight: { icon: shieldOutline, label: 'Heavy Knight' },
+        pikeman: { icon: removeOutline, label: 'Pikeman' },
+        catapult: { icon: constructOutline, label: 'Catapult' },
+        transportBoat: { icon: boatOutline, label: 'Transport Boat' },
+        fishBoat: { icon: fishOutline, label: 'Fish Boat' },
+        warBoat: { icon: boatOutline, label: 'War Boat' }
+      }
+      const resolved = icons[key] || { icon: helpCircleOutline, label: key }
+      return [{ key, ...resolved }]
     }
   }
   ,
@@ -65,12 +112,12 @@ export default {
         <div style="width: ${width}px; padding:16px; box-sizing:border-box; background:#fff; border-radius:8px; box-shadow:0 6px 18px rgba(0,0,0,0.12); color:#111; font-family: sans-serif;">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
             <div style="font-weight:800;font-size:18px;">${this._escapeHtml(this.card.title || '')}</div>
-            <div style="background:#eee;padding:4px 8px;border-radius:6px;font-weight:700;">${this._escapeHtml(String(this.card.type || ''))}</div>
+            <div style="background:#eee;padding:4px 8px;border-radius:6px;font-weight:700;">${this._escapeHtml(String((this.card.category || 'noble')).toUpperCase())}</div>
           </div>
           ${this.card.imageUrl ? `<img src="${this._escapeAttr(this.imageSrc)}" style="width:100%;height:${imgH}px;object-fit:cover;border-radius:6px;margin-bottom:8px;"/>` : ''}
           <div style="border:1px solid rgba(0,0,0,0.06);padding:8px;border-radius:6px;margin-bottom:8px;color:#333;">
             <div style="margin-bottom:6px">${this._escapeHtml(this.card.description || '')}</div>
-            ${this.card.effectDescription ? `<div style="font-weight:700;color:#0a6">Effect: ${this._escapeHtml(this.card.effectDescription)}</div>` : ''}
+            ${this.hasEffectDescription ? `<div style="font-weight:700;color:#0a6">Effect: ${this._escapeHtml(this.effectDescriptionText)}</div>` : ''}
           </div>
           <div style="display:flex;gap:8px;flex-wrap:wrap;font-weight:700">
             <div style="background:rgba(0,0,0,0.04);padding:6px 8px;border-radius:6px">⚔️ ATK ${this._escapeHtml(String(this.card.attackPoints ?? ''))}</div>

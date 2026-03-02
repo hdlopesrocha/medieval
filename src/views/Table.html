@@ -9,10 +9,15 @@
     </ion-header>
 
     <ion-content class="ion-padding deck-bg">
+      <CurrentPlayerBoard />
       <div class="table-area">
-        <div v-if="!state.cardsInPlay || state.cardsInPlay.length === 0">No cards in play</div>
+        <div v-if="!sortedCardsInPlay || sortedCardsInPlay.length === 0">No cards in play</div>
         <div v-else style="display:flex;flex-wrap:wrap;gap:12px;justify-content:center">
-          <div v-for="g in state.cardsInPlay" :key="g.id" style="min-width:160px">
+          <div
+            v-for="g in sortedCardsInPlay"
+            :key="g.id"
+            :style="`min-width:160px;${g.ownerId !== state.activePlayerId ? 'opacity:0.5;filter:grayscale(25%);pointer-events:none;' : ''}`"
+          >
             <CardItem :card="g.card" :hidden="g.hidden && g.ownerId !== state.activePlayerId" />
           </div>
         </div>

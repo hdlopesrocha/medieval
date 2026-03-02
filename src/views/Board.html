@@ -9,6 +9,7 @@
     </ion-header>
 
     <ion-content class="ion-padding">
+      <CurrentPlayerBoard />
       <div class="board grid">
         <div v-for="(zone, idx) in zones" :key="idx" class="zone" :class="{'player-zone': idx<4, 'enemy-zone': idx>=4, 'reachable': reachable.has(idx), 'hovered': hoveredZone===idx, 'shake': blockedShake===idx}" :data-zone-idx="idx" @dragover.prevent="onZoneDragOver($event, idx)" @dragleave="onZoneDragLeave" @drop="onDrop($event, idx)">
           <div class="zone-header">

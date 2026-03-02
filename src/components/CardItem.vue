@@ -112,4 +112,27 @@ ion-card {
   margin-top: 8px;
 }
 .card-text-block .description { margin: 0 0 6px 0 }
+
+.subcat-icons-row {
+  margin-top: 6px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.subcat-icon-item {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 54px;
+  height: 46px;
+  padding: 0 10px;
+  border-radius: 23px;
+  background: rgba(0, 0, 0, 0.06);
+  line-height: 1;
+}
+
+.subcat-icon {
+  font-size: 32px;
+}
 </style>

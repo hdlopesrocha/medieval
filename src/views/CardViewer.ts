@@ -3,13 +3,21 @@ import { useGameStateService } from '../services/gameStateService'
 import deckService from '../services/deckService'
 import { computed } from 'vue'
 import { IonPage, IonHeader, IonToolbar, IonTitle, IonContent } from '@ionic/vue'
+import CurrentPlayerBoard from '../components/CurrentPlayerBoard.vue'
 
-function cloneCard(card: any) {
+type JsonLike = Record<string, unknown>
+
+type CardViewerProps = {
+  cards?: unknown[] | null
+  mode?: string
+}
+
+function cloneCard(card: unknown): JsonLike | null {
   if (!card) return null
-  if (typeof card.toJSON === 'function') {
-    return JSON.parse(JSON.stringify(card.toJSON()))
+  if (typeof card === 'object' && card !== null && 'toJSON' in card && typeof (card as { toJSON?: () => unknown }).toJSON === 'function') {
+    return JSON.parse(JSON.stringify((card as { toJSON: () => unknown }).toJSON())) as JsonLike
   }
-  return JSON.parse(JSON.stringify(card))
+  return JSON.parse(JSON.stringify(card)) as JsonLike
 }
 
 export default {
@@ -24,8 +32,8 @@ export default {
       default: 'deck'
     }
   },
-  components: { CardItem, IonPage, IonHeader, IonToolbar, IonTitle, IonContent },
-  setup(props: any) {
+  components: { CardItem, IonPage, IonHeader, IonToolbar, IonTitle, IonContent, CurrentPlayerBoard },
+  setup(props: CardViewerProps) {
     const gameState = useGameStateService()
     gameState.ensureDeck('game')
     const currentDeck = gameState.getDeck('game')

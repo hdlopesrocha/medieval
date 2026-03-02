@@ -1,16 +1,19 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import CardItem from '../components/CardItem.vue'
+import CurrentPlayerBoard from '../components/CurrentPlayerBoard.vue'
 import engine from '../game/engineInstance'
 import { ZONES } from '../game/GameEngine'
 import { useGameStateService } from '../services/gameStateService'
+import { createEmptyGameStateView } from '../models/GameStateView'
+import type { GameStateView, InPlayCardView, PlayerView } from '../models/GameStateView'
 
 export default {
   name: 'BoardView',
-  components: { CardItem },
+  components: { CardItem, CurrentPlayerBoard },
   setup() {
     const gameState = useGameStateService()
     const zones = ZONES
-    const state = ref(engine.getState())
+    const state = ref<GameStateView>(createEmptyGameStateView())
     let timer: ReturnType<typeof setInterval> | null = null
 
     const dragged = ref<{ id: string, pos: number, vel: number } | null>(null) // { id, pos, vel }
@@ -20,8 +23,28 @@ export default {
     const blockedShake = ref(-1)
     const handDragVel = ref<number | null>(null)
 
+    function normalizedStateFromEngine(): GameStateView {
+      const rawState = (engine.getState() || {}) as Record<string, any>
+      return {
+        ...createEmptyGameStateView(),
+        ...rawState,
+        activePlayerId: Number(rawState.activePlayerId || 0),
+        currentUser: Number(rawState.currentUser ?? rawState.activePlayerId ?? 0),
+        round: Number(rawState.round || 1),
+        players: (rawState.players || []).map((player: any): PlayerView => ({
+          ...player,
+          id: Number(player.id)
+        })),
+        cardsInPlay: (rawState.cardsInPlay || []).map((entry: any): InPlayCardView => ({
+          ...entry,
+          ownerId: Number(entry.ownerId),
+          position: Number(entry.position)
+        }))
+      }
+    }
+
     function refresh() {
-      state.value = engine.getState()
+      state.value = normalizedStateFromEngine()
     }
 
     function computeReachable() {
@@ -37,7 +60,7 @@ export default {
     }
 
     function cardsByZone(idx: number) {
-      return (state.value.cardsInPlay || []).filter((g: any) => g.position === idx)
+      return (state.value.cardsInPlay || []).filter((g) => g.position === idx)
     }
 
     function handCountForPlayer(playerId: number) {
@@ -133,6 +156,9 @@ export default {
       const steps = (targetZone - g.position) * direction
       if (steps < 0) return alert('cannot move backwards')
       if (steps === 0) return
+      const velocity = Number(g.card?.velocity || 0)
+      if (!Number.isFinite(velocity) || velocity <= 0) return alert('card has no velocity')
+      if (steps !== velocity) return alert(`must move exactly ${velocity} zones`)
       if (!reachable.value.has(targetZone)) return alert('target out of reach')
       const res = engine.moveCard(cardId, state.value.activePlayerId, steps)
       if (!res.ok) return alert('Move failed: ' + ((res as any).reason || 'invalid action'))
@@ -162,6 +188,7 @@ export default {
     }
 
     onMounted(() => {
+      refresh()
       timer = setInterval(refresh, 700)
     })
     onUnmounted(() => {

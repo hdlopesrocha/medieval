@@ -7,16 +7,28 @@
       <ion-card-header>
         <div class="card-header-row">
           <ion-card-title class="card-title">{{ card.title }}</ion-card-title>
-          <ion-chip class="card-type">{{ card.type }}</ion-chip>
+          <ion-chip class="card-type">{{ String(card.category || 'noble').toUpperCase() }}</ion-chip>
         </div>
 
       </ion-card-header>
       <ion-card-content>
         <ion-img :src="imageSrc" alt="card image" />
 
+        <div v-if="subCategoryIconItems.length" class="subcat-icons-row">
+          <span
+            v-for="item in subCategoryIconItems"
+            :key="item.key"
+            class="subcat-icon-item"
+            :title="item.label"
+            :aria-label="item.label"
+          >
+            <ion-icon :icon="item.icon" class="subcat-icon" />
+          </span>
+        </div>
+
         <div class="card-text-block">
           <p class="description">{{ card.description }}</p>
-          <p v-if="card.effectDescription" class="effect-description"><strong>Effect:</strong> {{ card.effectDescription }}</p>
+          <p v-if="hasEffectDescription" class="effect-description"><strong>Effect:</strong> {{ effectDescriptionText }}</p>
         </div>
         <div class="attributes">
           <div class="attr"><span class="attr-icon">⚔️</span><span class="attr-label">ATK</span><span class="attr-value">{{ card.attackPoints }}</span></div>
