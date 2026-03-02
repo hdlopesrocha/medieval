@@ -27,7 +27,7 @@
         <ion-button
           :color="activeRole === 'local' ? 'primary' : 'medium'"
           :fill="activeRole === 'local' ? 'solid' : 'outline'"
-          @click="goLocalPlayer"
+          @click="goHandPage"
           style="flex:1"
         >
           <ion-icon :icon="cubeOutline" style="font-size:128px;display:block;margin:0 auto"></ion-icon>
@@ -63,22 +63,7 @@
         <ion-button size="small" color="primary" @click="goRealtimeGame">Open Game</ion-button>
         <ion-button v-if="activeRole === 'client'" size="small" color="tertiary" @click="requestHistory">Request History</ion-button>
       </div>
-      <div v-if="activeRole === 'client' && clientHandCards.length" style="margin:12px 0px">
-        <p><strong>Your initial 5 cards</strong></p>
-        <div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:6px">
-          <div v-for="(card, idx) in clientHandCards" :key="`client-hand-${idx}-${card.title || 'card'}`" style="min-width:230px;max-width:230px;flex:0 0 auto">
-            <CardItem :card="card" :showExport="false" />
-          </div>
-        </div>
-      </div>
-      <div v-if="activeRole === 'server' && serverHandCards.length" style="margin:12px 0px">
-        <p><strong>Server dealt cards</strong></p>
-        <div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:6px">
-          <div v-for="(card, idx) in serverHandCards" :key="`server-hand-${idx}-${card.title || 'card'}`" style="min-width:230px;max-width:230px;flex:0 0 auto">
-            <CardItem :card="card" :showExport="false" />
-          </div>
-        </div>
-      </div>
+     
       <p>Send message to peer:</p>
       <textarea v-model="outgoingText" rows="2" style="width:100%"></textarea>
       <ion-button @click="sendMessage(activeRole === 'client' ? 'client' : 'host')" style="margin-top:6px;width:100%">Send</ion-button>

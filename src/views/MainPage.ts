@@ -1,4 +1,4 @@
-import { onMounted, onBeforeUnmount } from 'vue'
+import { onMounted, onBeforeUnmount, watch } from 'vue'
 import { IonPage, IonHeader, IonToolbar, IonTitle, IonContent, IonButton, IonIcon } from '@ionic/vue'
 import { useRouter } from 'vue-router'
 import { useWebrtcQrService } from '../services/webrtcQrService'
@@ -12,13 +12,13 @@ export default {
     const router = useRouter()
     const webrtcQr = useWebrtcQrService()
 
-    const goLocalPlayer = () => {
+    const goHandPage = () => {
       webrtcQr.setRole('local')
-      router.push('/local')
+      router.push('/hand')
     }
 
     const goRealtimeGame = () => {
-      router.push('/local')
+      router.push('/hand')
     }
 
     const goHistory = () => {
@@ -29,6 +29,17 @@ export default {
       webrtcQr.requestHistoryFromServer()
     }
 
+    watch(
+      () => {
+        const connected = Boolean(webrtcQr.connectedHost?.value || webrtcQr.connectedClient?.value)
+        const role = String(webrtcQr.activeRole?.value || '')
+        return connected && (role === 'server' || role === 'client')
+      },
+      (isConnected) => {
+        if (isConnected) router.push('/hand')
+      }
+    )
+
     onMounted(() => {
       webrtcQr.attach()
     })
@@ -37,6 +48,6 @@ export default {
       webrtcQr.detach()
     })
 
-    return { ...webrtcQr, goLocalPlayer, goRealtimeGame, goHistory, requestHistory }
+    return { ...webrtcQr, goHandPage, goRealtimeGame, goHistory, requestHistory }
   }
 }
