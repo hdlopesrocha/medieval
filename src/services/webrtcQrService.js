@@ -120,6 +120,7 @@ function createWebrtcQrService() {
     }
     hostDc.send(JSON.stringify(payload))
     gameStateService.setDeck(shuffledDeck, webrtcContext)
+    gameStateService.setWorkflow({ ownerRole: 'server', ownerPlayerId: 0 }, 'game')
     gameStateService.setPlayerCards(serverDeckKey, shuffledDeck, webrtcContext)
     gameStateService.setPlayerCards(serverHandKey, hand, webrtcContext)
     consoleLogger.value.push(`server: sent shuffled deck (${shuffledDeck.length}) and hand (${hand.length})`)
@@ -357,6 +358,7 @@ function createWebrtcQrService() {
     offerUrl.value = ''
     offerUrlQr.value = ''
     gameStateService.setDeck([], webrtcContext)
+    gameStateService.setWorkflow({ ownerRole: 'server', ownerPlayerId: 0, lastAction: 'resetServerState' }, 'game')
     gameStateService.setPlayerCards(clientDeckKey, [], webrtcContext)
     gameStateService.setPlayerCards(clientHandKey, [], webrtcContext)
     gameStateService.setPlayerCards(serverDeckKey, [], webrtcContext)
@@ -373,6 +375,7 @@ function createWebrtcQrService() {
     answerQrPartIndex.value = 0
     answerJson.value = ''
     gameStateService.setDeck([], webrtcContext)
+    gameStateService.setWorkflow({ ownerRole: 'client', ownerPlayerId: 1, lastAction: 'resetClientState' }, 'game')
     gameStateService.setPlayerCards(clientDeckKey, [], webrtcContext)
     gameStateService.setPlayerCards(clientHandKey, [], webrtcContext)
     gameStateService.setPlayerCards(serverDeckKey, [], webrtcContext)
@@ -411,7 +414,9 @@ function createWebrtcQrService() {
     hostDc = pc.createDataChannel('data')
     hostDc.onopen = () => {
       connectedHost.value = true
-      if (!engine.getState().players?.length) {
+      if (typeof engine.ensureStoredState === 'function') {
+        engine.ensureStoredState(['Server', 'Client'])
+      } else if (!engine.getState().players?.length) {
         engine.startGame(['Server', 'Client'])
       }
       sendInitialDeckToClient()
@@ -469,6 +474,81 @@ function createWebrtcQrService() {
     return `${base}${currentHashPath}?offer=${encodedOffer}`
   }
 
+  const base91Alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!#$%&()*+,./:;<=>?@[]^_`{|}~"'
+  const base91DecodeTable = (() => {
+    const table = Object.create(null)
+    for (let index = 0; index < base91Alphabet.length; index++) {
+      table[base91Alphabet[index]] = index
+    }
+    return table
+  })()
+
+  function bytesToBase91(bytes) {
+    let output = ''
+    let buffer = 0
+    let bitCount = 0
+
+    for (let index = 0; index < bytes.length; index++) {
+      buffer |= bytes[index] << bitCount
+      bitCount += 8
+      if (bitCount > 13) {
+        let value = buffer & 8191
+        if (value > 88) {
+          buffer >>= 13
+          bitCount -= 13
+        } else {
+          value = buffer & 16383
+          buffer >>= 14
+          bitCount -= 14
+        }
+        output += base91Alphabet[value % 91] + base91Alphabet[Math.floor(value / 91)]
+      }
+    }
+
+    if (bitCount) {
+      output += base91Alphabet[buffer % 91]
+      if (bitCount > 7 || buffer > 90) {
+        output += base91Alphabet[Math.floor(buffer / 91)]
+      }
+    }
+
+    return output
+  }
+
+  function base91ToBytes(value) {
+    const text = String(value || '')
+    const out = []
+    let buffer = 0
+    let bitCount = 0
+    let pair = -1
+
+    for (let index = 0; index < text.length; index++) {
+      const ch = text[index]
+      const decoded = base91DecodeTable[ch]
+      if (decoded == null) continue
+
+      if (pair < 0) {
+        pair = decoded
+      } else {
+        pair += decoded * 91
+        buffer |= pair << bitCount
+        bitCount += (pair & 8191) > 88 ? 13 : 14
+        while (bitCount >= 8) {
+          out.push(buffer & 255)
+          buffer >>= 8
+          bitCount -= 8
+        }
+        pair = -1
+      }
+    }
+
+    if (pair >= 0) {
+      out.push((buffer | (pair << bitCount)) & 255)
+    }
+
+    return new Uint8Array(out)
+  }
+
   function bytesToBase64Url(bytes) {
     let binary = ''
     const chunkSize = 0x8000
@@ -494,14 +574,14 @@ function createWebrtcQrService() {
   function gzipToToken(text) {
     const encoded = new TextEncoder().encode(String(text))
     const compressed = gzip(encoded)
-    return 'gz:' + bytesToBase64Url(compressed)
+    return 'gz91:' + bytesToBase91(compressed)
   }
 
   function extractGzipToken(value) {
     const raw = String(value || '').trim()
     if (!raw) return ''
-    if (raw.startsWith('gz:')) return raw
-    const match = raw.match(/gz:[A-Za-z0-9_-]+/)
+    if (raw.startsWith('gz91:') || raw.startsWith('gz:')) return raw
+    const match = raw.match(/gz91:[A-Za-z0-9!#$%&()*+,./:;<=>?@\[\]^_`{|}~"'-]+|gz:[A-Za-z0-9_-]+/)
     return match ? match[0] : ''
   }
 
@@ -509,8 +589,14 @@ function createWebrtcQrService() {
     const rawToken = extractGzipToken(token)
     if (!rawToken) return String(token || '').trim()
     const compactToken = rawToken.replace(/\s+/g, '')
-    if (!compactToken.startsWith('gz:')) return compactToken
-    const compressed = base64UrlToBytes(compactToken.slice(3))
+    let compressed
+    if (compactToken.startsWith('gz91:')) {
+      compressed = base91ToBytes(compactToken.slice(5))
+    } else if (compactToken.startsWith('gz:')) {
+      compressed = base64UrlToBytes(compactToken.slice(3))
+    } else {
+      return compactToken
+    }
     return String(ungzip(compressed, { to: 'string' }))
   }
 

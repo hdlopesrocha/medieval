@@ -444,6 +444,18 @@ export default {
     }
 
     onMounted(() => {
+      if (!multiplayerMode.value) {
+        try {
+          const result = (engine as any).ensureStoredState
+            ? (engine as any).ensureStoredState(['Server', 'Client'])
+            : { restored: false }
+          if (!result?.restored) {
+            gameState.setWorkflow({ ownerRole: 'local', ownerPlayerId: 0, lastAction: 'autoCreateLocalGame' }, 'game')
+          }
+        } catch (_e) {
+          // ignore create errors and continue with current state
+        }
+      }
       refreshState()
       timer = setInterval(refreshState, 500)
     })

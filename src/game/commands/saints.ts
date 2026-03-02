@@ -30,7 +30,7 @@ saints.set('São Nuno de Santa Maria', {
 	}
 })
 
-saints.set('São Vicente', { onPlayed: (engine, g, playerId) => { for (const a of engine.cardsInPlay.filter((x: any) => x.ownerId === playerId && x.position === 0)) a.card.hp = (a.card.hp || 0) + 3 } })
+saints.set('São Vicente', { onPlayed: (engine, g, playerId) => { const spawnZone = engine.getSpawnZone(g.card, playerId); for (const a of engine.cardsInPlay.filter((x: any) => x.ownerId === playerId && x.position === spawnZone)) a.card.hp = (a.card.hp || 0) + 3 } })
 
 saints.set('São Francisco Xavier', convertAdjacent())
 
@@ -40,7 +40,7 @@ saints.set('Santa Joana Princesa', { onPlayed: (engine, g, playerId, targetId) =
 
 saints.set('São Roque', buffAllAllies('defensePoints', 99))
 
-saints.set('São Teotónio', { onPlayed: (engine, g, playerId) => { engine.cardsInPlay.push({ id: String(Math.random().toString(36).slice(2,9)), card: new Card('', 'Generated Soldier', 'Summoned soldier', '', 2, 1, 'noble', 3, 2, 1, 'swordShield', 'earth'), ownerId: playerId, position: 0, hidden: false }) } })
+saints.set('São Teotónio', { onPlayed: (engine, g, playerId) => { const generated = new Card('', 'Generated Soldier', 'Summoned soldier', '', 2, 1, 'noble', 3, 2, 1, 'swordShield', 'earth'); engine.cardsInPlay.push({ id: String(Math.random().toString(36).slice(2,9)), card: generated, ownerId: playerId, position: engine.getSpawnZone(generated, playerId), hidden: false }) } })
 
 saints.set('São José', buffTargetProperty('defensePoints', 2))
 

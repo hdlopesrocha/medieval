@@ -117,10 +117,9 @@ export default class GameEngine {
   }
 
   getSpawnZone(card: Card, playerId: number) {
-    if (String((card as any)?.element || 'earth') === 'water') {
-      return playerId === 0 ? 3 : 4
-    }
-    return this.getOwnCastleZone(playerId)
+    void card
+    void playerId
+    return 0
   }
 
   isWaterCard(card: Card) {
@@ -231,8 +230,8 @@ export default class GameEngine {
     const hand = this.hands[playerId] || []
     if (handIndex < 0 || handIndex >= hand.length) return { ok: false, reason: 'invalid hand index' }
     if (!Number.isFinite(position) || position < 0 || position >= ZONES.length) return { ok: false, reason: 'invalid position' }
-    const spawn = this.getOwnCastleZone(playerId)
-    if (position !== spawn) return { ok: false, reason: 'cards must be played in your castle' }
+    const spawn = this.getSpawnZone(hand[handIndex], playerId)
+    if (position !== spawn) return { ok: false, reason: 'cards must be played in zone 0' }
     const card = hand.splice(handIndex, 1)[0]
     this.cardsInPlay.push({ id: uuid(), card, ownerId: playerId, position: this.getSpawnZone(card, playerId), hidden: false })
     return this.recordActionAndEndTurn(playerId, 'playCardTo')
@@ -417,6 +416,26 @@ export default class GameEngine {
     } catch (e) {
       return false
     }
+  }
+
+  hasStoredState() {
+    try {
+      if (typeof window === 'undefined' || !window.localStorage) return false
+      const raw = window.localStorage.getItem(this.storageKey)
+      return !!raw
+    } catch (_e) {
+      return false
+    }
+  }
+
+  ensureStoredState(playerNames: string[] = ['Server', 'Client']) {
+    const restored = this.loadState()
+    if (restored) {
+      this.syncGameStateService('restoreState')
+      return { ok: true, restored: true }
+    }
+    this.startGame(playerNames)
+    return { ok: true, restored: false }
   }
 
   // Attempt to load state from localStorage. Returns true if restored.

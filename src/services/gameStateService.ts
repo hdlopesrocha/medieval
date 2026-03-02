@@ -5,6 +5,8 @@ type TurnWorkflowState = {
   started: boolean
   activePlayerId: number
   currentUser: number
+  ownerPlayerId: number | null
+  ownerRole: string
   round: number
   lastAction: string
   actionByPlayer: Record<string, string>
@@ -42,6 +44,8 @@ function createDefaultWorkflowState(): TurnWorkflowState {
     started: false,
     activePlayerId: 0,
     currentUser: 0,
+    ownerPlayerId: null,
+    ownerRole: '',
     round: 1,
     lastAction: '',
     actionByPlayer: {},
@@ -102,6 +106,10 @@ function cloneWorkflow(workflow: Partial<TurnWorkflowState> | null | undefined):
     currentUser: Number.isFinite((workflow as any).currentUser)
       ? Number((workflow as any).currentUser)
       : (Number.isFinite(workflow.activePlayerId) ? Number(workflow.activePlayerId) : base.currentUser),
+    ownerPlayerId: Number.isFinite((workflow as any).ownerPlayerId)
+      ? Number((workflow as any).ownerPlayerId)
+      : base.ownerPlayerId,
+    ownerRole: String((workflow as any).ownerRole || base.ownerRole || ''),
     round: Number.isFinite(workflow.round) ? Math.max(1, Number(workflow.round)) : base.round,
     lastAction: String(workflow.lastAction || ''),
     actionByPlayer: { ...(workflow.actionByPlayer || {}) },
