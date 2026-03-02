@@ -1,0 +1,4 @@
+<button class="mini-card-button" type="button" @click="onSelect">
+  <img v-if="imageSrc" :src="imageSrc" :alt="imageAlt" class="mini-card-image" />
+  <div v-else class="mini-card-fallback">?</div>
+</button>

@@ -1,0 +1,62 @@
+<ion-page>
+  <ion-header>
+    <ion-toolbar>
+      <ion-title>Map</ion-title>
+    </ion-toolbar>
+  </ion-header>
+
+  <ion-content class="ion-padding">
+    <CurrentPlayerBoard />
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <div style="font-weight:700">Cards in play: {{ cardsInPlayCount }}</div>
+      <ion-button size="small" @click="refreshState">Refresh</ion-button>
+    </div>
+
+    <div class="maps-row">
+      <div class="map-panel">
+        <div class="map-surface">
+          <img :src="mapImage" alt="map" class="map-image" />
+          <div class="zones-overlay">
+            <div v-for="zoneIdx in 4" :key="`left-zone-${zoneIdx}`" class="zone-cell" :style="zoneStyle(zoneIdx - 1)">
+              <div class="zone-stack">
+                <div v-for="entry in cardsForZone(leftPanelZone(zoneIdx - 1))" :key="`left-card-${entry.id}`" class="played-card">
+                  <MiniCardItem :card="entry.card" @select="selectCard(entry)" />
+                </div>
+              </div>
+              <div v-if="hiddenCountForZone(leftPanelZone(zoneIdx - 1)) > 0" class="zone-overflow-badge">
+                +{{ hiddenCountForZone(leftPanelZone(zoneIdx - 1)) }}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="map-panel">
+        <div class="map-surface">
+          <img :src="mapImage" alt="map mirrored" class="map-image map-image-flipped" />
+          <div class="zones-overlay">
+            <div v-for="zoneIdx in 4" :key="`right-zone-${zoneIdx}`" class="zone-cell" :style="zoneStyle(zoneIdx - 1)">
+              <div class="zone-stack">
+                <div v-for="entry in cardsForZone(rightPanelZone(zoneIdx - 1))" :key="`right-card-${entry.id}`" class="played-card">
+                  <MiniCardItem :card="entry.card" @select="selectCard(entry)" />
+                </div>
+              </div>
+              <div v-if="hiddenCountForZone(rightPanelZone(zoneIdx - 1)) > 0" class="zone-overflow-badge">
+                +{{ hiddenCountForZone(rightPanelZone(zoneIdx - 1)) }}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div v-if="cardsInPlayCount === 0" style="margin-top:8px;color:#666">No played cards yet. Play from hand first.</div>
+
+    <div v-if="selectedCard" style="margin-top:14px;display:flex;flex-direction:column;gap:8px">
+      <div style="font-weight:700">Selected Card</div>
+      <div style="display:flex;justify-content:flex-start">
+        <CardItem :card="selectedCard" :showExport="false" />
+      </div>
+    </div>
+  </ion-content>
+</ion-page>

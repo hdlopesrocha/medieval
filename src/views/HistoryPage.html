@@ -1,0 +1,31 @@
+<ion-page>
+  <ion-header>
+    <ion-toolbar>
+      <ion-title>Game History</ion-title>
+    </ion-toolbar>
+  </ion-header>
+
+  <ion-content class="ion-padding">
+    <CurrentPlayerBoard />
+    <div style="display:flex;gap:10px;margin-bottom:12px">
+      <ion-button size="small" @click="refresh">Refresh</ion-button>
+      <ion-button size="small" color="danger" @click="clear">Clear</ion-button>
+    </div>
+
+    <div v-if="!entries.length">No history yet.</div>
+    <div v-else style="display:flex;flex-direction:column;gap:8px">
+      <div
+        v-for="entry in entries"
+        :key="entry.order"
+        style="border:1px solid #dcdcdc;border-radius:8px;padding:10px"
+      >
+        <div><strong>#{{ entry.order }}</strong> · {{ formatTime(entry.timestamp) }}</div>
+        <div><strong>action:</strong> {{ entry.action }}</div>
+        <div><strong>round:</strong> {{ entry.round }} · <strong>activePlayer:</strong> {{ entry.activePlayerId }}</div>
+        <div><strong>deck:</strong> {{ entry.deckCount }} · <strong>inPlay:</strong> {{ entry.cardsInPlayCount }}</div>
+        <div><strong>castleHp:</strong> p0={{ entry.castleHpByPlayer?.['0'] ?? 0 }} p1={{ entry.castleHpByPlayer?.['1'] ?? 0 }}</div>
+        <div v-if="entry.gameOver" style="color:#b00020;font-weight:700">gameOver</div>
+      </div>
+    </div>
+  </ion-content>
+</ion-page>

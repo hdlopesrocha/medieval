@@ -5,7 +5,10 @@
     </ion-toolbar>
   </ion-header>
   <ion-content class="ion-padding">
+    <CurrentPlayerBoard />
     <ion-button color="secondary" @click="goViewDeck" style="width:100%;margin-bottom:12px">View Deck</ion-button>
+    <ion-button color="medium" @click="goMap" style="width:100%;margin-bottom:12px">View Map</ion-button>
+    <ion-button color="medium" @click="goShare" style="width:100%;margin-bottom:12px">Share</ion-button>
     <template v-if="!(connectedHost || connectedClient)">
       <div style="display:flex;text-align: center; gap:10px;width:100%;height:256px">
         <ion-button
@@ -58,6 +61,11 @@
     <template style="margin: 12px 0"
       v-if="connectedClient || connectedHost">
       <p><strong>Data channel open</strong></p>
+      <div style="display:flex;gap:8px;margin-bottom:8px">
+        <ion-button size="small" color="medium" @click="goHistory">History</ion-button>
+        <ion-button size="small" color="primary" @click="goRealtimeGame">Open Game</ion-button>
+        <ion-button v-if="activeRole === 'client'" size="small" color="tertiary" @click="requestHistory">Request History</ion-button>
+      </div>
       <div v-if="activeRole === 'client' && clientHandCards.length" style="margin:12px 0px">
         <p><strong>Your initial 5 cards</strong></p>
         <div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:6px">

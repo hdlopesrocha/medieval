@@ -7,6 +7,9 @@ import CardViewer from './views/CardViewer.vue'
 import Table from './views/Table.vue'
 import LocalPlayerPage from './views/LocalPlayerPage.vue'
 import Board from './views/Board.vue'
+import HistoryPage from './views/HistoryPage.vue'
+import MapPage from './views/MapPage.vue'
+import SharePage from './views/SharePage.vue'
 
 /* Core CSS required for Ionic components to work properly */
 import '@ionic/vue/css/core.css'
@@ -29,6 +32,9 @@ const routes = [
 	,{ path: '/local', component: LocalPlayerPage }
 	,{ path: '/game', component: LocalPlayerPage }
 	,{ path: '/board', component: Board }
+	,{ path: '/history', component: HistoryPage }
+	,{ path: '/map', component: MapPage }
+	,{ path: '/share', component: SharePage }
 	,{ path: '/main', component: MainPage }
 	,{ path: '/webrtc', component: MainPage }
 ]

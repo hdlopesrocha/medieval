@@ -1,0 +1,20 @@
+<ion-page>
+  <ion-header>
+    <ion-toolbar>
+      <ion-title>Share</ion-title>
+    </ion-toolbar>
+  </ion-header>
+
+  <ion-content class="ion-padding">
+    <CurrentPlayerBoard />
+    <div style="display:flex;flex-direction:column;gap:10px;align-items:center">
+      <div style="font-weight:700;text-align:center">Share this QR with other players</div>
+      <img v-if="qrDataUrl" :src="qrDataUrl" alt="share-qr" style="width:320px;max-width:100%;display:block" />
+      <div style="font-size:12px;word-break:break-all;text-align:center">{{ shareUrl }}</div>
+      <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
+        <ion-button size="small" color="medium" @click="generateQr">Refresh</ion-button>
+        <ion-button size="small" color="primary" @click="copyLink">Copy Link</ion-button>
+      </div>
+    </div>
+  </ion-content>
+</ion-page>
