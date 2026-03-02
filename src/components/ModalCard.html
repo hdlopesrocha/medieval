@@ -1,0 +1,17 @@
+<div class="modal-card">
+  <div class="modal-card-title">{{ cardTitle }}</div>
+  <div class="modal-card-meta">
+    <span>ATK {{ attackPoints }}</span>
+    <span>DEF {{ defensePoints }}</span>
+    <span>HP {{ hp }}</span>
+    <span>VEL {{ velocity }}</span>
+    <span>RNG {{ range }}</span>
+  </div>
+  <div class="modal-card-tags">
+    <span v-if="category">{{ category }}</span>
+    <span v-if="subCategory">{{ subCategory }}</span>
+    <span v-if="element">{{ element }}</span>
+  </div>
+  <div v-if="description" class="modal-card-text">{{ description }}</div>
+  <div v-if="effectDescription" class="modal-card-text modal-card-effect">{{ effectDescription }}</div>
+</div>

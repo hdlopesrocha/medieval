@@ -6,38 +6,46 @@
 .maps-row {
   display: flex;
   flex-wrap: nowrap;
-  gap: 10px;
-  overflow-x: auto;
+  overflow: hidden;
   align-items: flex-start;
-}
-
-.map-panel {
-  min-width: 46%;
-  flex: 1 0 46%;
+  height: 600px;
 }
 
 .map-surface {
   position: relative;
   width: 100%;
-  max-height: 400px;
+  height: 100%;
+  overflow: hidden;
+}
+
+
+
+.map-image-strip {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  width: 100%;
+  height: 100%;
 }
 
 .map-image {
-  width: 100%;
-  height: auto;
-  max-height: 400px;
+  width: 12.5%;
+  height: 100%;
   display: block;
-  border-radius: 6px;
+  object-fit: cover;
 }
 
 .map-image-flipped {
   transform: scaleX(-1);
-  filter: sepia(0.7) saturate(2) hue-rotate(-28deg) brightness(1.08) contrast(1.04);
+  filter: sepia(1.0) hue-rotate(-20deg) saturate(3) hue-rotate(-28deg) brightness(1.08) contrast(1.04);
 }
 
 .zones-overlay {
   position: absolute;
-  inset: 0;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
   z-index: 2;
 }
 
@@ -46,9 +54,11 @@
   top: 0;
   height: 100%;
   display: flex;
-  align-items: flex-end;
+  align-items: flex-start;
   justify-content: center;
-  padding-bottom: 6px;
+  padding-top: 6px;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .zone-overflow-badge {
@@ -67,24 +77,26 @@
 
 .zone-stack {
   width: 100%;
-  height: 100%;
-  overflow: hidden;
+  overflow: visible;
   display: flex;
-  flex-wrap: wrap;
-  align-content: flex-end;
-  align-items: flex-end;
+  flex-direction: column;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: 2px;
+  padding: 2px;
 }
 
 .zone-stack-rtl {
-  flex-direction: row-reverse;
+  align-items: stretch;
 }
 
 .played-card {
-  width: 50%;
-  height: 50%;
-  flex: 0 0 50%;
-  max-width: 50%;
-  max-height: 50%;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  height: auto;
+  flex: 0 0 auto;
+  max-width: 100%;
   display: flex;
   justify-content: stretch;
   pointer-events: auto;
@@ -93,5 +105,64 @@
 .played-card :deep(.mini-card-button) {
   height: 100% !important;
   width: 100% !important;
+}
+
+.map-card-overlay-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.map-card-overlay-root {
+  position: fixed;
+  inset: 0;
+  z-index: 20000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.55);
+}
+
+.map-card-dialog {
+  max-height: 90vh;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.map-card-dialog-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.map-card-dialog-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: #334;
+  font-size: 13px;
+}
+
+.map-card-dialog-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+.map-card-overlay-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+  width: fit-content;
+  max-width: 96vw;
+}
+
+.map-card-dialog-note {
+  color: #666;
+  font-size: 13px;
 }
 </style>

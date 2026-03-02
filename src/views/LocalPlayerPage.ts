@@ -1,8 +1,8 @@
 import { ref, computed, onMounted, onUnmounted, unref } from 'vue'
-import { IonPage, IonHeader, IonToolbar, IonTitle, IonContent, IonButton } from '@ionic/vue'
+import { IonPage, IonContent, IonButton } from '@ionic/vue'
 import engine from '../game/engineInstance'
 import CardItem from '../components/CardItem.vue'
-import CurrentPlayerBoard from '../components/CurrentPlayerBoard.vue'
+import ModalCard from '../components/ModalCard.vue'
 import { ZONES, ZONE_ELEMENTS } from '../game/GameEngine'
 import { useGameStateService } from '../services/gameStateService'
 import { useRouter } from 'vue-router'
@@ -28,7 +28,7 @@ type RealtimeBridge = {
 
 export default {
   name: 'LocalPlayerPage',
-  components: { IonPage, IonHeader, IonToolbar, IonTitle, IonContent, IonButton, CardItem, CurrentPlayerBoard },
+  components: { IonPage, IonContent, IonButton, CardItem, ModalCard },
   setup() {
     const anyEngine = engine as any
     const router = useRouter()
@@ -82,7 +82,7 @@ export default {
         ...rawState,
         activePlayerId: Number(rawState.activePlayerId || 0),
         currentUser: Number(rawState.currentUser ?? rawState.activePlayerId ?? 0),
-        round: Number(rawState.round || 1),
+        round: Number(rawState.round ?? 0),
         gameOver: Boolean(rawState.gameOver),
         loserPlayerId: rawState.loserPlayerId == null ? null : Number(rawState.loserPlayerId),
         winnerPlayerId: rawState.winnerPlayerId == null ? null : Number(rawState.winnerPlayerId),

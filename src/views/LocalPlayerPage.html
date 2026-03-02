@@ -1,13 +1,5 @@
 <ion-page>
-  <ion-header>
-    <ion-toolbar>
-      <ion-title>Local Player</ion-title>
-    </ion-toolbar>
-  </ion-header>
-
-  <ion-content>
-    <CurrentPlayerBoard />
-    <div v-if="pendingConfirmation" class="confirm-page">
+  <div v-if="pendingConfirmation" class="confirm-page">
       <h2>Confirm Action</h2>
       <div style="margin-bottom:8px"><strong>Current player:</strong> {{ currentPlayingUserLabel }}</div>
       <div style="margin-bottom:10px"><strong>Action:</strong> {{ pendingConfirmation.actionLabel }}</div>
@@ -35,8 +27,9 @@
           style="padding:6px 8px;border:1px solid #ddd;border-radius:6px;width:120px"
         />
       </div>
-      <div v-if="pendingConfirmation.card" class="confirm-card-wrap">
-        <CardItem :card="pendingConfirmation.card" :showExport="false" />
+      <div v-if="pendingConfirmation.card">
+        <ModalCard v-if="pendingConfirmation.kind === 'play-card'" :card="pendingConfirmation.card" />
+        <CardItem v-else :card="pendingConfirmation.card" :showExport="false" />
         <div class="confirm-card-actions">
           <ion-button fill="clear" @click="cancelPendingConfirmation">Cancel</ion-button>
           <ion-button color="primary" @click="confirmPendingConfirmation">Confirm</ion-button>
@@ -46,9 +39,9 @@
         <ion-button fill="clear" @click="cancelPendingConfirmation">Cancel</ion-button>
         <ion-button color="primary" @click="confirmPendingConfirmation">Confirm</ion-button>
       </div>
-    </div>
+  </div>
 
-    <div v-else-if="selection.mode" class="selection-page">
+  <div v-else-if="selection.mode" class="selection-page">
       <h2>Select Target</h2>
       <div style="margin-bottom:8px"><strong>Current player:</strong> {{ currentPlayingUserLabel }}</div>
       <div style="margin-bottom:12px"><strong>Action:</strong> {{ selection.mode }}</div>
@@ -64,10 +57,10 @@
       <div style="margin-top:12px;display:flex;justify-content:flex-end">
         <ion-button fill="clear" @click="cancelSelection">Cancel</ion-button>
       </div>
-    </div>
+  </div>
 
-    <template v-else>
-      <div class="main-page-wrap">
+  <ion-content v-else>
+    <div class="main-page-wrap">
       <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px">
         <div><strong>Player Castle HP:</strong> {{ castleHp(0) }}</div>
         <div><strong>Enemy Castle HP:</strong> {{ castleHp(1) }}</div>
@@ -135,6 +128,5 @@
       </div>
     </section>
     </div>
-    </template>
   </ion-content>
 </ion-page>

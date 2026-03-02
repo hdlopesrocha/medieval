@@ -5,13 +5,25 @@
 <style scoped>
 .mini-card-button {
   height: 25%;
-  border: 1px solid rgba(0, 0, 0, 0.35);
-  border-radius: 4px;
+  border: 1px solid rgba(0, 0, 0, 0.22);
+  border-radius: 8px;
   padding: 0;
   margin: 0;
   overflow: hidden;
-  background: rgba(255, 255, 255, 0.8);
+  background: #f3f6fb;
   cursor: pointer;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.22);
+}
+
+.mini-card-inner {
+  width: calc(100% - 8px);
+  height: calc(100% - 8px);
+  margin: 4px;
+  border: 2px solid #ffffff;
+  border-radius: 6px;
+  overflow: hidden;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.12);
+  background: #ffffff;
 }
 
 .mini-card-image {
