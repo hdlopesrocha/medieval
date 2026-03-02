@@ -1,7 +1,7 @@
 import { IonApp } from '@ionic/vue'
-import ActivePlayerBadge from './components/ActivePlayerBadge.vue'
+import CurrentPlayerBoard from './components/CurrentPlayerBoard.vue'
 
 export default {
   name: 'App',
-  components: { IonApp, ActivePlayerBadge }
+  components: { IonApp, CurrentPlayerBoard }
 }

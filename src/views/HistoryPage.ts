@@ -1,11 +1,10 @@
 import { computed } from 'vue'
-import { IonPage, IonHeader, IonToolbar, IonTitle, IonContent, IonButton } from '@ionic/vue'
+import { IonPage, IonContent, IonButton } from '@ionic/vue'
 import { useGameStateService } from '../services/gameStateService'
-import CurrentPlayerBoard from '../components/CurrentPlayerBoard.vue'
 
 export default {
   name: 'HistoryPage',
-  components: { IonPage, IonHeader, IonToolbar, IonTitle, IonContent, IonButton, CurrentPlayerBoard },
+  components: { IonPage, IonContent, IonButton },
   setup() {
     const gameState = useGameStateService()
     const entries = computed(() => gameState.getHistory('game'))

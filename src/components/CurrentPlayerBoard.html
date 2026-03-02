@@ -1,4 +1,62 @@
 <div class="current-player-board">
+
+  <nav class="current-player-navbar" aria-label="Primary">
+    <div class="current-player-navbar-links">
+      <ion-button size="small" :fill="isActive('/deck') ? 'solid' : 'outline'" @click="go('/deck')">
+        <ion-icon slot="start" :icon="albumsOutline"></ion-icon>
+        Deck
+      </ion-button>
+      <ion-button size="small" :fill="isActive('/hand') ? 'solid' : 'outline'" @click="go('/hand')">
+        <ion-icon slot="start" :icon="handLeftOutline"></ion-icon>
+        Hand
+      </ion-button>
+      <ion-button size="small" :fill="isActive('/table') ? 'solid' : 'outline'" @click="go('/table')">
+        <ion-icon slot="start" :icon="gridOutline"></ion-icon>
+        Table
+      </ion-button>
+      <ion-button size="small" :fill="isActive('/map') ? 'solid' : 'outline'" @click="go('/map')">
+        <ion-icon slot="start" :icon="mapOutline"></ion-icon>
+        Map
+      </ion-button>
+    </div>
+    <div class="settings-menu-wrap">
+      <ion-button :id="settingsTriggerId" size="small" fill="outline">
+        <ion-icon slot="start" :icon="settingsOutline"></ion-icon>
+        Settings
+      </ion-button>
+      <ion-popover
+        :trigger="settingsTriggerId"
+        trigger-action="click"
+        side="bottom"
+        alignment="end"
+        :dismiss-on-select="true"
+      >
+      <div class="settings-menu">
+        <ion-button v-if="showCreateButton" size="small" color="success" fill="clear" @click="createGameState">
+          <ion-icon slot="start" :icon="addCircleOutline"></ion-icon>
+          Create
+        </ion-button>
+        <ion-button size="small" fill="clear" @click="goFromSettings('/')">
+          <ion-icon slot="start" :icon="homeOutline"></ion-icon>
+          Home
+        </ion-button>
+        <ion-button size="small" fill="clear" @click="goFromSettings('/history')">
+          <ion-icon slot="start" :icon="timeOutline"></ion-icon>
+          History
+        </ion-button>
+        <ion-button size="small" fill="clear" @click="goFromSettings('/share')">
+          <ion-icon slot="start" :icon="shareSocialOutline"></ion-icon>
+          Share
+        </ion-button>
+        <ion-button size="small" fill="clear" @click="toggleFullscreen">
+          <ion-icon slot="start" :icon="fullscreenIcon"></ion-icon>
+          {{ fullscreenLabel }}
+        </ion-button>
+      </div>
+      </ion-popover>
+    </div>
+  </nav>
+
   <div class="current-player-board-row">
     <div><strong>Current Player:</strong> {{ currentPlayerLabel }}</div>
     <div><strong>Round:</strong> {{ roundNumber }}</div>
@@ -6,34 +64,5 @@
     <div><strong>Enemy Castle HP:</strong> {{ enemyCastleHp }}</div>
     <div><strong>{{ turnIcon }}</strong> {{ turnLabel }}</div>
   </div>
-  <div class="current-player-board-tabs">
-    <ion-button size="small" :fill="isActive('/deck') ? 'solid' : 'outline'" @click="go('/deck')">
-      <ion-icon slot="start" :icon="albumsOutline"></ion-icon>
-      Deck
-    </ion-button>
-    <ion-button size="small" :fill="isActive('/hand') ? 'solid' : 'outline'" @click="go('/hand')">
-      <ion-icon slot="start" :icon="handLeftOutline"></ion-icon>
-      Hand
-    </ion-button>
-    <ion-button size="small" :fill="isActive('/table') ? 'solid' : 'outline'" @click="go('/table')">
-      <ion-icon slot="start" :icon="gridOutline"></ion-icon>
-      Table
-    </ion-button>
-    <ion-button size="small" :fill="isActive('/map') ? 'solid' : 'outline'" @click="go('/map')">
-      <ion-icon slot="start" :icon="mapOutline"></ion-icon>
-      Map
-    </ion-button>
-    <ion-button size="small" :fill="isActive('/history') ? 'solid' : 'outline'" @click="go('/history')">
-      <ion-icon slot="start" :icon="timeOutline"></ion-icon>
-      History
-    </ion-button>
-    <ion-button size="small" :fill="isActive('/share') ? 'solid' : 'outline'" @click="go('/share')">
-      <ion-icon slot="start" :icon="shareSocialOutline"></ion-icon>
-      Share
-    </ion-button>
-    <ion-button v-if="showCreateButton" size="small" color="success" @click="createGameState">
-      <ion-icon slot="start" :icon="addCircleOutline"></ion-icon>
-      Create
-    </ion-button>
-  </div>
+
 </div>

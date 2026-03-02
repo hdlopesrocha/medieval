@@ -1,6 +1,6 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { IonButton, IonIcon } from '@ionic/vue'
-import { albumsOutline, handLeftOutline, gridOutline, mapOutline, shareSocialOutline, timeOutline, addCircleOutline } from 'ionicons/icons'
+import { IonButton, IonIcon, IonPopover } from '@ionic/vue'
+import { albumsOutline, handLeftOutline, gridOutline, mapOutline, shareSocialOutline, timeOutline, addCircleOutline, settingsOutline, homeOutline, expandOutline, contractOutline } from 'ionicons/icons'
 import { useRoute, useRouter } from 'vue-router'
 import engine from '../game/engineInstance'
 import { useWebrtcQrService } from '../services/webrtcQrService'
@@ -8,20 +8,27 @@ import { useGameStateService } from '../services/gameStateService'
 
 export default {
   name: 'CurrentPlayerBoard',
-  components: { IonButton, IonIcon },
+  components: { IonButton, IonIcon, IonPopover },
   setup() {
     const webrtcQr = useWebrtcQrService()
     const gameState = useGameStateService()
     const router = useRouter()
     const route = useRoute()
-    const state = ref<any>({ activePlayerId: 0, currentUser: 0, round: 1, players: [] })
+    const state = ref<any>({ activePlayerId: 0, currentUser: 0, round: 0, players: [] })
+    const settingsOpen = ref(false)
+    const isFullscreen = ref(false)
+    const settingsTriggerId = 'current-player-board-settings-trigger'
     let timer: ReturnType<typeof setInterval> | null = null
+
+    function refreshFullscreenState() {
+      isFullscreen.value = Boolean(document.fullscreenElement)
+    }
 
     function refresh() {
       const nextState: any = engine.getState() || {}
       nextState.activePlayerId = Number(nextState.activePlayerId || 0)
       nextState.currentUser = Number(nextState.currentUser ?? nextState.activePlayerId ?? 0)
-      nextState.round = Number(nextState.round || 1)
+      nextState.round = Number(nextState.round ?? 0)
       nextState.players = (nextState.players || []).map((player: any) => ({
         ...player,
         id: Number(player.id)
@@ -31,7 +38,7 @@ export default {
 
     const currentUserId = computed(() => Number(state.value.currentUser ?? state.value.activePlayerId ?? 0))
     const activePlayerId = computed(() => Number(state.value.activePlayerId ?? 0))
-    const roundNumber = computed(() => Number(state.value.round || 1))
+    const roundNumber = computed(() => Number(state.value.round ?? 0))
     const multiplayerMode = computed(() => Boolean((webrtcQr as any).isRealtimeGameActive?.value))
     const role = computed(() => String((webrtcQr as any).activeRole?.value || ''))
     const connected = computed(() => Boolean((webrtcQr as any).connectedHost?.value || (webrtcQr as any).connectedClient?.value))
@@ -88,13 +95,41 @@ export default {
       }
     }
 
+    function goFromSettings(path: string) {
+      go(path)
+    }
+
+    function toggleSettings() {
+      settingsOpen.value = !settingsOpen.value
+    }
+
+    async function toggleFullscreen() {
+      try {
+        if (document.fullscreenElement) {
+          await document.exitFullscreen()
+        } else {
+          await document.documentElement.requestFullscreen()
+        }
+      } catch (error) {
+        console.error('Fullscreen toggle failed', error)
+      } finally {
+        refreshFullscreenState()
+      }
+    }
+
+    const fullscreenLabel = computed(() => (isFullscreen.value ? 'Exit Fullscreen' : 'Fullscreen'))
+    const fullscreenIcon = computed(() => (isFullscreen.value ? contractOutline : expandOutline))
+
     onMounted(() => {
       refresh()
       timer = setInterval(refresh, 500)
+      refreshFullscreenState()
+      document.addEventListener('fullscreenchange', refreshFullscreenState)
     })
 
     onUnmounted(() => {
       if (timer) clearInterval(timer)
+      document.removeEventListener('fullscreenchange', refreshFullscreenState)
     })
 
     return {
@@ -108,13 +143,25 @@ export default {
       handLeftOutline,
       gridOutline,
       mapOutline,
+      settingsOutline,
+      homeOutline,
+      expandOutline,
+      contractOutline,
       shareSocialOutline,
       timeOutline,
       addCircleOutline,
       showCreateButton,
+      settingsOpen,
+      isFullscreen,
+      fullscreenLabel,
+      fullscreenIcon,
+      settingsTriggerId,
       go,
       isActive,
-      createGameState
+      createGameState,
+      goFromSettings,
+      toggleFullscreen,
+      toggleSettings
     }
   }
 }

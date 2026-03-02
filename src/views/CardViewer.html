@@ -1,18 +1,5 @@
 <ion-page>
-  <ion-header>
-    <ion-toolbar>
-      <ion-title>{{ titleText }}</ion-title>
-      <ion-buttons slot="end">
-        <ion-button v-if="isHandMode" @click="goDeck" color="medium">Deck</ion-button>
-        <ion-button v-else @click="goHand" color="medium">Hand</ion-button>
-        <ion-button @click="goTable" color="medium">Table</ion-button>
-        <ion-button @click="goMain" color="medium">Back to Main</ion-button>
-      </ion-buttons>
-    </ion-toolbar>
-  </ion-header>
-
   <ion-content class="ion-padding deck-bg">
-    <CurrentPlayerBoard />
     <div class="deck-grid">
       <div v-for="(c, i) in cardsToShow" :key="i" style="display:flex;flex-direction:column;gap:6px">
         <CardItem :card="c" :show-export="true" />

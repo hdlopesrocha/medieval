@@ -1,23 +1,11 @@
 <ion-page>
-    <ion-header>
-      <ion-toolbar>
-        <ion-title>Table</ion-title>
-        <ion-buttons slot="end">
-          <ion-button @click="goMain" color="medium">Back to Main</ion-button>
-          <ion-button @click="reshuffle">Reshuffle</ion-button>
-        </ion-buttons>
-      </ion-toolbar>
-    </ion-header>
-
     <ion-content class="ion-padding deck-bg">
-      <CurrentPlayerBoard />
-      <div class="table-area">
         <div v-if="!sortedCardsInPlay || sortedCardsInPlay.length === 0">No cards in play</div>
         <div v-else style="display:flex;flex-wrap:wrap;gap:12px;justify-content:center">
           <div
             v-for="g in sortedCardsInPlay"
             :key="g.id"
-            :style="`min-width:200px;border:1px solid #ddd;padding:8px;border-radius:6px;display:flex;flex-direction:column;gap:6px;${g.ownerId !== state.activePlayerId ? 'opacity:0.55;filter:grayscale(25%);' : ''}`"
+            :style="`min-width:200px;padding:8px;display:flex;flex-direction:column;${g.ownerId !== state.activePlayerId ? 'opacity:0.55;filter:grayscale(25%);' : ''}`"
           >
             <CardItem :card="g.card" :hidden="g.hidden && g.ownerId !== state.activePlayerId" />
             <div>
@@ -34,6 +22,5 @@
             </div>
           </div>
         </div>
-      </div>
     </ion-content>
   </ion-page>

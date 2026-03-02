@@ -1,11 +1,10 @@
 import { ref, onMounted } from 'vue'
-import { IonPage, IonHeader, IonToolbar, IonTitle, IonContent, IonButton } from '@ionic/vue'
+import { IonPage, IonContent, IonButton } from '@ionic/vue'
 import QRCode from 'qrcode'
-import CurrentPlayerBoard from '../components/CurrentPlayerBoard.vue'
 
 export default {
   name: 'SharePage',
-  components: { IonPage, IonHeader, IonToolbar, IonTitle, IonContent, IonButton, CurrentPlayerBoard },
+  components: { IonPage, IonContent, IonButton },
   setup() {
     const qrDataUrl = ref('')
     const shareUrl = ref('')
@@ -13,9 +12,9 @@ export default {
     function buildShareUrl() {
       try {
         const base = `${window.location.origin}${window.location.pathname}${window.location.search}`
-        shareUrl.value = `${base}#/main`
+        shareUrl.value = base
       } catch (_e) {
-        shareUrl.value = '#/main'
+        shareUrl.value = ''
       }
     }
 

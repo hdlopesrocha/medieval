@@ -3,10 +3,17 @@
 <script lang="ts" src="./Table.ts"></script>
 
 <style scoped>
-.table-area {
-  display:flex;
-  flex-wrap:wrap;
-  gap:12px;
-  justify-content:center;
+
+:deep(ion-header) {
+  overflow: visible;
+  z-index: 200;
+}
+
+:deep(.board-toolbar) {
+  overflow: visible;
+}
+
+:deep(.board-toolbar .toolbar-container) {
+  overflow: visible;
 }
 </style>

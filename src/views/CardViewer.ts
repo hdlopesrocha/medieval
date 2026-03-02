@@ -2,9 +2,8 @@ import CardItem from '../components/CardItem.vue'
 import { useGameStateService } from '../services/gameStateService'
 import deckService from '../services/deckService'
 import { computed, ref, onMounted, onUnmounted } from 'vue'
-import { IonPage, IonHeader, IonToolbar, IonTitle, IonContent, IonButton } from '@ionic/vue'
+import { IonPage, IonContent, IonButton, IonButtons } from '@ionic/vue'
 import { useRouter } from 'vue-router'
-import CurrentPlayerBoard from '../components/CurrentPlayerBoard.vue'
 import engine from '../game/engineInstance'
 
 type JsonLike = Record<string, unknown>
@@ -34,7 +33,7 @@ export default {
       default: 'deck'
     }
   },
-  components: { CardItem, IonPage, IonHeader, IonToolbar, IonTitle, IonContent, IonButton, CurrentPlayerBoard },
+  components: { CardItem, IonPage, IonContent, IonButton, IonButtons },
   setup(props: CardViewerProps) {
     const router = useRouter()
     const gameState = useGameStateService()
@@ -85,7 +84,7 @@ export default {
       if (!isHandMode.value) return
       if (!canPlayFromHand.value) return
       const playerId = handPlayerId.value
-      const result = engine.playCard(playerId, Number(index || 0))
+      const result: any = engine.playCard(playerId, Number(index || 0))
       if (!result?.ok) {
         alert('Play failed: ' + String(result?.reason || 'invalid action'))
       }
