@@ -1,5 +1,4 @@
 import Command from './Command'
-import { CardType } from '../../models/Card'
 import Card from '../../models/Card'
 import { damageTarget, noop } from './utils'
 import { buffSelf } from './abstracts'

@@ -1,5 +1,4 @@
 import Card from '../models/Card'
-import { CardType } from '../models/Card'
 import { getCommandFor } from './commands/registry'
 import gameStateService from '../services/gameStateService'
 import deckService from '../services/deckService'
@@ -52,16 +51,17 @@ export default class GameEngine {
   cardsInPlay: GameCard[] = []
   storageKey = 'tocabola_game_state_v1'
   activePlayerId: number = 0
+  currentUser: number = 0
   round: number = 1
   hands: { [playerId: number]: Card[] } = {}
   playedThisRound: { [playerId: number]: boolean } = {}
-  castleMaxHp: number = 20
+  castleMaxHp: { [playerId: number]: number } = { 0: 20, 1: 20 }
   castleHpByPlayer: { [playerId: number]: number } = { 0: 20, 1: 20 }
   gameOver: boolean = false
   loserPlayerId: number | null = null
   winnerPlayerId: number | null = null
 
-  syncGameStateService() {
+  syncGameStateService(lastAction = '') {
     gameStateService.setDeck(this.deck.map(d => d.toJSON()), 'game')
     const handsPayload: Record<string, any[]> = {}
     for (const playerId of Object.keys(this.hands || {})) {
@@ -71,11 +71,12 @@ export default class GameEngine {
     gameStateService.setWorkflow({
       started: (this.players || []).length > 0,
       activePlayerId: this.activePlayerId,
+      currentUser: this.currentUser,
       round: this.round,
-      lastAction: '',
+      lastAction: String(lastAction || ''),
       actionByPlayer: Object.fromEntries(Object.entries(this.playedThisRound || {}).map(([k, v]) => [k, v ? 'action-taken' : ''])),
       castleHpByPlayer: Object.fromEntries(Object.entries(this.castleHpByPlayer || {}).map(([k, v]) => [k, Number(v)])),
-      castleMaxHp: this.castleMaxHp,
+      castleMaxHp: Object.fromEntries(Object.entries(this.castleMaxHp || {}).map(([k, v]) => [k, Number(v)])),
       gameOver: this.gameOver,
       loserPlayerId: this.loserPlayerId,
       winnerPlayerId: this.winnerPlayerId
@@ -90,7 +91,7 @@ export default class GameEngine {
       const restored = this.loadState()
       if (!restored) {
         // persist initial deck so randomized HP is kept
-        this.saveState()
+        this.saveState('init')
       }
       this.syncGameStateService()
     } catch (e) {
@@ -133,9 +134,9 @@ export default class GameEngine {
     return { ok: true }
   }
 
-  recordActionAndEndTurn(playerId: number) {
+  recordActionAndEndTurn(playerId: number, action = 'turnAction') {
     this.playedThisRound[playerId] = true
-    this.saveState()
+    this.saveState(action)
     const et = this.endTurn()
     return { ok: true, endTurn: et }
   }
@@ -159,7 +160,8 @@ export default class GameEngine {
     const enemyId = this.players.find(p => p.id !== ownerId)?.id
     if (enemyId == null) return
     const totalAtk = attackers.reduce((sum, g) => sum + Math.max(0, Number(g.card.attackPoints || 0)), 0)
-    this.castleHpByPlayer[enemyId] = Math.max(0, (this.castleHpByPlayer[enemyId] ?? this.castleMaxHp) - totalAtk)
+    const enemyMaxHp = Number(this.castleMaxHp[enemyId] ?? 20)
+    this.castleHpByPlayer[enemyId] = Math.max(0, (this.castleHpByPlayer[enemyId] ?? enemyMaxHp) - totalAtk)
     if (this.castleHpByPlayer[enemyId] <= 0) {
       this.gameOver = true
       this.loserPlayerId = enemyId
@@ -174,7 +176,7 @@ export default class GameEngine {
       this.deck[i] = this.deck[j]
       this.deck[j] = tmp
     }
-    this.saveState()
+    this.saveState('shuffleDeck')
   }
 
   startGame(playerNames: string[] = ['Server', 'Client']) {
@@ -196,14 +198,17 @@ export default class GameEngine {
     }
     // market phase removed
     this.activePlayerId = 0
+    this.currentUser = this.activePlayerId
     this.round = 1
     this.playedThisRound = {}
+    this.castleMaxHp = {}
+    for (let i = 0; i < this.players.length; i++) this.castleMaxHp[i] = 20
     this.castleHpByPlayer = {}
-    for (let i = 0; i < this.players.length; i++) this.castleHpByPlayer[i] = this.castleMaxHp
+    for (let i = 0; i < this.players.length; i++) this.castleHpByPlayer[i] = this.castleMaxHp[i]
     this.gameOver = false
     this.loserPlayerId = null
     this.winnerPlayerId = null
-    this.saveState()
+    this.saveState('startGame')
   }
 
   // market and buy mechanics removed
@@ -216,7 +221,7 @@ export default class GameEngine {
     if (handIndex < 0 || handIndex >= hand.length) return { ok: false, reason: 'invalid hand index' }
     const card = hand.splice(handIndex, 1)[0]
     this.cardsInPlay.push({ id: uuid(), card, ownerId: playerId, position: this.getSpawnZone(card, playerId), hidden: false })
-    return this.recordActionAndEndTurn(playerId)
+    return this.recordActionAndEndTurn(playerId, 'playCard')
   }
 
   // Play a card from hand onto the board at a specific position (zone)
@@ -230,7 +235,7 @@ export default class GameEngine {
     if (position !== spawn) return { ok: false, reason: 'cards must be played in your castle' }
     const card = hand.splice(handIndex, 1)[0]
     this.cardsInPlay.push({ id: uuid(), card, ownerId: playerId, position: this.getSpawnZone(card, playerId), hidden: false })
-    return this.recordActionAndEndTurn(playerId)
+    return this.recordActionAndEndTurn(playerId, 'playCardTo')
   }
 
   // Move a specific card by up to `steps` positions (must be non-negative)
@@ -263,7 +268,7 @@ export default class GameEngine {
     } catch (e) {
       // ignore command errors
     }
-    return this.recordActionAndEndTurn(playerId)
+    return this.recordActionAndEndTurn(playerId, 'moveCard')
   }
 
   // Attack a target card with an attacker card (both must be in play)
@@ -298,17 +303,13 @@ export default class GameEngine {
     }
     // remove dead cards
     this.cardsInPlay = this.cardsInPlay.filter(g => g.card.hp > 0)
-    return this.recordActionAndEndTurn(playerId)
+    return this.recordActionAndEndTurn(playerId, 'attackCard')
   }
 
   defendCard(cardId: string, playerId: number) {
-    const can = this.canAct(playerId)
-    if (!can.ok) return can
-    const g = this.cardsInPlay.find(c => c.id === cardId)
-    if (!g) return { ok: false, reason: 'card not found' }
-    if (g.ownerId !== playerId) return { ok: false, reason: 'not your card' }
-    g.card.defensePoints = Math.max(0, Number(g.card.defensePoints || 0) + 1)
-    return this.recordActionAndEndTurn(playerId)
+    void cardId
+    void playerId
+    return { ok: false, reason: 'defend action is disabled' }
   }
 
   // Convert (steal) a target card into the attacker's ownership when attacker is a PRIEST
@@ -331,7 +332,7 @@ export default class GameEngine {
     }
     // cleanup dead units and persist
     this.cardsInPlay = this.cardsInPlay.filter(g2 => g2.card.hp > 0)
-    return this.recordActionAndEndTurn(playerId)
+    return this.recordActionAndEndTurn(playerId, 'convertCard')
   }
 
   nextPhase() {
@@ -356,34 +357,44 @@ export default class GameEngine {
 
     // remove dead cards
     this.cardsInPlay = this.cardsInPlay.filter(g => g.card.hp > 0)
-    this.saveState()
+    this.saveState('nextPhase')
   }
 
   // Advance active player (end current player's turn)
   endTurn() {
     if (this.gameOver) {
-      this.saveState()
-      return { ok: true, activePlayerId: this.activePlayerId, round: this.round, gameOver: true, winnerPlayerId: this.winnerPlayerId, loserPlayerId: this.loserPlayerId }
+      this.saveState('endTurn')
+      return { ok: true, activePlayerId: this.activePlayerId, currentUser: this.currentUser, round: this.round, gameOver: true, winnerPlayerId: this.winnerPlayerId, loserPlayerId: this.loserPlayerId }
     }
     const previousPlayerId = this.activePlayerId
     this.applyCastleDamageFromOwner(previousPlayerId)
     if (this.gameOver) {
-      this.saveState()
-      return { ok: true, activePlayerId: this.activePlayerId, round: this.round, gameOver: true, winnerPlayerId: this.winnerPlayerId, loserPlayerId: this.loserPlayerId }
+      this.saveState('endTurn')
+      return { ok: true, activePlayerId: this.activePlayerId, currentUser: this.currentUser, round: this.round, gameOver: true, winnerPlayerId: this.winnerPlayerId, loserPlayerId: this.loserPlayerId }
     }
     if (!this.players || !this.players.length) return { ok: false, reason: 'no players' }
     this.activePlayerId = (this.activePlayerId + 1) % this.players.length
+    this.currentUser = this.activePlayerId
     if (this.activePlayerId === 0) {
       this.round = (this.round || 1) + 1
       this.playedThisRound = {}
     }
-    this.saveState()
-    return { ok: true, activePlayerId: this.activePlayerId, round: this.round, gameOver: false }
+    this.saveState('endTurn')
+    return { ok: true, activePlayerId: this.activePlayerId, currentUser: this.currentUser, round: this.round, gameOver: false }
   }
 
   // Persist internal state to localStorage (browser). Silent on failure.
-  saveState() {
-    this.syncGameStateService()
+  saveState(action = 'stateUpdate') {
+    this.syncGameStateService(action)
+    gameStateService.appendHistory({
+      action: String(action || 'stateUpdate'),
+      activePlayerId: this.activePlayerId,
+      round: this.round,
+      gameOver: this.gameOver,
+      deckCount: this.deck.length,
+      cardsInPlayCount: this.cardsInPlay.length,
+      castleHpByPlayer: Object.fromEntries(Object.entries(this.castleHpByPlayer || {}).map(([k, v]) => [k, Number(v)]))
+    }, 'game')
     try {
       if (typeof window === 'undefined' || !window.localStorage) return false
       const payload = {
@@ -392,6 +403,7 @@ export default class GameEngine {
         cardsInPlay: this.cardsInPlay.map(g => ({ id: g.id, ownerId: g.ownerId, position: g.position, hidden: !!g.hidden, card: g.card.toJSON() })),
         hands: Object.fromEntries(Object.entries(this.hands || {}).map(([k, arr]) => [k, arr.map(c => c.toJSON())])),
         activePlayerId: this.activePlayerId,
+        currentUser: this.currentUser,
         round: this.round,
         playedThisRound: this.playedThisRound || {},
         castleMaxHp: this.castleMaxHp,
@@ -425,9 +437,17 @@ export default class GameEngine {
         this.hands[Number(k)] = (rawHands[k] || []).map((c: any) => Card.fromJSON(c))
       }
       this.activePlayerId = obj.activePlayerId ?? this.activePlayerId
+      this.currentUser = Number(obj.currentUser ?? this.activePlayerId)
       this.round = obj.round ?? this.round
       this.playedThisRound = obj.playedThisRound || {}
-      this.castleMaxHp = Number(obj.castleMaxHp || this.castleMaxHp)
+      if (obj.castleMaxHp && typeof obj.castleMaxHp === 'object') {
+        this.castleMaxHp = obj.castleMaxHp
+      } else {
+        const legacyMax = Number(obj.castleMaxHp || 20)
+        this.castleMaxHp = Object.fromEntries(
+          Object.keys(this.castleHpByPlayer || { 0: 0, 1: 0 }).map((k) => [Number(k), legacyMax])
+        )
+      }
       this.castleHpByPlayer = obj.castleHpByPlayer || this.castleHpByPlayer
       this.gameOver = !!obj.gameOver
       this.loserPlayerId = obj.loserPlayerId == null ? null : Number(obj.loserPlayerId)
@@ -446,6 +466,7 @@ export default class GameEngine {
       cardsInPlay: this.cardsInPlay.map(g => ({ id: g.id, ownerId: g.ownerId, position: g.position, hidden: !!g.hidden, card: g.card.toJSON() })),
       hands: Object.fromEntries(Object.entries(this.hands || {}).map(([k, arr]) => [k, arr.map((c: Card) => c.toJSON())])),
       activePlayerId: this.activePlayerId,
+      currentUser: this.currentUser,
       round: this.round,
       playedThisRound: this.playedThisRound || {},
       castleMaxHp: this.castleMaxHp,
@@ -469,14 +490,22 @@ export default class GameEngine {
         this.hands[Number(k)] = (rawHands[k] || []).map((c: any) => Card.fromJSON(c))
       }
       this.activePlayerId = obj.activePlayerId ?? this.activePlayerId
+      this.currentUser = Number(obj.currentUser ?? this.activePlayerId)
       this.round = obj.round ?? this.round
       this.playedThisRound = obj.playedThisRound || {}
-      this.castleMaxHp = Number(obj.castleMaxHp || this.castleMaxHp)
+      if (obj.castleMaxHp && typeof obj.castleMaxHp === 'object') {
+        this.castleMaxHp = obj.castleMaxHp
+      } else {
+        const legacyMax = Number(obj.castleMaxHp || 20)
+        this.castleMaxHp = Object.fromEntries(
+          Object.keys(this.castleHpByPlayer || { 0: 0, 1: 0 }).map((k) => [Number(k), legacyMax])
+        )
+      }
       this.castleHpByPlayer = obj.castleHpByPlayer || this.castleHpByPlayer
       this.gameOver = !!obj.gameOver
       this.loserPlayerId = obj.loserPlayerId == null ? null : Number(obj.loserPlayerId)
       this.winnerPlayerId = obj.winnerPlayerId == null ? null : Number(obj.winnerPlayerId)
-      this.saveState()
+      this.saveState('importState')
       return { ok: true }
     } catch (e) {
       return { ok: false, reason: String(e) }
@@ -486,6 +515,7 @@ export default class GameEngine {
   getState() {
     return {
       activePlayerId: this.activePlayerId,
+      currentUser: this.currentUser,
       round: this.round,
       deckCount: this.deck.length,
       // market removed

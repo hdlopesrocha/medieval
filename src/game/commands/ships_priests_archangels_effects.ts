@@ -1,5 +1,4 @@
 import Command from './Command'
-import { CardType } from '../../models/Card'
 import Card from '../../models/Card'
 import { damageTarget } from './utils'
 import { moveTargetToPosition, damageTargetCommand, buffTargetProperty } from './abstracts'
@@ -22,7 +21,7 @@ others.set('Wrath Archangel', { onPlayed: (engine, g, playerId, targetId) => { i
 
 others.set('Miracle', { onPlayed: (engine, g, playerId) => { for (const a of engine.cardsInPlay.filter((x: any) => x.ownerId === playerId)) a.card.hp = 10 } })
 
-others.set('Total Siege', { onPlayed: (engine, g, playerId) => { for (const s of engine.cardsInPlay.filter((x: any) => x.ownerId === playerId && x.card.type === CardType.CATAPULT)) { const enemiesInCastle = engine.cardsInPlay.filter((x: any) => x.position === engine.ZONES.length - 1 && x.ownerId !== playerId); for (const ec of enemiesInCastle) ec.card.hp = Math.max(0, ec.card.hp - (s.card.attackPoints || 0) * 2) } } })
+others.set('Total Siege', { onPlayed: (engine, g, playerId) => { for (const s of engine.cardsInPlay.filter((x: any) => x.ownerId === playerId && x.card.subCategory === 'catapult')) { const enemiesInCastle = engine.cardsInPlay.filter((x: any) => x.position === engine.ZONES.length - 1 && x.ownerId !== playerId); for (const ec of enemiesInCastle) ec.card.hp = Math.max(0, ec.card.hp - (s.card.attackPoints || 0) * 2) } } })
 
 others.set('Forced March', { onPlayed: (engine, g, playerId) => { for (const a of engine.cardsInPlay.filter((x: any) => x.ownerId === playerId)) a.card.velocity = (a.card.velocity || 0) + 1 } })
 

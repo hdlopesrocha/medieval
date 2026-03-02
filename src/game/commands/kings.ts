@@ -1,5 +1,4 @@
 import Command from './Command'
-import { CardType } from '../../models/Card'
 import Card from '../../models/Card'
 import { damageTarget, noop } from './utils'
 import {
@@ -30,7 +29,7 @@ kings.set('D. Afonso Henriques', {
 
 kings.set('D. Dinis', healUnitsAtPosition(2, 2))
 
-kings.set('D. João I', buffTypeAtPosition(CardType.SOLDIER, 1, 'defensePoints', 1))
+kings.set('D. João I', buffTypeAtPosition((card: any) => String(card?.title || '').toLowerCase().includes('soldier'), 1, 'defensePoints', 1))
 
 kings.set('D. João II', {
   onPlayed: (engine, g, playerId, targetId) => {
@@ -43,7 +42,7 @@ kings.set('D. Manuel I', { onPlayed: (engine, g, playerId) => { engine.playedThi
 
 kings.set('D. Sebastião', {
   onPlayed: (engine, g, playerId) => {
-    for (const a of engine.cardsInPlay.filter((x: any) => x.ownerId === playerId && x.card.type === CardType.CAVALRY)) a.card.attackPoints = (a.card.attackPoints || 0) + 2
+    for (const a of engine.cardsInPlay.filter((x: any) => x.ownerId === playerId && ['horseArcher', 'horsePikeman', 'heavyKnight', 'lightKnight'].includes(String(x.card?.subCategory || '')))) a.card.attackPoints = (a.card.attackPoints || 0) + 2
     g.card.hp = Math.max(0, (g.card.hp || 0) - 1)
   }
 })
@@ -59,9 +58,9 @@ kings.set('D. Pedro I', {
   }
 })
 
-kings.set('D. Afonso V', buffType(CardType.CAVALRY, 'velocity', 1))
+kings.set('D. Afonso V', buffType((card: any) => ['horseArcher', 'horsePikeman', 'heavyKnight', 'lightKnight'].includes(String(card?.subCategory || '')), 'velocity', 1))
 
-kings.set('D. João III', { onPlayed: (engine, g, playerId) => { for (const e of engine.cardsInPlay.filter((x: any) => x.ownerId !== playerId && x.card.type === CardType.PRIEST)) { e.card.attackPoints = Math.max(0, (e.card.attackPoints || 0) - 1); e.card.defensePoints = Math.max(0, (e.card.defensePoints || 0) - 1) } } })
+kings.set('D. João III', { onPlayed: (engine, g, playerId) => { for (const e of engine.cardsInPlay.filter((x: any) => x.ownerId !== playerId && x.card.category === 'priest')) { e.card.attackPoints = Math.max(0, (e.card.attackPoints || 0) - 1); e.card.defensePoints = Math.max(0, (e.card.defensePoints || 0) - 1) } } })
 
 kings.set('D. José I', healAllAllies(1))
 

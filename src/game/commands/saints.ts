@@ -1,5 +1,4 @@
 import Command from './Command'
-import { CardType } from '../../models/Card'
 import Card from '../../models/Card'
 import { damageTarget, noop } from './utils'
 import {
@@ -26,8 +25,8 @@ saints.set('Santa Rita de Cássia', reviveTopToCastle())
 saints.set('São Nuno de Santa Maria', {
 	onPlayed: (engine, g, playerId) => {
 		// buff cavalry attack +2 and defense +1
-		buffType(CardType.CAVALRY, 'attackPoints', 2).onPlayed!(engine, g, playerId)
-		buffType(CardType.CAVALRY, 'defensePoints', 1).onPlayed!(engine, g, playerId)
+		buffType((card: any) => ['horseArcher', 'horsePikeman', 'heavyKnight', 'lightKnight'].includes(String(card?.subCategory || '')), 'attackPoints', 2).onPlayed!(engine, g, playerId)
+		buffType((card: any) => ['horseArcher', 'horsePikeman', 'heavyKnight', 'lightKnight'].includes(String(card?.subCategory || '')), 'defensePoints', 1).onPlayed!(engine, g, playerId)
 	}
 })
 
@@ -41,7 +40,7 @@ saints.set('Santa Joana Princesa', { onPlayed: (engine, g, playerId, targetId) =
 
 saints.set('São Roque', buffAllAllies('defensePoints', 99))
 
-saints.set('São Teotónio', { onPlayed: (engine, g, playerId) => { engine.cardsInPlay.push({ id: String(Math.random().toString(36).slice(2,9)), card: new Card('', 'Generated Soldier', 'Summoned soldier', '', 2, 1, CardType.SOLDIER, 3, 2, 1), ownerId: playerId, position: 0, hidden: false }) } })
+saints.set('São Teotónio', { onPlayed: (engine, g, playerId) => { engine.cardsInPlay.push({ id: String(Math.random().toString(36).slice(2,9)), card: new Card('', 'Generated Soldier', 'Summoned soldier', '', 2, 1, 'noble', 3, 2, 1, 'swordShield', 'earth'), ownerId: playerId, position: 0, hidden: false }) } })
 
 saints.set('São José', buffTargetProperty('defensePoints', 2))
 

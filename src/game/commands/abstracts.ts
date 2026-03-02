@@ -1,6 +1,14 @@
 import Command from './Command'
-import { CardType } from '../../models/Card'
 import { damageTarget } from './utils'
+
+type CardMatcher = string | ((card: any) => boolean)
+
+function matchesCard(card: any, matcher: CardMatcher): boolean {
+  if (typeof matcher === 'function') return !!matcher(card)
+  const key = String(matcher || '').trim()
+  if (!key) return false
+  return String(card?.category || '') === key || String(card?.subCategory || '') === key
+}
 
 export function healAllAllies(amount: number): Command {
   return {
@@ -18,20 +26,20 @@ export function healUnitsAtPosition(pos: number, amount: number): Command {
   }
 }
 
-export function buffTypeAtPosition(type: CardType, position: number, prop: string, amount: number): Command {
+export function buffTypeAtPosition(matcher: CardMatcher, position: number, prop: string, amount: number): Command {
   return {
     onPlayed: (engine, g, playerId) => {
-      for (const a of engine.cardsInPlay.filter((x: any) => x.ownerId === playerId && x.position === position && x.card.type === type)) {
+      for (const a of engine.cardsInPlay.filter((x: any) => x.ownerId === playerId && x.position === position && matchesCard(x.card, matcher))) {
         a.card[prop] = (a.card[prop] || 0) + amount
       }
     }
   }
 }
 
-export function buffType(type: CardType, prop: string, amount: number): Command {
+export function buffType(matcher: CardMatcher, prop: string, amount: number): Command {
   return {
     onPlayed: (engine, g, playerId) => {
-      for (const a of engine.cardsInPlay.filter((x: any) => x.ownerId === playerId && x.card.type === type)) a.card[prop] = (a.card[prop] || 0) + amount
+      for (const a of engine.cardsInPlay.filter((x: any) => x.ownerId === playerId && matchesCard(x.card, matcher))) a.card[prop] = (a.card[prop] || 0) + amount
     }
   }
 }

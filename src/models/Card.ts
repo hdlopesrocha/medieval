@@ -1,16 +1,3 @@
-export enum CardType {
-  SOLDIER = 'SOLDIER',
-  ARCHER = 'ARCHER',
-  PRIEST = 'PRIEST',
-  KING = 'KING',
-  SAINT = 'SAINT',
-  SHIP = 'SHIP',
-  ARCHANGEL = 'ARCHANGEL',
-  EFFECT = 'EFFECT',
-  CAVALRY = 'CAVALRY',
-  CATAPULT = 'CATAPULT'
-}
-
 export type CardJSON = {
   imageUrl: string
   title: string
@@ -18,26 +5,26 @@ export type CardJSON = {
   effectDescription?: string
   attackPoints: number
   defensePoints: number
-  type: CardType
   hp: number
   velocity: number
   range: number
   category?: string
   subCategory?: string
   element?: 'earth' | 'water'
+  type?: string
 }
 
-function inferCategory(type: CardType): string {
-  switch (type) {
-    case CardType.KING: return 'king'
-    case CardType.PRIEST: return 'priest'
-    case CardType.SAINT: return 'saint'
-    case CardType.ARCHANGEL: return 'hero'
-    default: return 'noble'
-  }
+function normalizeLegacyTypeToCategory(type: unknown): string {
+  const key = String(type || '').trim().toUpperCase()
+  if (key === 'KING') return 'king'
+  if (key === 'PRIEST') return 'priest'
+  if (key === 'SAINT') return 'saint'
+  if (key === 'ARCHANGEL') return 'hero'
+  if (key === 'EFFECT') return 'hero'
+  return 'noble'
 }
 
-function inferSubCategory(title: string, type: CardType): string {
+function inferSubCategory(title: string): string {
   const normalized = String(title || '').toLowerCase()
   if (normalized.includes('catapult')) return 'catapult'
   if (normalized.includes('transport')) return 'transportBoat'
@@ -51,22 +38,14 @@ function inferSubCategory(title: string, type: CardType): string {
   if (normalized.includes('light') && normalized.includes('knight')) return 'lightKnight'
   if (normalized.includes('double')) return 'greatSword'
   if (normalized.includes('shield') || normalized.includes('single')) return 'swordShield'
-  if (type === CardType.SHIP) return 'warBoat'
-  if (type === CardType.CATAPULT) return 'catapult'
-  if (type === CardType.ARCHER) return 'archer'
   return 'swordShield'
 }
 
-function inferElement(type: CardType): 'earth' | 'water' {
-  return type === CardType.SHIP ? 'water' : 'earth'
+function inferElement(subCategory: string): 'earth' | 'water' {
+  const waterSet = new Set(['transportBoat', 'fishBoat', 'warBoat'])
+  return waterSet.has(String(subCategory || '')) ? 'water' : 'earth'
 }
 
-/**
- * Simple data model for a collectible card.
- * - All fields are private with public getters/setters
- * - Basic validation applied to numeric fields
- * - JSON-friendly via `toJSON()` and `fromJSON()`
- */
 export default class Card {
   private _imageUrl!: string
   private _title!: string
@@ -74,7 +53,6 @@ export default class Card {
   private _effectDescription!: string
   private _attackPoints!: number
   private _defensePoints!: number
-  private _type!: CardType
   private _hp!: number
   private _velocity!: number
   private _range!: number
@@ -89,11 +67,10 @@ export default class Card {
     effectDescription = '',
     attackPoints = 0,
     defensePoints = 0,
-    type: CardType = CardType.SOLDIER,
+    category = 'noble',
     hp = 0,
     velocity = 0,
     range = 0,
-    category?: string,
     subCategory?: string,
     element?: 'earth' | 'water'
   ) {
@@ -103,73 +80,32 @@ export default class Card {
     this.effectDescription = effectDescription
     this.attackPoints = attackPoints
     this.defensePoints = defensePoints
-    this.type = type
-    // treat constructor hp as the unit's current HP
     this.hp = hp
     this.velocity = velocity
     this.range = range
-    this.category = category || inferCategory(type)
-    this.subCategory = subCategory || inferSubCategory(title, type)
-    this.element = element || inferElement(type)
+
+    const normalizedCategory = normalizeLegacyTypeToCategory(category)
+    const resolvedSubCategory = subCategory || inferSubCategory(title)
+    this.category = normalizedCategory
+    this.subCategory = resolvedSubCategory
+    this.element = element || inferElement(this.subCategory)
   }
 
-  // Getters
-  get imageUrl(): string {
-    return this._imageUrl
-  }
+  get imageUrl(): string { return this._imageUrl }
+  get title(): string { return this._title }
+  get description(): string { return this._description }
+  get effectDescription(): string { return this._effectDescription }
+  get attackPoints(): number { return this._attackPoints }
+  get defensePoints(): number { return this._defensePoints }
+  get hp(): number { return this._hp }
+  get velocity(): number { return this._velocity }
+  get range(): number { return this._range }
+  get category(): string { return this._category }
+  get subCategory(): string { return this._subCategory }
+  get element(): 'earth' | 'water' { return this._element }
 
-  get title(): string {
-    return this._title
-  }
-
-  get description(): string {
-    return this._description
-  }
-
-  get effectDescription(): string {
-    return this._effectDescription
-  }
-
-  get attackPoints(): number {
-    return this._attackPoints
-  }
-
-  get defensePoints(): number {
-    return this._defensePoints
-  }
-
-  get type(): CardType {
-    return this._type
-  }
-
-  get hp(): number {
-    return this._hp
-  }
-
-  get velocity(): number {
-    return this._velocity
-  }
-
-  get range(): number {
-    return this._range
-  }
-
-  get category(): string {
-    return this._category
-  }
-
-  get subCategory(): string {
-    return this._subCategory
-  }
-
-  get element(): 'earth' | 'water' {
-    return this._element
-  }
-
-  // Setters with basic validation
   set imageUrl(value: string) {
     if (!value || typeof value !== 'string') {
-      // fallback to default card back image when none provided
       this._imageUrl = 'images/backface.jpg'
       return
     }
@@ -201,11 +137,6 @@ export default class Card {
     this._defensePoints = Math.trunc(value)
   }
 
-  set type(value: CardType) {
-    if (!Object.values(CardType).includes(value)) throw new TypeError('Invalid card type')
-    this._type = value
-  }
-
   set hp(value: number) {
     if (!Number.isFinite(value) || value < 0) throw new RangeError('hp must be a non-negative number')
     this._hp = Math.trunc(value)
@@ -222,7 +153,7 @@ export default class Card {
   }
 
   set category(value: string) {
-    const normalized = String(value || '').trim().toLowerCase()
+    const normalized = normalizeLegacyTypeToCategory(value)
     this._category = normalized || 'noble'
   }
 
@@ -252,7 +183,6 @@ export default class Card {
     this._element = value === 'water' ? 'water' : 'earth'
   }
 
-  // Make serialization to JSON straightforward
   toJSON(): CardJSON {
     return {
       imageUrl: this.imageUrl,
@@ -261,7 +191,6 @@ export default class Card {
       effectDescription: this.effectDescription,
       attackPoints: this.attackPoints,
       defensePoints: this.defensePoints,
-      type: this.type,
       hp: this.hp,
       velocity: this.velocity,
       range: this.range,
@@ -271,13 +200,10 @@ export default class Card {
     }
   }
 
-  // Construct from a plain object (e.g. parsed JSON)
   static fromJSON(obj: Partial<CardJSON>): Card {
     if (!obj) throw new TypeError('Invalid object')
-    const typeCandidate = obj.type && (Object.values(CardType) as string[]).includes(obj.type as string)
-      ? (obj.type as CardType)
-      : CardType.SOLDIER
     const hpVal = (typeof obj.hp === 'number') ? obj.hp : 0
+    const categoryCandidate = String(obj.category || obj.type || 'noble')
     const card = new Card(
       obj.imageUrl ?? '',
       obj.title ?? '',
@@ -285,15 +211,13 @@ export default class Card {
       obj.effectDescription ?? '',
       obj.attackPoints ?? 0,
       obj.defensePoints ?? 0,
-      typeCandidate,
+      categoryCandidate,
       hpVal,
       obj.velocity ?? 0,
       obj.range ?? 0,
-      obj.category,
       obj.subCategory,
       obj.element
     )
-    // if JSON stored a current hp value, restore it (otherwise it remains at max)
     card.hp = (typeof obj.hp === 'number') ? obj.hp : hpVal
     return card
   }
