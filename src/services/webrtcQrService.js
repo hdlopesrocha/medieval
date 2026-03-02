@@ -120,7 +120,7 @@ function createWebrtcQrService() {
     }
     hostDc.send(JSON.stringify(payload))
     gameStateService.setDeck(shuffledDeck, webrtcContext)
-    gameStateService.setWorkflow({ ownerRole: 'server', ownerPlayerId: 0 }, 'game')
+    gameStateService.setWorkflow({ ownerRole: 'server', playerId: 0 }, 'game')
     gameStateService.setPlayerCards(serverDeckKey, shuffledDeck, webrtcContext)
     gameStateService.setPlayerCards(serverHandKey, hand, webrtcContext)
     consoleLogger.value.push(`server: sent shuffled deck (${shuffledDeck.length}) and hand (${hand.length})`)
@@ -358,7 +358,7 @@ function createWebrtcQrService() {
     offerUrl.value = ''
     offerUrlQr.value = ''
     gameStateService.setDeck([], webrtcContext)
-    gameStateService.setWorkflow({ ownerRole: 'server', ownerPlayerId: 0, lastAction: 'resetServerState' }, 'game')
+    gameStateService.setWorkflow({ ownerRole: 'server', playerId: 0, lastAction: 'resetServerState' }, 'game')
     gameStateService.setPlayerCards(clientDeckKey, [], webrtcContext)
     gameStateService.setPlayerCards(clientHandKey, [], webrtcContext)
     gameStateService.setPlayerCards(serverDeckKey, [], webrtcContext)
@@ -375,7 +375,7 @@ function createWebrtcQrService() {
     answerQrPartIndex.value = 0
     answerJson.value = ''
     gameStateService.setDeck([], webrtcContext)
-    gameStateService.setWorkflow({ ownerRole: 'client', ownerPlayerId: 1, lastAction: 'resetClientState' }, 'game')
+    gameStateService.setWorkflow({ ownerRole: 'client', playerId: 1, lastAction: 'resetClientState' }, 'game')
     gameStateService.setPlayerCards(clientDeckKey, [], webrtcContext)
     gameStateService.setPlayerCards(clientHandKey, [], webrtcContext)
     gameStateService.setPlayerCards(serverDeckKey, [], webrtcContext)

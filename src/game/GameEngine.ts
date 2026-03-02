@@ -219,6 +219,8 @@ export default class GameEngine {
     this.gameOver = false
     this.loserPlayerId = null
     this.winnerPlayerId = null
+    // Set playerId for local user (default to 0, can be set externally for client)
+    gameStateService.setWorkflow({ playerId: this.currentUser }, 'game')
     this.saveState('startGame')
   }
 
@@ -240,7 +242,8 @@ export default class GameEngine {
     const can = this.canAct(playerId)
     if (!can.ok) return can
     const hand = this.hands[playerId] || []
-    if (handIndex < 0 || handIndex >= hand.length) return { ok: false, reason: 'invalid hand index' }
+    if (handIndex < 0 || handIndex >= hand.length) 
+      return { ok: false, reason: 'invalid hand index' }
     if (!Number.isFinite(position) || position < 0 || position >= ZONES.length) return { ok: false, reason: 'invalid position' }
     const spawn = this.getSpawnZone(hand[handIndex], playerId)
     if (position !== spawn) return { ok: false, reason: 'cards must be played in zone 0' }
@@ -525,6 +528,8 @@ export default class GameEngine {
       this.currentUser = Number(obj.currentUser ?? this.activePlayerId)
       this.round = obj.round ?? this.round
       this.playedThisRound = this.normalizePlayedThisRound(obj.playedThisRound)
+      // Set playerId for local user (default to currentUser, can be set externally for client)
+      gameStateService.setWorkflow({ playerId: this.currentUser }, 'game')
       if (obj.castleMaxHp && typeof obj.castleMaxHp === 'object') {
         this.castleMaxHp = obj.castleMaxHp
       } else {
