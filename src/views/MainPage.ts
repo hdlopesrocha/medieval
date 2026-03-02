@@ -16,6 +16,14 @@ export default {
       router.push('/deck')
     }
 
+    const goHandPage = () => {
+      router.push('/hand')
+    }
+
+    const goTablePage = () => {
+      router.push('/table')
+    }
+
     const goLocalPlayer = () => {
       webrtcQr.setRole('local')
       router.push('/local')
@@ -49,6 +57,6 @@ export default {
       webrtcQr.detach()
     })
 
-    return { ...webrtcQr, goViewDeck, goLocalPlayer, goRealtimeGame, goHistory, goMap, goShare, requestHistory }
+    return { ...webrtcQr, goViewDeck, goHandPage, goTablePage, goLocalPlayer, goRealtimeGame, goHistory, goMap, goShare, requestHistory }
   }
 }

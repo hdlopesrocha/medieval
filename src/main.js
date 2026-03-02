@@ -24,8 +24,8 @@ import '@ionic/vue/css/display.css'
 import './styles.css'
 
 const routes = [
-	{ path: '', component: MainPage },
-	{ path: '/', component: MainPage },
+	{ path: '', redirect: '/hand' },
+	{ path: '/', redirect: '/hand' },
 	{ path: '/deck', component: CardViewer, props: { mode: 'deck' } }
 	,{ path: '/hand', component: CardViewer, props: { mode: 'hand' } }
 	,{ path: '/table', component: Table }

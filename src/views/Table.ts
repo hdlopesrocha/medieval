@@ -3,6 +3,7 @@ import CurrentPlayerBoard from '../components/CurrentPlayerBoard.vue'
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import engine from '../game/engineInstance'
 import { IonPage, IonHeader, IonToolbar, IonTitle, IonContent, IonButton } from '@ionic/vue'
+import { useRouter } from 'vue-router'
 import { sortCardsInPlayBySlot } from '../utils/sortCardsInPlay'
 import { createEmptyGameStateView } from '../models/GameStateView'
 import type { GameStateView, InPlayCardView, PlayerView } from '../models/GameStateView'
@@ -11,6 +12,7 @@ export default {
   name: 'Table',
   components: { CardItem, CurrentPlayerBoard, IonPage, IonHeader, IonToolbar, IonTitle, IonContent, IonButton },
   setup() {
+    const router = useRouter()
     const state = ref<GameStateView>(createEmptyGameStateView())
     const sortedCardsInPlay = computed(() => sortCardsInPlayBySlot(state.value?.cardsInPlay, state.value?.activePlayerId))
     let timer: ReturnType<typeof setInterval> | null = null
@@ -34,8 +36,9 @@ export default {
       }
     }
     function refresh() { state.value = normalizedStateFromEngine() }
+    function goMain() { router.push('/main') }
     onMounted(() => { timer = setInterval(refresh, 700) })
     onUnmounted(() => { if (timer) clearInterval(timer) })
-    return { state, sortedCardsInPlay, refresh }
+    return { state, sortedCardsInPlay, refresh, goMain }
   }
 }

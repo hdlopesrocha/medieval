@@ -2,7 +2,8 @@ import CardItem from '../components/CardItem.vue'
 import { useGameStateService } from '../services/gameStateService'
 import deckService from '../services/deckService'
 import { computed } from 'vue'
-import { IonPage, IonHeader, IonToolbar, IonTitle, IonContent } from '@ionic/vue'
+import { IonPage, IonHeader, IonToolbar, IonTitle, IonContent, IonButton } from '@ionic/vue'
+import { useRouter } from 'vue-router'
 import CurrentPlayerBoard from '../components/CurrentPlayerBoard.vue'
 
 type JsonLike = Record<string, unknown>
@@ -32,8 +33,9 @@ export default {
       default: 'deck'
     }
   },
-  components: { CardItem, IonPage, IonHeader, IonToolbar, IonTitle, IonContent, CurrentPlayerBoard },
+  components: { CardItem, IonPage, IonHeader, IonToolbar, IonTitle, IonContent, IonButton, CurrentPlayerBoard },
   setup(props: CardViewerProps) {
+    const router = useRouter()
     const gameState = useGameStateService()
     gameState.ensureDeck('game')
     const currentDeck = gameState.getDeck('game')
@@ -54,6 +56,10 @@ export default {
       return gameState.getDeck('game').map(cloneCard).filter(Boolean)
     })
 
-    return { titleText, cardsToShow }
+    function goMain() {
+      router.push('/main')
+    }
+
+    return { titleText, cardsToShow, goMain }
   }
 }

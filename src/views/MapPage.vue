@@ -32,6 +32,7 @@
 
 .map-image-flipped {
   transform: scaleX(-1);
+  filter: sepia(0.7) saturate(2) hue-rotate(-28deg) brightness(1.08) contrast(1.04);
 }
 
 .zones-overlay {
