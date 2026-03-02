@@ -116,7 +116,7 @@
           <div v-for="(c, idx) in localHandCards" :key="idx" style="min-width:200px; display:flex; flex-direction:column; gap:6px" :draggable="isLocalPlayersTurn && (!state.playedThisRound || !state.playedThisRound[localPlayerId])" @dragstart.prevent="onHandDragStart($event, idx, c)">
             <CardItem :card="c" />
             <div v-if="isLocalPlayersTurn && !state.gameOver" style="display:flex;gap:6px;justify-content:flex-end">
-              <ion-button size="small" @click="playFromHand(idx)" :disabled="state.playedThisRound && state.playedThisRound[localPlayerId]">Play</ion-button>
+              <ion-button size="small" @click="playFromHand(idx)" :disabled="!isLocalPlayersTurn || (state.playedThisRound && state.playedThisRound[localPlayerId])">Play</ion-button>
             </div>
           </div>
         </div>

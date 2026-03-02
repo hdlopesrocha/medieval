@@ -52,11 +52,15 @@ export default {
     const titleText = computed(() => (props.mode === 'hand' ? 'Hand' : 'Deck'))
     const isHandMode = computed(() => props.mode === 'hand')
     const handPlayerId = computed(() => Number(viewerState.value.activePlayerId || 0))
+    // Assume localPlayerId is passed in or available in context
+    const localPlayerId = computed(() => Number(viewerState.value.playerId ?? 0))
     const canPlayFromHand = computed(() => {
       if (!isHandMode.value) return false
       if (viewerState.value.gameOver) return false
+      // Only allow play if it's this player's turn and they haven't played yet
+      if (viewerState.value.activePlayerId !== localPlayerId.value) return false
       const playedMap = viewerState.value.playedThisRound || {}
-      return !Boolean(playedMap[handPlayerId.value] ?? playedMap[String(handPlayerId.value)])
+      return !Boolean(playedMap[localPlayerId.value] ?? playedMap[String(localPlayerId.value)])
     })
 
     function refreshState() {
@@ -83,7 +87,7 @@ export default {
     function playFromHand(index: number) {
       if (!isHandMode.value) return
       if (!canPlayFromHand.value) return
-      const playerId = handPlayerId.value
+      const playerId = localPlayerId.value
       const result: any = engine.playCard(playerId, Number(index || 0))
       if (!result?.ok) {
         alert('Play failed: ' + String(result?.reason || 'invalid action'))

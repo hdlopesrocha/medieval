@@ -46,13 +46,14 @@ export default {
     const activeHandCards = computed(() => gameState.getPlayerCards(state.value.activePlayerId || 0, 'game'))
     const localHandCards = computed(() => gameState.getPlayerCards(localPlayerId.value || 0, 'game'))
     const localPlayerId = computed(() => {
-      if (!multiplayerMode.value) return Number(state.value.activePlayerId || 0)
-      return currentRole() === 'client' ? 1 : 0
+      // Always use ownerPlayerId from workflow if available
+      return Number(state.value.playerId ?? (currentRole() === 'client' ? 1 : 0))
     })
     const multiplayerMode = computed(() => Boolean(unref(realtime.isRealtimeGameActive)))
     const isServerAuthority = computed(() => multiplayerMode.value && currentRole() === 'server')
     const isClientProxy = computed(() => multiplayerMode.value && currentRole() === 'client')
     const isLocalPlayersTurn = computed(() => Number(state.value.activePlayerId || 0) === Number(localPlayerId.value || 0))
+      // Only allow play if localPlayerId === activePlayerId
     const tableCardsInPlay = computed(() => sortCardsInPlayBySlot(state.value.cardsInPlay, state.value.activePlayerId))
     const currentPlayingUserLabel = computed(() => {
       const currentId = Number(state.value.currentUser ?? state.value.activePlayerId ?? 0)
@@ -450,7 +451,7 @@ export default {
             ? (engine as any).ensureStoredState(['Server', 'Client'])
             : { restored: false }
           if (!result?.restored) {
-            gameState.setWorkflow({ ownerRole: 'local', ownerPlayerId: 0, lastAction: 'autoCreateLocalGame' }, 'game')
+            gameState.setWorkflow({ ownerRole: 'local', playerId: 0, lastAction: 'autoCreateLocalGame' }, 'game')
           }
         } catch (_e) {
           // ignore create errors and continue with current state
