@@ -36,7 +36,7 @@
           <img :src="mapImage" alt="map mirrored" class="map-image map-image-flipped" />
           <div class="zones-overlay">
             <div v-for="zoneIdx in 4" :key="`right-zone-${zoneIdx}`" class="zone-cell" :style="zoneStyle(zoneIdx - 1)">
-              <div class="zone-stack">
+              <div class="zone-stack zone-stack-rtl">
                 <div v-for="entry in cardsForZone(rightPanelZone(zoneIdx - 1))" :key="`right-card-${entry.id}`" class="played-card">
                   <MiniCardItem :card="entry.card" @select="selectCard(entry)" />
                 </div>

@@ -23,5 +23,17 @@
       <ion-icon slot="start" :icon="mapOutline"></ion-icon>
       Map
     </ion-button>
+    <ion-button size="small" :fill="isActive('/history') ? 'solid' : 'outline'" @click="go('/history')">
+      <ion-icon slot="start" :icon="timeOutline"></ion-icon>
+      History
+    </ion-button>
+    <ion-button size="small" :fill="isActive('/share') ? 'solid' : 'outline'" @click="go('/share')">
+      <ion-icon slot="start" :icon="shareSocialOutline"></ion-icon>
+      Share
+    </ion-button>
+    <ion-button v-if="showCreateButton" size="small" color="success" @click="createGameState">
+      <ion-icon slot="start" :icon="addCircleOutline"></ion-icon>
+      Create
+    </ion-button>
   </div>
 </div>

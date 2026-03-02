@@ -75,6 +75,10 @@
   align-items: flex-end;
 }
 
+.zone-stack-rtl {
+  flex-direction: row-reverse;
+}
+
 .played-card {
   width: 50%;
   height: 50%;

@@ -51,11 +51,7 @@ export default {
       const grouped: Record<number, InPlayCardView[]> = {}
       for (let index = 0; index < ZONE_COUNT; index++) grouped[index] = []
       for (const card of (state.value.cardsInPlay || [])) {
-        const activePlayerId = Number(state.value.activePlayerId || 0)
-        const originalPos = Number(card.position)
-        const pos = Number(card.ownerId) === activePlayerId
-          ? originalPos
-          : mirrorZone(originalPos)
+        const pos = Number(card.position)
         if (Number.isInteger(pos) && pos >= 0 && pos < ZONE_COUNT) grouped[pos].push(card)
       }
       return grouped
@@ -75,7 +71,7 @@ export default {
     }
 
     function rightPanelZone(localIndex: number) {
-      return PANEL_ZONE_COUNT + localIndex
+      return mirrorZone(localIndex)
     }
 
     function mirrorZone(zoneIndex: number) {

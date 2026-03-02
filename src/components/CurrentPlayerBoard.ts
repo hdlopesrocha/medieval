@@ -1,15 +1,17 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { IonButton, IonIcon } from '@ionic/vue'
-import { albumsOutline, handLeftOutline, gridOutline, mapOutline } from 'ionicons/icons'
+import { albumsOutline, handLeftOutline, gridOutline, mapOutline, shareSocialOutline, timeOutline, addCircleOutline } from 'ionicons/icons'
 import { useRoute, useRouter } from 'vue-router'
 import engine from '../game/engineInstance'
 import { useWebrtcQrService } from '../services/webrtcQrService'
+import { useGameStateService } from '../services/gameStateService'
 
 export default {
   name: 'CurrentPlayerBoard',
   components: { IonButton, IonIcon },
   setup() {
     const webrtcQr = useWebrtcQrService()
+    const gameState = useGameStateService()
     const router = useRouter()
     const route = useRoute()
     const state = ref<any>({ activePlayerId: 0, currentUser: 0, round: 1, players: [] })
@@ -32,11 +34,17 @@ export default {
     const roundNumber = computed(() => Number(state.value.round || 1))
     const multiplayerMode = computed(() => Boolean((webrtcQr as any).isRealtimeGameActive?.value))
     const role = computed(() => String((webrtcQr as any).activeRole?.value || ''))
+    const connected = computed(() => Boolean((webrtcQr as any).connectedHost?.value || (webrtcQr as any).connectedClient?.value))
     const localPlayerId = computed(() => {
       if (!multiplayerMode.value) return activePlayerId.value
       return role.value === 'client' ? 1 : 0
     })
     const isLocalPlayersTurn = computed(() => Number(localPlayerId.value) === Number(activePlayerId.value))
+    const isStateOwner = computed(() => {
+      if (!connected.value) return true
+      return role.value === 'server' || role.value === 'local'
+    })
+    const showCreateButton = computed(() => isStateOwner.value && Number(currentUserId.value) === Number(localPlayerId.value))
     const playerCastleHp = computed(() => {
       const hpByPlayer = (state.value && state.value.castleHpByPlayer) || {}
       return Number(hpByPlayer[localPlayerId.value] ?? hpByPlayer[String(localPlayerId.value)] ?? 0)
@@ -66,6 +74,20 @@ export default {
       return route.path === path
     }
 
+    function createGameState() {
+      if (!showCreateButton.value) return
+      try {
+        engine.startGame(['Server', 'Client'])
+        const ownerRole = role.value === 'server' ? 'server' : (role.value === 'client' ? 'client' : 'local')
+        const ownerPlayerId = ownerRole === 'client' ? 1 : 0
+        gameState.setWorkflow({ ownerRole, ownerPlayerId, lastAction: 'createGameState' }, 'game')
+        ;(webrtcQr as any).syncGameStateToClient?.('createGame')
+        refresh()
+      } catch (e) {
+        alert('Create failed: ' + e)
+      }
+    }
+
     onMounted(() => {
       refresh()
       timer = setInterval(refresh, 500)
@@ -86,8 +108,13 @@ export default {
       handLeftOutline,
       gridOutline,
       mapOutline,
+      shareSocialOutline,
+      timeOutline,
+      addCircleOutline,
+      showCreateButton,
       go,
-      isActive
+      isActive,
+      createGameState
     }
   }
 }

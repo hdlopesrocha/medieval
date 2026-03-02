@@ -17,9 +17,21 @@
           <div
             v-for="g in sortedCardsInPlay"
             :key="g.id"
-            :style="`min-width:160px;${g.ownerId !== state.activePlayerId ? 'opacity:0.5;filter:grayscale(25%);pointer-events:none;' : ''}`"
+            :style="`min-width:200px;border:1px solid #ddd;padding:8px;border-radius:6px;display:flex;flex-direction:column;gap:6px;${g.ownerId !== state.activePlayerId ? 'opacity:0.55;filter:grayscale(25%);' : ''}`"
           >
             <CardItem :card="g.card" :hidden="g.hidden && g.ownerId !== state.activePlayerId" />
+            <div>
+              <div><strong>Pos:</strong> {{ g.position }} ({{ zoneName(g.position) }})</div>
+              <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">
+                <template v-if="g.ownerId === state.activePlayerId && !state.gameOver">
+                  <ion-button size="small" @click="moveCardUI(g.id)">Move</ion-button>
+                  <ion-button size="small" @click="attackCardUI(g.id)">Attack</ion-button>
+                  <ion-button size="small" v-if="g.card && g.card.category === 'priest' && canConvert(g)" @click="convertCardUI(g.id)">Convert</ion-button>
+                  <ion-button size="small" @click="openAbilitySelector(g.id)">Use</ion-button>
+                  <ion-button size="small" fill="clear" @click="useAbilityNoTarget(g.id)">Use (no target)</ion-button>
+                </template>
+              </div>
+            </div>
           </div>
         </div>
       </div>
