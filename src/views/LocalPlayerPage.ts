@@ -46,7 +46,7 @@ export default {
     const activeHandCards = computed(() => gameState.getPlayerCards(state.value.activePlayerId || 0, 'game'))
     const localHandCards = computed(() => gameState.getPlayerCards(localPlayerId.value || 0, 'game'))
     const localPlayerId = computed(() => {
-      // Always use ownerPlayerId from workflow if available
+      // Always use playerId from workflow if available
       return Number(state.value.playerId ?? (currentRole() === 'client' ? 1 : 0))
     })
     const multiplayerMode = computed(() => Boolean(unref(realtime.isRealtimeGameActive)))
