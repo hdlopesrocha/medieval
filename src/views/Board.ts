@@ -1,6 +1,5 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import CardItem from '../components/CardItem.vue'
-import CurrentPlayerBoard from '../components/CurrentPlayerBoard.vue'
 import engine from '../game/engineInstance'
 import { ZONES } from '../game/GameEngine'
 import { useGameStateService } from '../services/gameStateService'
@@ -9,7 +8,7 @@ import type { GameStateView, InPlayCardView, PlayerView } from '../models/GameSt
 
 export default {
   name: 'BoardView',
-  components: { CardItem, CurrentPlayerBoard },
+  components: { CardItem },
   setup() {
     const gameState = useGameStateService()
     const zones = ZONES
@@ -30,7 +29,7 @@ export default {
         ...rawState,
         activePlayerId: Number(rawState.activePlayerId || 0),
         currentUser: Number(rawState.currentUser ?? rawState.activePlayerId ?? 0),
-        round: Number(rawState.round || 1),
+        round: Number(rawState.round ?? 0),
         players: (rawState.players || []).map((player: any): PlayerView => ({
           ...player,
           id: Number(player.id)

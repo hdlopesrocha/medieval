@@ -30,7 +30,7 @@ export function createEmptyGameStateView(): GameStateView {
   return {
     activePlayerId: 0,
     currentUser: 0,
-    round: 1,
+    round: 0,
     players: [],
     cardsInPlay: [],
     playedThisRound: {},

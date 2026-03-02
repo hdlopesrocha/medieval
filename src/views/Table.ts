@@ -1,9 +1,8 @@
 import CardItem from '../components/CardItem.vue'
-import CurrentPlayerBoard from '../components/CurrentPlayerBoard.vue'
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import engine from '../game/engineInstance'
 import { ZONES, ZONE_ELEMENTS } from '../game/GameEngine'
-import { IonPage, IonHeader, IonToolbar, IonTitle, IonContent, IonButton } from '@ionic/vue'
+import { IonPage, IonContent, IonButton } from '@ionic/vue'
 import { useRouter } from 'vue-router'
 import { sortCardsInPlayBySlot } from '../utils/sortCardsInPlay'
 import { createEmptyGameStateView } from '../models/GameStateView'
@@ -11,7 +10,7 @@ import type { GameStateView, InPlayCardView, PlayerView } from '../models/GameSt
 
 export default {
   name: 'Table',
-  components: { CardItem, CurrentPlayerBoard, IonPage, IonHeader, IonToolbar, IonTitle, IonContent, IonButton },
+  components: { CardItem, IonPage, IonContent, IonButton },
   setup() {
     const router = useRouter()
     const anyEngine = engine as any
@@ -25,7 +24,7 @@ export default {
         ...rawState,
         activePlayerId: Number(rawState.activePlayerId || 0),
         currentUser: Number(rawState.currentUser ?? rawState.activePlayerId ?? 0),
-        round: Number(rawState.round || 1),
+        round: Number(rawState.round ?? 0),
         players: (rawState.players || []).map((player: any): PlayerView => ({
           ...player,
           id: Number(player.id)

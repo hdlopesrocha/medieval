@@ -52,7 +52,7 @@ export default class GameEngine {
   storageKey = 'tocabola_game_state_v1'
   activePlayerId: number = 0
   currentUser: number = 0
-  round: number = 1
+  round: number = 0
   hands: { [playerId: number]: Card[] } = {}
   playedThisRound: { [playerId: number]: boolean } = {}
   castleMaxHp: { [playerId: number]: number } = { 0: 20, 1: 20 }
@@ -60,6 +60,18 @@ export default class GameEngine {
   gameOver: boolean = false
   loserPlayerId: number | null = null
   winnerPlayerId: number | null = null
+
+  normalizePlayedThisRound(input: any) {
+    const raw = (input && typeof input === 'object') ? input : {}
+    const normalized: { [playerId: number]: boolean } = {}
+    for (const key of Object.keys(raw)) {
+      const playerId = Number(key)
+      if (!Number.isFinite(playerId)) continue
+      const value = raw[key]
+      normalized[playerId] = value === true || value === 'action-taken' || value === 1
+    }
+    return normalized
+  }
 
   syncGameStateService(lastAction = '') {
     gameStateService.setDeck(this.deck.map(d => d.toJSON()), 'game')
@@ -129,7 +141,7 @@ export default class GameEngine {
   canAct(playerId: number) {
     if (this.gameOver) return { ok: false, reason: 'game is over' }
     if (playerId !== this.activePlayerId) return { ok: false, reason: 'not your turn' }
-    if (this.playedThisRound[playerId]) return { ok: false, reason: 'already played this round' }
+    if (Boolean(this.playedThisRound[playerId])) return { ok: false, reason: 'already played this round' }
     return { ok: true }
   }
 
@@ -198,7 +210,7 @@ export default class GameEngine {
     // market phase removed
     this.activePlayerId = 0
     this.currentUser = this.activePlayerId
-    this.round = 1
+    this.round = 0
     this.playedThisRound = {}
     this.castleMaxHp = {}
     for (let i = 0; i < this.players.length; i++) this.castleMaxHp[i] = 20
@@ -374,8 +386,9 @@ export default class GameEngine {
     if (!this.players || !this.players.length) return { ok: false, reason: 'no players' }
     this.activePlayerId = (this.activePlayerId + 1) % this.players.length
     this.currentUser = this.activePlayerId
+    this.playedThisRound[this.activePlayerId] = false
     if (this.activePlayerId === 0) {
-      this.round = (this.round || 1) + 1
+      this.round = (Number.isFinite(this.round) ? this.round : 0) + 1
       this.playedThisRound = {}
     }
     this.saveState('endTurn')
@@ -458,7 +471,7 @@ export default class GameEngine {
       this.activePlayerId = obj.activePlayerId ?? this.activePlayerId
       this.currentUser = Number(obj.currentUser ?? this.activePlayerId)
       this.round = obj.round ?? this.round
-      this.playedThisRound = obj.playedThisRound || {}
+      this.playedThisRound = this.normalizePlayedThisRound(obj.playedThisRound)
       if (obj.castleMaxHp && typeof obj.castleMaxHp === 'object') {
         this.castleMaxHp = obj.castleMaxHp
       } else {
@@ -511,7 +524,7 @@ export default class GameEngine {
       this.activePlayerId = obj.activePlayerId ?? this.activePlayerId
       this.currentUser = Number(obj.currentUser ?? this.activePlayerId)
       this.round = obj.round ?? this.round
-      this.playedThisRound = obj.playedThisRound || {}
+      this.playedThisRound = this.normalizePlayedThisRound(obj.playedThisRound)
       if (obj.castleMaxHp && typeof obj.castleMaxHp === 'object') {
         this.castleMaxHp = obj.castleMaxHp
       } else {
