@@ -1,7 +1,7 @@
 <ion-page>
   <ion-content class="ion-padding deck-bg">
     <div class="deck-grid">
-      <div v-for="(c, i) in cardsToShow" :key="i" style="display:flex;flex-direction:column;gap:6px">
+      <div v-for="(c, i) in cardsToShow" :key="i" class="deck-card-slot">
         <CardItem :card="c" :show-export="true" />
         <ion-button v-if="isHandMode" size="small" :disabled="!canPlayFromHand" @click="playFromHand(i)">Play</ion-button>
       </div>
