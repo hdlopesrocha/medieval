@@ -87,9 +87,11 @@ export default {
       try {
         engine.startGame(['Server', 'Client'])
         const ownerRole = role.value === 'server' ? 'server' : (role.value === 'client' ? 'client' : 'local')
-        const ownerPlayerId = ownerRole === 'client' ? 1 : 0
-        gameState.setWorkflow({ ownerRole, ownerPlayerId, lastAction: 'createGameState' }, 'game')
+        const playerId = ownerRole === 'client' ? 1 : 0
+        gameState.setWorkflow({ ownerRole, playerId, lastAction: 'createGameState' }, 'game')
         ;(webrtcQr as any).syncGameStateToClient?.('createGame')
+        // Set currentUser and activePlayerId for local context
+        gameState.setWorkflow({ currentUser: playerId, activePlayerId: 0 }, 'game')
         refresh()
       } catch (e) {
         alert('Create failed: ' + e)
