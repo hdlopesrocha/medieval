@@ -18,6 +18,7 @@ export default {
     const settingsOpen = ref(false)
     const isFullscreen = ref(false)
     const settingsTriggerId = 'current-player-board-settings-trigger'
+    const boardVisible = ref(true)
     let timer: ReturnType<typeof setInterval> | null = null
 
     function refreshFullscreenState() {
@@ -103,6 +104,10 @@ export default {
       settingsOpen.value = !settingsOpen.value
     }
 
+    function toggleBoardVisible() {
+      boardVisible.value = !boardVisible.value
+    }
+
     async function toggleFullscreen() {
       try {
         if (document.fullscreenElement) {
@@ -161,7 +166,9 @@ export default {
       createGameState,
       goFromSettings,
       toggleFullscreen,
-      toggleSettings
+      toggleSettings,
+      boardVisible,
+      toggleBoardVisible
     }
   }
 }
