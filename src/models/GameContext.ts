@@ -19,13 +19,13 @@ export class GameContext {
 
   constructor(init?: Partial<GameContext>) {
     if (init) {
-      if (init.deck) this.deck = [...init.deck];
-      if (init.playersList) this.playersList = init.playersList;
-      if (init.playerId !== undefined) this.playerId = init.playerId;
-      if (init.ownerRole !== undefined) this.ownerRole = init.ownerRole;
-      if (init.actionByPlayer !== undefined) this.actionByPlayer = { ...init.actionByPlayer };
-      if (init.castleHpByPlayer !== undefined) this.castleHpByPlayer = { ...init.castleHpByPlayer };
-      if (init.castleMaxHp !== undefined) this.castleMaxHp = { ...init.castleMaxHp };
+      this.deck = [...init.deck];
+      this.playersList = init.playersList;
+      this.playerId = init.playerId;
+      this.ownerRole = init.ownerRole;
+      this.actionByPlayer = { ...init.actionByPlayer };
+      this.castleHpByPlayer = { ...init.castleHpByPlayer };
+      this.castleMaxHp = { ...init.castleMaxHp };
     }
   }
   // ...existing methods...

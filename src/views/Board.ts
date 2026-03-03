@@ -1,7 +1,6 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import CardItem from '../components/CardItem.vue'
 import engine from '../game/engineInstance'
-import gameState from '../services/gameState'
 import { ZONES } from '../game/GameEngine'
 // import GameContext from '../models/GameContext' if needed
 import type { GameContext } from '../models/GameContext'
@@ -62,9 +61,6 @@ export default {
       return (state.value.cardsInPlay || []).filter((g) => g.position === idx)
     }
 
-    function handCountForPlayer(p: number) {
-      return gameState.getPlayerCards(p).length
-    }
 
     function onDragStart(evt: DragEvent, cardId: string) {
       const g = (engine.cardsInPlay as any[]).find(x => x.id === cardId)
@@ -124,7 +120,7 @@ export default {
         const playerId = Number(parts[1])
         const handIndex = Number(parts[2])
         if (playerId !== state.value.activePlayerId) return alert('not your hand')
-        const hand = gameState.getPlayerCards(playerId)
+        const hand = engine.gameContext.getPlayerCards(playerId)
         window.alert('DEBUG: playerId ' + playerId + ' handIndex ' + handIndex + ' handCount ' + hand.length + ' hand ' + JSON.stringify(hand))
         console.error('DEBUG: playerId', playerId, 'handIndex', handIndex, 'handCount', hand.length, 'hand', hand)
         if (handIndex < 0 || handIndex >= hand.length) 
