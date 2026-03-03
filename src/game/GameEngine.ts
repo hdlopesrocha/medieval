@@ -50,8 +50,8 @@ function uuid() {
 
 export default class GameEngine {
   ZONES = ZONES
-  deck: Card[] = []
   // market removed: cards are drawn/played directly from deck
+  deck: Card[] = []
   players: PlayerState[] = []
   cardsInPlay: GameCard[] = []
   playerId: number = 0
@@ -217,9 +217,9 @@ export default class GameEngine {
     if (!Object.prototype.hasOwnProperty.call(handsPayload, '0')) handsPayload['0'] = []
     if (!Object.prototype.hasOwnProperty.call(handsPayload, '1')) handsPayload['1'] = []
     this.gameContext.setAllPlayerCards(handsPayload)
-    this.gameContext.started = true
     this.gameContext.playerId = this.playerId
     // market phase removed
+    this.gameWorkflow.started = true
     this.gameWorkflow.activePlayerId = 0
     this.playerId = this.gameWorkflow.activePlayerId
     this.round = 0
