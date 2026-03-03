@@ -94,7 +94,7 @@
           <div>
             <div><strong>Pos:</strong> {{ g.position }} ({{ zoneName(g.position) }})</div>
             <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">
-              <template v-if="g.ownerId === state.activePlayerId && isLocalPlayersTurn && !state.gameOver">
+              <template v-if="g.ownerId === localPlayerId && localPlayerId === state.activePlayerId && !state.gameOver">
                 <ion-button size="small" @click="moveCardUI(g.id)">Move</ion-button>
                 <ion-button size="small" @click="attackCardUI(g.id)">Attack</ion-button>
                 <ion-button size="small" v-if="g.card && g.card.category === 'priest' && canConvert(g)" @click="convertCardUI(g.id)">Convert</ion-button>
@@ -115,8 +115,8 @@
         <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px">
           <div v-for="(c, idx) in localHandCards" :key="idx" style="min-width:200px; display:flex; flex-direction:column; gap:6px" :draggable="isLocalPlayersTurn && (!state.playedThisRound || !state.playedThisRound[localPlayerId])" @dragstart.prevent="onHandDragStart($event, idx, c)">
             <CardItem :card="c" />
-            <div v-if="isLocalPlayersTurn && !state.gameOver" style="display:flex;gap:6px;justify-content:flex-end">
-              <ion-button size="small" @click="playFromHand(idx)" :disabled="!isLocalPlayersTurn || (state.playedThisRound && state.playedThisRound[localPlayerId])">Play</ion-button>
+            <div v-if="localPlayerId === state.activePlayerId && !state.gameOver" style="display:flex;gap:6px;justify-content:flex-end">
+              <ion-button size="small" @click="playFromHand(idx)" :disabled="localPlayerId !== state.activePlayerId || (state.playedThisRound && state.playedThisRound[localPlayerId])">Play</ion-button>
             </div>
           </div>
         </div>

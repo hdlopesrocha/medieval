@@ -51,19 +51,19 @@ export default class GameEngine {
   cardsInPlay: GameCard[] = []
   storageKey = 'tocabola_game_state_v1'
   activePlayerId: number = 0
-  currentUser: number = 0
+  playerId: number = 0
   round: number = 0
-  hands: { [playerId: number]: Card[] } = {}
-  playedThisRound: { [playerId: number]: boolean } = {}
-  castleMaxHp: { [playerId: number]: number } = { 0: 20, 1: 20 }
-  castleHpByPlayer: { [playerId: number]: number } = { 0: 20, 1: 20 }
+  hands: { [p: number]: Card[] } = {}
+  playedThisRound: { [p: number]: boolean } = {}
+  castleMaxHp: { [p: number]: number } = { 0: 20, 1: 20 }
+  castleHpByPlayer: { [p: number]: number } = { 0: 20, 1: 20 }
   gameOver: boolean = false
   loserPlayerId: number | null = null
   winnerPlayerId: number | null = null
 
   normalizePlayedThisRound(input: any) {
     const raw = (input && typeof input === 'object') ? input : {}
-    const normalized: { [playerId: number]: boolean } = {}
+    const normalized: { [p: number]: boolean } = {}
     for (const key of Object.keys(raw)) {
       const playerId = Number(key)
       if (!Number.isFinite(playerId)) continue
@@ -83,7 +83,7 @@ export default class GameEngine {
     gameStateService.setWorkflow({
       started: (this.players || []).length > 0,
       activePlayerId: this.activePlayerId,
-      currentUser: this.currentUser,
+      playerId: this.playerId,
       round: this.round,
       lastAction: String(lastAction || ''),
       actionByPlayer: Object.fromEntries(Object.entries(this.playedThisRound || {}).map(([k, v]) => [k, v ? 'action-taken' : ''])),
@@ -138,15 +138,15 @@ export default class GameEngine {
     return String((card as any)?.element || 'earth') === 'water'
   }
 
-  canAct(playerId: number) {
+  canAct(p: number) {
     if (this.gameOver) return { ok: false, reason: 'game is over' }
-    if (playerId !== this.activePlayerId) return { ok: false, reason: 'not your turn' }
-    if (Boolean(this.playedThisRound[playerId])) return { ok: false, reason: 'already played this round' }
+    if (p !== this.activePlayerId) return { ok: false, reason: 'not your turn' }
+    if (Boolean(this.playedThisRound[p])) return { ok: false, reason: 'already played this round' }
     return { ok: true }
   }
 
-  recordActionAndEndTurn(playerId: number, action = 'turnAction') {
-    this.playedThisRound[playerId] = true
+  recordActionAndEndTurn(p: number, action = 'turnAction') {
+    this.playedThisRound[p] = true
     this.saveState(action)
     const et = this.endTurn()
     return { ok: true, endTurn: et }
@@ -209,7 +209,7 @@ export default class GameEngine {
     }
     // market phase removed
     this.activePlayerId = 0
-    this.currentUser = this.activePlayerId
+    this.playerId = this.activePlayerId
     this.round = 0
     this.playedThisRound = {}
     this.castleMaxHp = {}
@@ -220,49 +220,49 @@ export default class GameEngine {
     this.loserPlayerId = null
     this.winnerPlayerId = null
     // Set playerId for local user (default to 0, can be set externally for client)
-    gameStateService.setWorkflow({ playerId: this.currentUser }, 'game')
+    gameStateService.setWorkflow({ playerId: this.playerId }, 'game')
     this.saveState('startGame')
   }
 
   // market and buy mechanics removed
 
   // Play a card from hand onto the board (position 0). Reveals the card.
-  playCard(playerId: number, handIndex: number) {
-    const can = this.canAct(playerId)
+  playCard(p: number, handIndex: number) {
+    const can = this.canAct(p)
     if (!can.ok) return can
-    const hand = this.hands[playerId] || []
+    const hand = this.hands[p] || []
     if (handIndex < 0 || handIndex >= hand.length) return { ok: false, reason: 'invalid hand index' }
     const card = hand.splice(handIndex, 1)[0]
-    this.cardsInPlay.push({ id: uuid(), card, ownerId: playerId, position: this.getSpawnZone(card, playerId), hidden: false })
-    return this.recordActionAndEndTurn(playerId, 'playCard')
+    this.cardsInPlay.push({ id: uuid(), card, ownerId: p, position: this.getSpawnZone(card, p), hidden: false })
+    return this.recordActionAndEndTurn(p, 'playCard')
   }
 
   // Play a card from hand onto the board at a specific position (zone)
-  playCardTo(playerId: number, handIndex: number, position: number) {
-    const can = this.canAct(playerId)
+  playCardTo(p: number, handIndex: number, position: number) {
+    const can = this.canAct(p)
     if (!can.ok) return can
-    const hand = this.hands[playerId] || []
+    const hand = this.hands[p] || []
     if (handIndex < 0 || handIndex >= hand.length) 
       return { ok: false, reason: 'invalid hand index' }
     if (!Number.isFinite(position) || position < 0 || position >= ZONES.length) return { ok: false, reason: 'invalid position' }
-    const spawn = this.getSpawnZone(hand[handIndex], playerId)
+    const spawn = this.getSpawnZone(hand[handIndex], p)
     if (position !== spawn) return { ok: false, reason: 'cards must be played in zone 0' }
     const card = hand.splice(handIndex, 1)[0]
-    this.cardsInPlay.push({ id: uuid(), card, ownerId: playerId, position: this.getSpawnZone(card, playerId), hidden: false })
-    return this.recordActionAndEndTurn(playerId, 'playCardTo')
+    this.cardsInPlay.push({ id: uuid(), card, ownerId: p, position: this.getSpawnZone(card, this.playerId), hidden: false })
+    return this.recordActionAndEndTurn(p, 'playCardTo')
   }
 
   // Move a specific card by up to `steps` positions (must be non-negative)
-  moveCard(cardId: string, playerId: number, steps: number) {
-    const can = this.canAct(playerId)
+  moveCard(cardId: string, p: number, steps: number) {
+    const can = this.canAct(p)
     if (!can.ok) return can
     const g = this.cardsInPlay.find(c => c.id === cardId)
     if (!g) return { ok: false, reason: 'card not found' }
-    if (g.ownerId !== playerId) return { ok: false, reason: 'not your card' }
+    if (g.ownerId !== p) return { ok: false, reason: 'not your card' }
     if (!Number.isFinite(steps) || steps < 0) return { ok: false, reason: 'invalid steps' }
     const maxSteps = g.card.velocity ?? 0
     if (steps > maxSteps) return { ok: false, reason: 'exceeds velocity' }
-    const direction = playerId === 0 ? 1 : -1
+    const direction = p === 0 ? 1 : -1
     const pathPositions: number[] = []
     let next = g.position
     for (let i = 0; i < Math.trunc(steps); i++) {
@@ -278,21 +278,21 @@ export default class GameEngine {
     // trigger onMoved command if present
     try {
       const cmd = getCommandFor(g.card.title || '')
-      if (cmd && cmd.onMoved) cmd.onMoved(this, g, playerId, steps)
+      if (cmd && cmd.onMoved) cmd.onMoved(this, g, p, steps)
     } catch (e) {
       // ignore command errors
     }
-    return this.recordActionAndEndTurn(playerId, 'moveCard')
+    return this.recordActionAndEndTurn(p, 'moveCard')
   }
 
   // Attack a target card with an attacker card (both must be in play)
-  attackCard(attackerId: string, targetId: string, playerId: number) {
-    const can = this.canAct(playerId)
+  attackCard(attackerId: string, targetId: string, p: number) {
+    const can = this.canAct(p)
     if (!can.ok) return can
     const attacker = this.cardsInPlay.find(c => c.id === attackerId)
     const target = this.cardsInPlay.find(c => c.id === targetId)
     if (!attacker || !target) return { ok: false, reason: 'card not found' }
-    if (attacker.ownerId !== playerId) return { ok: false, reason: 'not your attacker' }
+    if (attacker.ownerId !== p) return { ok: false, reason: 'not your attacker' }
     const dist = Math.abs(target.position - attacker.position)
     if (dist > (attacker.card.range ?? 0)) return { ok: false, reason: 'target out of range' }
     // allow attacker command to override attack behavior
@@ -300,7 +300,7 @@ export default class GameEngine {
     try {
       const cmd = getCommandFor(attacker.card.title || '')
       if (cmd && cmd.onAttack) {
-        const res = cmd.onAttack(this, attacker, target, playerId)
+        const res = cmd.onAttack(this, attacker, target, p)
         if (res && res.handled) handled = true
         if (res && typeof res.overrideDamage === 'number') {
           const ignore = !!res.ignoreDefense
@@ -317,26 +317,26 @@ export default class GameEngine {
     }
     // remove dead cards
     this.cardsInPlay = this.cardsInPlay.filter(g => g.card.hp > 0)
-    return this.recordActionAndEndTurn(playerId, 'attackCard')
+    return this.recordActionAndEndTurn(p, 'attackCard')
   }
 
-  defendCard(cardId: string, playerId: number) {
+  defendCard(cardId: string, p: number) {
     void cardId
-    void playerId
+    void p
     return { ok: false, reason: 'defend action is disabled' }
   }
 
   // Convert (steal) a target card into the attacker's ownership when attacker is a PRIEST
-  convertCard(attackerId: string, targetId: string, playerId: number) {
-    const can = this.canAct(playerId)
+  convertCard(attackerId: string, targetId: string, p: number) {
+    const can = this.canAct(p)
     if (!can.ok) return can
     const g = this.cardsInPlay.find(c => c.id === attackerId)
     if (!g) return { ok: false, reason: 'card not found' }
-    if (g.ownerId !== playerId) return { ok: false, reason: 'not your card' }
+    if (g.ownerId !== p) return { ok: false, reason: 'not your card' }
     try {
       const cmd = getCommandFor(g.card.title || '')
       if (cmd && cmd.onPlayed) {
-        const res = cmd.onPlayed(this, g, playerId, targetId)
+        const res = cmd.onPlayed(this, g, p, targetId)
         if (res && res.ok === false) return res
       } else {
         return { ok: false, reason: 'ability not implemented' }
@@ -346,7 +346,7 @@ export default class GameEngine {
     }
     // cleanup dead units and persist
     this.cardsInPlay = this.cardsInPlay.filter(g2 => g2.card.hp > 0)
-    return this.recordActionAndEndTurn(playerId, 'convertCard')
+    return this.recordActionAndEndTurn(p, 'convertCard')
   }
 
   nextPhase() {
@@ -378,24 +378,24 @@ export default class GameEngine {
   endTurn() {
     if (this.gameOver) {
       this.saveState('endTurn')
-      return { ok: true, activePlayerId: this.activePlayerId, currentUser: this.currentUser, round: this.round, gameOver: true, winnerPlayerId: this.winnerPlayerId, loserPlayerId: this.loserPlayerId }
+      return { ok: true, activePlayerId: this.activePlayerId, playerId: this.playerId, round: this.round, gameOver: true, winnerPlayerId: this.winnerPlayerId, loserPlayerId: this.loserPlayerId }
     }
     const previousPlayerId = this.activePlayerId
     this.applyCastleDamageFromOwner(previousPlayerId)
     if (this.gameOver) {
       this.saveState('endTurn')
-      return { ok: true, activePlayerId: this.activePlayerId, currentUser: this.currentUser, round: this.round, gameOver: true, winnerPlayerId: this.winnerPlayerId, loserPlayerId: this.loserPlayerId }
+      return { ok: true, activePlayerId: this.activePlayerId, playerId: this.playerId, round: this.round, gameOver: true, winnerPlayerId: this.winnerPlayerId, loserPlayerId: this.loserPlayerId }
     }
     if (!this.players || !this.players.length) return { ok: false, reason: 'no players' }
     this.activePlayerId = (this.activePlayerId + 1) % this.players.length
-    this.currentUser = this.activePlayerId
+    this.playerId = this.activePlayerId
     this.playedThisRound[this.activePlayerId] = false
     if (this.activePlayerId === 0) {
       this.round = (Number.isFinite(this.round) ? this.round : 0) + 1
       this.playedThisRound = {}
     }
     this.saveState('endTurn')
-    return { ok: true, activePlayerId: this.activePlayerId, currentUser: this.currentUser, round: this.round, gameOver: false }
+    return { ok: true, activePlayerId: this.activePlayerId, playerId: this.playerId     , round: this.round, gameOver: false }
   }
 
   // Persist internal state to localStorage (browser). Silent on failure.
@@ -418,7 +418,7 @@ export default class GameEngine {
         cardsInPlay: this.cardsInPlay.map(g => ({ id: g.id, ownerId: g.ownerId, position: g.position, hidden: !!g.hidden, card: g.card.toJSON() })),
         hands: Object.fromEntries(Object.entries(this.hands || {}).map(([k, arr]) => [k, arr.map(c => c.toJSON())])),
         activePlayerId: this.activePlayerId,
-        currentUser: this.currentUser,
+        playerId: this.playerId,
         round: this.round,
         playedThisRound: this.playedThisRound || {},
         castleMaxHp: this.castleMaxHp,
@@ -472,7 +472,7 @@ export default class GameEngine {
         this.hands[Number(k)] = (rawHands[k] || []).map((c: any) => Card.fromJSON(c))
       }
       this.activePlayerId = obj.activePlayerId ?? this.activePlayerId
-      this.currentUser = Number(obj.currentUser ?? this.activePlayerId)
+      this.playerId = Number(obj.playerId ?? this.activePlayerId)
       this.round = obj.round ?? this.round
       this.playedThisRound = this.normalizePlayedThisRound(obj.playedThisRound)
       if (obj.castleMaxHp && typeof obj.castleMaxHp === 'object') {
@@ -501,7 +501,7 @@ export default class GameEngine {
       cardsInPlay: this.cardsInPlay.map(g => ({ id: g.id, ownerId: g.ownerId, position: g.position, hidden: !!g.hidden, card: g.card.toJSON() })),
       hands: Object.fromEntries(Object.entries(this.hands || {}).map(([k, arr]) => [k, arr.map((c: Card) => c.toJSON())])),
       activePlayerId: this.activePlayerId,
-      currentUser: this.currentUser,
+      playerId: this.playerId,
       round: this.round,
       playedThisRound: this.playedThisRound || {},
       castleMaxHp: this.castleMaxHp,
@@ -525,11 +525,11 @@ export default class GameEngine {
         this.hands[Number(k)] = (rawHands[k] || []).map((c: any) => Card.fromJSON(c))
       }
       this.activePlayerId = obj.activePlayerId ?? this.activePlayerId
-      this.currentUser = Number(obj.currentUser ?? this.activePlayerId)
+      this.playerId = Number(obj.playerId ?? this.activePlayerId)
       this.round = obj.round ?? this.round
       this.playedThisRound = this.normalizePlayedThisRound(obj.playedThisRound)
-      // Set playerId for local user (default to currentUser, can be set externally for client)
-      gameStateService.setWorkflow({ playerId: this.currentUser }, 'game')
+      // Set playerId for local user (default to playerId, can be set externally for client)
+      gameStateService.setWorkflow({ playerId: this.playerId }, 'game')
       if (obj.castleMaxHp && typeof obj.castleMaxHp === 'object') {
         this.castleMaxHp = obj.castleMaxHp
       } else {
@@ -552,7 +552,7 @@ export default class GameEngine {
   getState() {
     return {
       activePlayerId: this.activePlayerId,
-      currentUser: this.currentUser,
+      playerId: this.playerId,
       round: this.round,
       deckCount: this.deck.length,
       // market removed

@@ -4,7 +4,7 @@ import deckService from './deckService'
 type TurnWorkflowState = {
   started: boolean
   activePlayerId: number
-  currentUser: number
+  playerId: number
   playerId: number | null
   ownerRole: string
   round: number
@@ -43,8 +43,8 @@ function createDefaultWorkflowState(): TurnWorkflowState {
   return {
     started: false,
     activePlayerId: 0,
-    currentUser: 0,
-    playerId: null,
+    playerId: 0,
+    playerId: 0,
     ownerRole: '',
     round: 0,
     lastAction: '',
@@ -103,12 +103,9 @@ function cloneWorkflow(workflow: Partial<TurnWorkflowState> | null | undefined):
   return {
     started: Boolean(workflow.started),
     activePlayerId: Number.isFinite(workflow.activePlayerId) ? Number(workflow.activePlayerId) : base.activePlayerId,
-    currentUser: Number.isFinite((workflow as any).currentUser)
-      ? Number((workflow as any).currentUser)
-      : (Number.isFinite(workflow.activePlayerId) ? Number(workflow.activePlayerId) : base.currentUser),
     playerId: Number.isFinite((workflow as any).playerId)
       ? Number((workflow as any).playerId)
-      : base.playerId,
+      : (Number.isFinite(workflow.activePlayerId) ? Number(workflow.activePlayerId) : base.playerId),
     ownerRole: String((workflow as any).ownerRole || base.ownerRole || ''),
     round: Number.isFinite(workflow.round) ? Number(workflow.round) : base.round,
     lastAction: String(workflow.lastAction || ''),
