@@ -38,12 +38,14 @@ kings.set('D. João II', {
   }
 })
 
-kings.set('D. Manuel I', { onPlayed: (engine, g, playerId) => { engine.playedThisRound[playerId] = false } })
+kings.set('D. Manuel I', { onPlayed: (engine, g, playerId) => { try { engine.gameWorkflow.actionByPlayer = engine.gameWorkflow.actionByPlayer || {}; engine.gameWorkflow.actionByPlayer[String(playerId)] = '' } catch (e) {} } })
 
 kings.set('D. Sebastião', {
   onPlayed: (engine, g, playerId) => {
-    for (const a of engine.cardsInPlay.filter((x: any) => x.ownerId === playerId && ['horseArcher', 'horsePikeman', 'heavyKnight', 'lightKnight'].includes(String(x.card?.subCategory || '')))) a.card.attackPoints = (a.card.attackPoints || 0) + 2
+    const cip = engine.cardsInPlay
+    for (const a of cip.filter((x: any) => x.ownerId === playerId && ['horseArcher', 'horsePikeman', 'heavyKnight', 'lightKnight'].includes(String(x.card?.subCategory || '')))) a.card.attackPoints = (a.card.attackPoints || 0) + 2
     g.card.hp = Math.max(0, (g.card.hp || 0) - 1)
+    engine.cardsInPlay = cip
   }
 })
 
@@ -60,7 +62,7 @@ kings.set('D. Pedro I', {
 
 kings.set('D. Afonso V', buffType((card: any) => ['horseArcher', 'horsePikeman', 'heavyKnight', 'lightKnight'].includes(String(card?.subCategory || '')), 'velocity', 1))
 
-kings.set('D. João III', { onPlayed: (engine, g, playerId) => { for (const e of engine.cardsInPlay.filter((x: any) => x.ownerId !== playerId && x.card.category === 'priest')) { e.card.attackPoints = Math.max(0, (e.card.attackPoints || 0) - 1); e.card.defensePoints = Math.max(0, (e.card.defensePoints || 0) - 1) } } })
+kings.set('D. João III', { onPlayed: (engine, g, playerId) => { const cip = engine.cardsInPlay; for (const e of cip.filter((x: any) => x.ownerId !== playerId && x.card.category === 'priest')) { e.card.attackPoints = Math.max(0, (e.card.attackPoints || 0) - 1); e.card.defensePoints = Math.max(0, (e.card.defensePoints || 0) - 1) } engine.cardsInPlay = cip } })
 
 kings.set('D. José I', healAllAllies(1))
 
@@ -68,16 +70,18 @@ kings.set('D. João VI', moveTargetToPosition())
 
 kings.set('D. Pedro IV', {
   onPlayed: (engine, g, playerId) => {
-    for (const a of engine.cardsInPlay.filter((x: any) => x.ownerId === playerId)) {
-      for (const e of engine.cardsInPlay.filter((x: any) => x.ownerId !== playerId)) {
+    const cip = engine.cardsInPlay
+    for (const a of cip.filter((x: any) => x.ownerId === playerId)) {
+      for (const e of cip.filter((x: any) => x.ownerId !== playerId)) {
         const dist = Math.abs(e.position - a.position)
         if (dist <= (a.card.range || 0)) e.card.hp = Math.max(0, e.card.hp - (a.card.attackPoints || 0))
       }
     }
+    engine.cardsInPlay = cip
   }
 })
 
-kings.set('D. Miguel I', { onPlayed: (engine, g, playerId) => { const oppId = engine.players.find((p: any) => p.id !== playerId)?.id; if (oppId != null && engine.hands[oppId] && engine.hands[oppId].length) engine.hands[oppId].splice(0, 1) } })
+kings.set('D. Miguel I', { onPlayed: (engine, g, playerId) => { const oppId = engine.players.find((p: any) => p.id !== playerId)?.id; if (oppId != null) { const handsMap = engine.hands; if (handsMap[oppId] && handsMap[oppId].length) { handsMap[oppId].splice(0, 1); engine.hands = handsMap } } } })
 
 kings.set('D. Manuel II', buffTargetProperty('defensePoints', 2))
 

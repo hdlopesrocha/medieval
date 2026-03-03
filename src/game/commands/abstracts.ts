@@ -13,7 +13,9 @@ function matchesCard(card: any, matcher: CardMatcher): boolean {
 export function healAllAllies(amount: number): Command {
   return {
     onPlayed: (engine, g, playerId) => {
-      for (const a of engine.cardsInPlay.filter((x: any) => x.ownerId === playerId)) a.card.hp = (a.card.hp || 0) + amount
+      const cip = engine.cardsInPlay
+      for (const a of cip.filter((x: any) => x.ownerId === playerId)) a.card.hp = (a.card.hp || 0) + amount
+      engine.cardsInPlay = cip
     }
   }
 }
@@ -21,7 +23,9 @@ export function healAllAllies(amount: number): Command {
 export function healUnitsAtPosition(pos: number, amount: number): Command {
   return {
     onPlayed: (engine, g, playerId) => {
-      for (const a of engine.cardsInPlay.filter((x: any) => x.ownerId === playerId && x.position === pos)) a.card.hp = (a.card.hp || 0) + amount
+      const cip = engine.cardsInPlay
+      for (const a of cip.filter((x: any) => x.ownerId === playerId && x.position === pos)) a.card.hp = (a.card.hp || 0) + amount
+      engine.cardsInPlay = cip
     }
   }
 }
@@ -29,9 +33,11 @@ export function healUnitsAtPosition(pos: number, amount: number): Command {
 export function buffTypeAtPosition(matcher: CardMatcher, position: number, prop: string, amount: number): Command {
   return {
     onPlayed: (engine, g, playerId) => {
-      for (const a of engine.cardsInPlay.filter((x: any) => x.ownerId === playerId && x.position === position && matchesCard(x.card, matcher))) {
+      const cip = engine.cardsInPlay
+      for (const a of cip.filter((x: any) => x.ownerId === playerId && x.position === position && matchesCard(x.card, matcher))) {
         a.card[prop] = (a.card[prop] || 0) + amount
       }
+      engine.cardsInPlay = cip
     }
   }
 }
@@ -39,7 +45,9 @@ export function buffTypeAtPosition(matcher: CardMatcher, position: number, prop:
 export function buffType(matcher: CardMatcher, prop: string, amount: number): Command {
   return {
     onPlayed: (engine, g, playerId) => {
-      for (const a of engine.cardsInPlay.filter((x: any) => x.ownerId === playerId && matchesCard(x.card, matcher))) a.card[prop] = (a.card[prop] || 0) + amount
+      const cip = engine.cardsInPlay
+      for (const a of cip.filter((x: any) => x.ownerId === playerId && matchesCard(x.card, matcher))) a.card[prop] = (a.card[prop] || 0) + amount
+      engine.cardsInPlay = cip
     }
   }
 }
@@ -70,10 +78,12 @@ export function moveTargetToPosition(): Command {
       const parts = targetId.split(':')
       const moveId = parts[0]
       const pos = Number(parts[1])
-      const mv = engine.cardsInPlay.find((x: any) => x.id === moveId && x.ownerId === playerId)
+      const cip = engine.cardsInPlay
+      const mv = cip.find((x: any) => x.id === moveId && x.ownerId === playerId)
       if (!mv) return { ok: false, reason: 'ally not found' }
       if (!Number.isFinite(pos) || pos < 0 || pos >= engine.ZONES.length) return { ok: false, reason: 'invalid position' }
       mv.position = pos
+      engine.cardsInPlay = cip
     }
   }
 }
@@ -83,7 +93,20 @@ export function removeTarget(): Command {
 }
 
 export function drawTop(count = 1): Command {
-  return { onPlayed: (engine, g, playerId) => { for (let i = 0; i < count; i++) if (engine.deck.length) engine.hands[playerId].push(engine.deck.shift()!) } }
+  return {
+    onPlayed: (engine, g, playerId) => {
+      const deckArr = engine.deck
+      const handsMap = engine.hands
+      for (let i = 0; i < count; i++) {
+        if (!deckArr.length) break
+        const c = deckArr.shift()!
+        handsMap[playerId] = handsMap[playerId] || []
+        handsMap[playerId].push(c)
+      }
+      engine.deck = deckArr
+      engine.hands = handsMap
+    }
+  }
 }
 
 export function convertAdjacent(): Command {
@@ -94,9 +117,11 @@ export function buffTargetProperty(prop: string, amount: number): Command {
   return {
     onPlayed: (engine, g, playerId, targetId) => {
       if (!targetId) return { ok: false, reason: 'no target' }
-      const prot = engine.cardsInPlay.find((x: any) => x.id === targetId && x.ownerId === playerId)
+      const cip = engine.cardsInPlay
+      const prot = cip.find((x: any) => x.id === targetId && x.ownerId === playerId)
       if (!prot) return { ok: false, reason: 'ally not found' }
       prot.card[prop] = (prot.card[prop] || 0) + amount
+      engine.cardsInPlay = cip
     }
   }
 }
@@ -120,11 +145,12 @@ export default {
   drawTop,
   convertAdjacent,
   // convenience helper
-  buffAllAllies: (prop: string, amount: number): Command => ({ onPlayed: (engine, g, playerId) => { for (const a of engine.cardsInPlay.filter((x: any) => x.ownerId === playerId)) a.card[prop] = (a.card[prop] || 0) + amount } }),
+  buffAllAllies,
   noopCommand
 }
 
 // named export for convenient imports
 export function buffAllAllies(prop: string, amount: number): Command {
-  return { onPlayed: (engine, g, playerId) => { for (const a of engine.cardsInPlay.filter((x: any) => x.ownerId === playerId)) a.card[prop] = (a.card[prop] || 0) + amount } }
+  return { onPlayed: (engine, g, playerId) => { const cip = engine.cardsInPlay; for (const a of cip.filter((x: any) => x.ownerId === playerId)) a.card[prop] = (a.card[prop] || 0) + amount; engine.cardsInPlay = cip } }
 }
+ 
