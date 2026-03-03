@@ -36,6 +36,7 @@
 	flex: 0 0 auto;
 	flex-direction: column;
 	aspect-ratio: 2 / 3;
+	padding: 16px;
 }
 
 ion-button,

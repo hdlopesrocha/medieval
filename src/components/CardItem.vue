@@ -21,7 +21,6 @@
 
 .card-image {
   position: relative;
-  padding: 0px 5%;
 }
 
 ion-button.card-action-btn {
