@@ -14,7 +14,10 @@ export default {
     // Replace with GameContext instance usage
     const router = useRouter()
     const route = useRoute()
-    const state = ref<any>({ playerId: 0, activePlayerId: 0, round: 0, players: [] })
+    // `engine.getState()` contains the authoritative game state and workflow state.
+    // Use a small `tick` ref to force recomputation of computed properties since
+    // `engine.getState()` is not inherently reactive.
+    const tick = ref(0)
     const settingsOpen = ref(false)
     const isFullscreen = ref(false)
     const settingsTriggerId = 'current-player-board-settings-trigger'
@@ -26,23 +29,30 @@ export default {
     }
 
     function refresh() {
-      const nextState: any = engine.getState() || {}
-      nextState.playerId = nextState.playerId
-      nextState.activePlayerId = nextState.activePlayerId
-      nextState.round = nextState.round
-      nextState.players = nextState.players.map((player: any) => ({
-        ...player,
-        id: Number(player.id),
-      }))
-      state.value = nextState
+      // Bump tick to force recomputed getters that read from engine.getState().
+      tick.value++
+      // Touch engine.getState() in case it performs lazy initialization or
+      // other side-effects.
+      try {
+        engine.getState()
+      } catch (e) {}
     }
 
-    const activePlayerId = computed(() => Number(state.value.activePlayerId))
-    const roundNumber = computed(() => Number(state.value.round))
+    const activePlayerId = computed(() => {
+      tick.value
+      const s: any = engine.getState() || {}
+      return Number(s.activePlayerId ?? 0)
+    })
+    const roundNumber = computed(() => {
+      tick.value
+      const s: any = engine.getState() || {}
+      return Number(s.round ?? 0)
+    })
     const multiplayerMode = computed(() => Boolean((webrtcQr as any).isRealtimeGameActive?.value))
     const role = computed(() => String((webrtcQr as any).activeRole?.value || ''))
     const connected = computed(() => Boolean((webrtcQr as any).connectedHost?.value || (webrtcQr as any).connectedClient?.value))
     const playerId = computed(() => {
+      // playerId is derived from multiplayer role or falls back to the active player
       if (!multiplayerMode.value) return activePlayerId.value
       return role.value === 'client' ? 1 : 0
     })
@@ -51,18 +61,30 @@ export default {
       if (!connected.value) return true
       return role.value === 'server' || role.value === 'local'
     })
-    const showCreateButton = computed(() => isStateOwner.value && Number(playerId.value) === Number(playerId.value))
+    const showCreateButton = computed(() => isStateOwner.value)
+
     const playerCastleHp = computed(() => {
-      const hpByPlayer = (state.value && state.value.castleHpByPlayer) || {}
-      return hpByPlayer[hpByPlayer[String(playerId.value)]]
+      tick.value
+      const s: any = engine.getState() || {}
+      const hpByPlayer = s.castleHpByPlayer || {}
+      return hpByPlayer[String(playerId.value)]
     })
+
     const enemyCastleHp = computed(() => {
-      const enemyId = playerId.value
-      const hpByPlayer = (state.value && state.value.castleHpByPlayer) || {}
-      return hpByPlayer[enemyId]
+      tick.value
+      const enemyId = playerId.value === 0 ? 1 : 0
+      const s: any = engine.getState() || {}
+      const hpByPlayer = s.castleHpByPlayer || {}
+      return hpByPlayer[String(enemyId)]
     })
+    const players = computed(() => {
+      tick.value
+      const s: any = engine.getState() || {}
+      return (s.players || []).map((p: any) => ({ ...p, id: Number(p.id) }))
+    })
+
     const currentPlayerLabel = computed(() => {
-      const player = (state.value.players || []).find((entry: any) => Number(entry.id) === playerId.value)
+      const player = (players.value || []).find((entry: any) => Number(entry.id) === playerId.value)
       if (player?.name) return `${player.name} (Player ${playerId.value})`
       return `Player ${playerId.value}`
     })
