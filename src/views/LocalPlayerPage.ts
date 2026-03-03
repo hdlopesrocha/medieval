@@ -77,26 +77,23 @@ export default {
     }>(null)
 
     function normalizedStateFromEngine(): GameStateView {
-      const rawState = (engine.getState() || {}) as Record<string, unknown>
-      const rawPlayers = Array.isArray(rawState.players) ? rawState.players : []
-      const rawCardsInPlay = Array.isArray(rawState.cardsInPlay) ? rawState.cardsInPlay : []
+      const rawPlayers = Array.isArray((engine as any).players) ? (engine as any).players : []
+      const rawCardsInPlay = Array.isArray((engine as any).cardsInPlay) ? (engine as any).cardsInPlay.map((g: any) => ({ id: g.id, ownerId: g.ownerId, position: g.position, hidden: !!g.hidden, card: g.card && typeof g.card.toJSON === 'function' ? g.card.toJSON() : g.card })) : []
+      const wf = (engine as any).gameWorkflow || {}
+      const ctx = (engine as any).gameContext || {}
       const nextState: GameStateView = {
         ...createEmptyGameStateView(),
-        ...rawState,
-        activePlayerId: Number(rawState.activePlayerId || 0),
-        playerId: Number(rawState.playerId ?? rawState.activePlayerId ?? 0),
-        round: Number(rawState.round ?? 0),
-        gameOver: Boolean(rawState.gameOver),
-        loserPlayerId: rawState.loserPlayerId == null ? null : Number(rawState.loserPlayerId),
-        winnerPlayerId: rawState.winnerPlayerId == null ? null : Number(rawState.winnerPlayerId),
-        playedThisRound: (rawState.playedThisRound as Record<string, unknown>) || {},
-        castleHpByPlayer: (rawState.castleHpByPlayer as Record<number, number>) || {},
+        activePlayerId: Number(wf.activePlayerId ?? 0),
+        playerId: Number(wf.playerId ?? wf.activePlayerId ?? 0),
+        round: Number(wf.round ?? 0),
+        gameOver: Boolean(wf.gameOver),
+        loserPlayerId: wf.loserPlayerId == null ? null : Number(wf.loserPlayerId),
+        winnerPlayerId: wf.winnerPlayerId == null ? null : Number(wf.winnerPlayerId),
+        playedThisRound: (engine as any).playedThisRound || {},
+        castleHpByPlayer: (ctx.castleHpByPlayer || {}),
         players: rawPlayers.map((player): PlayerView => {
           const row = (player || {}) as Record<string, unknown>
-          return {
-            id: Number(row.id || 0),
-            name: typeof row.name === 'string' ? row.name : undefined
-          }
+          return { id: Number(row.id || 0), name: typeof row.name === 'string' ? row.name : undefined }
         }),
         cardsInPlay: rawCardsInPlay.map((entry): InPlayCardView => {
           const row = (entry || {}) as Record<string, unknown>
@@ -118,7 +115,6 @@ export default {
       const next = normalizedStateFromEngine()
       // keep any UI selections in sync if needed (previously assigned to state.value)
       tick.value++
-      try { engine.getState() } catch (e) {}
     }
 
     function runGameAction(action: string, payload: Record<string, unknown>, localExec: () => GameActionResult): GameActionResult {

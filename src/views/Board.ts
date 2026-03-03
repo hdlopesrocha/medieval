@@ -26,31 +26,18 @@ export default {
     const handDragVel = ref<number | null>(null)
 
     function normalizedStateFromEngine(): GameStateView {
-      const rawState = (engine.getState() || {}) as Record<string, any>
-      const rawPlayers = Array.isArray(rawState.players) ? rawState.players : []
-      const rawCards = Array.isArray(rawState.cardsInPlay) ? rawState.cardsInPlay : []
+      const rawPlayers = Array.isArray((engine as any).players) ? (engine as any).players : []
+      const rawCards = Array.isArray((engine as any).cardsInPlay) ? (engine as any).cardsInPlay.map((g: any) => ({ id: g.id, ownerId: g.ownerId, position: g.position, hidden: !!g.hidden, card: g.card && typeof g.card.toJSON === 'function' ? g.card.toJSON() : g.card })) : []
+      const wf = (engine as any).gameWorkflow || {}
+      const ctx = (engine as any).gameContext || {}
       return {
-        ...createEmptyGameStateView(),
-        ...rawState,
-        activePlayerId: Number(rawState.activePlayerId),
-        playerId: Number(rawState.playerId),
-        round: Number(rawState.round ?? 0),
-        players: rawPlayers.map((player: any): PlayerView => ({
-          ...player,
-          id: Number(player.id)
-        })),
-        cardsInPlay: rawCards.map((entry: any): InPlayCardView => ({
-          ...entry,
-          ownerId: Number(entry.ownerId),
-          position: Number(entry.position)
-        }))
+        ...createEmptyGameStateView()
       }
     }
 
     function refresh() {
       // Touch engine state and bump tick so computed `state` updates.
       tick.value++
-      try { engine.getState() } catch (e) {}
     }
 
     function computeReachable() {

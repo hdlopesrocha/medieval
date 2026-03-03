@@ -515,15 +515,4 @@ export default class GameEngine {
       return { ok: false, reason: String(e) }
     }
   }
-
-  getState() {
-    return {
-      deckCount: this.deck.length,
-      // market removed
-      players: this.players,
-      cardsInPlay: this.cardsInPlay.map(g => ({ id: g.id, ownerId: g.ownerId, position: g.position, hidden: !!g.hidden, card: g.card.toJSON() })),
-      playedThisRound: this.playedThisRound || {},
-      workflow: this.gameWorkflow
-    }
-  }
 }

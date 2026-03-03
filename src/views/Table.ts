@@ -18,24 +18,17 @@ export default {
     const tick = ref(0)
     const state = computed<GameStateView>(() => {
       tick.value
-      const rawState = (engine.getState() || {}) as Record<string, any>
-      const rawPlayers = Array.isArray(rawState.players) ? rawState.players : []
-      const rawCards = Array.isArray(rawState.cardsInPlay) ? rawState.cardsInPlay : []
+      const rawPlayers = Array.isArray((engine as any).players) ? (engine as any).players : []
+      const rawCards = Array.isArray((engine as any).cardsInPlay) ? (engine as any).cardsInPlay.map((g: any) => ({ id: g.id, ownerId: g.ownerId, position: g.position, hidden: !!g.hidden, card: g.card && typeof g.card.toJSON === 'function' ? g.card.toJSON() : g.card })) : []
+      const wf = (engine as any).gameWorkflow || {}
       return {
         ...createEmptyGameStateView(),
-        ...rawState,
-        activePlayerId: Number(rawState.activePlayerId || 0),
-        playerId: Number(rawState.playerId ?? rawState.activePlayerId ?? 0),
-        round: Number(rawState.round ?? 0),
-        players: rawPlayers.map((player: any): PlayerView => ({
-          ...player,
-          id: Number(player.id)
-        })),
-        cardsInPlay: rawCards.map((entry: any): InPlayCardView => ({
-          ...entry,
-          ownerId: Number(entry.ownerId),
-          position: Number(entry.position)
-        }))
+        activePlayerId: Number(wf.activePlayerId || 0),
+        playerId: Number(wf.playerId ?? wf.activePlayerId ?? 0),
+        round: Number(wf.round ?? 0),
+        players: rawPlayers.map((player: any): PlayerView => ({ ...player, id: Number(player.id) })),
+        cardsInPlay: rawCards.map((entry: any): InPlayCardView => ({ ...entry, ownerId: Number(entry.ownerId), position: Number(entry.position) })),
+        playedThisRound: (engine as any).playedThisRound || {}
       }
     })
     const sortedCardsInPlay = computed(() => sortCardsInPlayBySlot(state.value?.cardsInPlay, state.value?.activePlayerId))
@@ -59,7 +52,7 @@ export default {
         }))
       }
     }
-    function refresh() { tick.value++; try { engine.getState() } catch (e) {} }
+    function refresh() { tick.value++; }
     function goMain() { router.push('/main') }
 
     function zoneName(position: number) {

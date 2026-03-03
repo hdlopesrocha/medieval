@@ -65,12 +65,12 @@ export default {
     })
 
     function refreshState() {
-      const state = (engine.getState() || {}) as any
+      const wf = (engine as any).gameWorkflow || {}
       viewerState.value = {
-        activePlayerId: state.activePlayerId,
-        playerId: state.playerId,
-        playedThisRound: state.playedThisRound || {},
-        gameOver: state.gameOver
+        activePlayerId: Number(wf.activePlayerId ?? 0),
+        playerId: Number(wf.playerId ?? 0),
+        playedThisRound: (engine as any).playedThisRound || {},
+        gameOver: Boolean(wf.gameOver)
       }
     }
 
