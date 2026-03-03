@@ -9,8 +9,8 @@ import { useRouter } from 'vue-router'
 import { useWebrtcQrService } from '../services/webrtcQrService'
 import gameState from '../services/gameState'
 import { sortCardsInPlayBySlot } from '../utils/sortCardsInPlay'
-import { createEmptyGameStateView } from '../models/GameStateView'
-import type { GameStateView, InPlayCardView, PlayerView } from '../models/GameStateView'
+import type { GameContext } from '../models/GameContext'
+import type { GameWorkflowState } from '../models/GameWorkflowState'
 import type { CardJSON } from '../models/Card'
 
 type GameActionResult = {
@@ -35,6 +35,8 @@ export default {
     const router = useRouter()
     // Use engine.getState() as the authoritative source; `tick` forces recompute.
     const tick = ref(0)
+    // Reactive normalized state built from engine's gameContext and gameWorkflow
+    const state = ref<any>(normalizedStateFromEngine())
     // Replace with GameContext instance usage
     const webrtcQr = useWebrtcQrService()
     const realtime = webrtcQr as unknown as RealtimeBridge
@@ -45,21 +47,20 @@ export default {
     }
 
     const deckCards = gameState.getDeckRef()
-    const activeHandCards = computed(() => gameState.getPlayerCards(state.value.activePlayerId || 0))
-    const localHandCards = computed(() => gameState.getPlayerCards(localPlayerId.value || 0))
     const localPlayerId = computed(() => {
       // Always use playerId from workflow if available
       return Number(state.value.playerId ?? (currentRole() === 'client' ? 1 : 0))
     })
+    const activeHandCards = computed(() => gameState.getPlayerCards(state.value.activePlayerId || 0))
+    const localHandCards = computed(() => gameState.getPlayerCards(localPlayerId.value || 0))
     const multiplayerMode = computed(() => Boolean(unref(realtime.isRealtimeGameActive)))
     const isServerAuthority = computed(() => multiplayerMode.value && currentRole() === 'server')
     const isClientProxy = computed(() => multiplayerMode.value && currentRole() === 'client')
-    const isLocalPlayersTurn = computed(() => Number(state.value.activePlayerId || 0) === Number(localPlayerId.value || 0))
-      // Only allow play if localPlayerId === activePlayerId
+    // Only allow play if localPlayerId === activePlayerId
     const tableCardsInPlay = computed(() => sortCardsInPlayBySlot(state.value.cardsInPlay, state.value.activePlayerId))
     const currentPlayingUserLabel = computed(() => {
       const currentId = Number(state.value.playerId ?? state.value.activePlayerId ?? 0)
-      const player = (state.value.players || []).find((p: PlayerView) => Number(p.id) === currentId)
+      const player = (state.value.players || []).find((p: any) => Number(p.id) === currentId)
       if (player?.name) return `${player.name} (Player ${currentId})`
       return `Player ${currentId}`
     })
@@ -76,46 +77,37 @@ export default {
       summaryLines?: string[]
     }>(null)
 
-    function normalizedStateFromEngine(): GameStateView {
+    function normalizedStateFromEngine(): any {
       const rawPlayers = Array.isArray((engine as any).players) ? (engine as any).players : []
-      const rawCardsInPlay = Array.isArray((engine as any).cardsInPlay) ? (engine as any).cardsInPlay.map((g: any) => ({ id: g.id, ownerId: g.ownerId, position: g.position, hidden: !!g.hidden, card: g.card && typeof g.card.toJSON === 'function' ? g.card.toJSON() : g.card })) : []
+      const rawCardsInPlay = Array.isArray((engine as any).gameContext?.cardsInPlay) ? (engine as any).gameContext.cardsInPlay : []
       const wf = (engine as any).gameWorkflow || {}
       const ctx = (engine as any).gameContext || {}
-      const nextState: GameStateView = {
-        ...createEmptyGameStateView(),
+      const nextState: any = {
         activePlayerId: Number(wf.activePlayerId ?? 0),
-        playerId: Number(wf.playerId ?? wf.activePlayerId ?? 0),
+        playerId: Number(ctx.playerId ?? wf.activePlayerId ?? 0),
         round: Number(wf.round ?? 0),
         gameOver: Boolean(wf.gameOver),
         loserPlayerId: wf.loserPlayerId == null ? null : Number(wf.loserPlayerId),
         winnerPlayerId: wf.winnerPlayerId == null ? null : Number(wf.winnerPlayerId),
-        playedThisRound: (engine as any).playedThisRound || {},
+        playedThisRound: Object.fromEntries(Object.entries(((engine as any).gameWorkflow && (engine as any).gameWorkflow.actionByPlayer) || {}).map(([k, v]) => [k, v === 'action-taken'])),
         castleHpByPlayer: (ctx.castleHpByPlayer || {}),
-        players: rawPlayers.map((player): PlayerView => {
-          const row = (player || {}) as Record<string, unknown>
-          return { id: Number(row.id || 0), name: typeof row.name === 'string' ? row.name : undefined }
-        }),
-        cardsInPlay: rawCardsInPlay.map((entry): InPlayCardView => {
-          const row = (entry || {}) as Record<string, unknown>
-          return {
-            id: String(row.id || ''),
-            ownerId: Number(row.ownerId || 0),
-            position: Number(row.position || 0),
-            hidden: Boolean(row.hidden),
-            card: (row.card && typeof row.card === 'object') ? (row.card as InPlayCardView['card']) : undefined
-          }
-        })
+        players: rawPlayers.map((player: any) => ({ id: Number(player?.id || 0), name: player?.name })),
+        cardsInPlay: rawCardsInPlay.map((entry: any) => ({ id: String(entry?.id || ''), ownerId: Number(entry?.ownerId || 0), position: Number(entry?.position || 0), hidden: Boolean(entry?.hidden), card: entry?.card }))
       }
       return nextState
     }
 
     function refreshState() {
-      // Build the normalized state to allow side-effects (e.g., selected entry updates),
-      // then bump `tick` so computed `state` readers refresh.
-      const next = normalizedStateFromEngine()
-      // keep any UI selections in sync if needed (previously assigned to state.value)
+      // Build the normalized state from engine's context/workflow and update reactive `state`.
+      state.value = normalizedStateFromEngine()
+      // bump tick for any computed watchers that also rely on it
       tick.value++
     }
+
+    const isLocalPlayersTurn = computed(() => {
+      tick.value
+      return Number(state.value.playerId || 0) === Number(state.value.activePlayerId || 0)
+    })
 
     function runGameAction(action: string, payload: Record<string, unknown>, localExec: () => GameActionResult): GameActionResult {
       if (!multiplayerMode.value) {
@@ -144,7 +136,7 @@ export default {
       return playerHandCards(playerId).length
     }
 
-    function canConvert(attacker: InPlayCardView | undefined | null) {
+    function canConvert(attacker: any | undefined | null) {
       if (!attacker || !attacker.card) return false
       const range = Number(attacker.card.range || 0)
       const enemies = (state.value.cardsInPlay || []).filter((card) => card.ownerId !== state.value.activePlayerId)
@@ -199,6 +191,7 @@ export default {
         const obj = JSON.parse(txt)
         const res = engine.importState(obj)
         if (!res.ok) return alert('Import failed: ' + res.reason)
+        // importState updated engine internals; refresh the reactive state from engine
         state.value = normalizedStateFromEngine()
         alert('Import successful')
       } catch (e) {
@@ -278,7 +271,7 @@ export default {
       selection.value.candidates = targets
     }
 
-    const selection = ref<{ mode: string | null, sourceId: string | null, candidates: InPlayCardView[] }>({ mode: null, sourceId: null, candidates: [] })
+    const selection = ref<{ mode: string | null, sourceId: string | null, candidates: any[] }>({ mode: null, sourceId: null, candidates: [] })
 
     function cancelSelection() {
       selection.value.mode = null
@@ -454,7 +447,7 @@ export default {
     })
 
     return {
-      state: computed(() => { tick.value; return normalizedStateFromEngine() }),
+      state,
       tableCardsInPlay,
       deckCards,
       activeHandCards,
