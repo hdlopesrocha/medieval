@@ -1,4 +1,5 @@
 import CardItem from '../components/CardItem.vue'
+import InspiraCard from '../components/InspiraCard.vue'
 // import GameContext from '../models/GameContext' if needed
 import deckService from '../services/deckService'
 import { computed, ref, onMounted, onUnmounted } from 'vue'
@@ -35,7 +36,7 @@ export default {
       default: 'deck'
     }
   },
-  components: { CardItem, IonPage, IonContent, IonButton, IonButtons },
+  components: { CardItem, InspiraCard, IonPage, IonContent, IonButton, IonButtons },
   setup(props: CardViewerProps) {
     const router = useRouter()
     // Replace with GameContext instance usage

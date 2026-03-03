@@ -18,6 +18,8 @@
     "qrcode": "^1.5.4",
     "vue": "latest",
     "vue-router": "^4.6.4"
+    ,
+    "inspira-ui": "latest"
   },
   "devDependencies": {
     "@vitejs/plugin-basic-ssl": "^2.1.4",
