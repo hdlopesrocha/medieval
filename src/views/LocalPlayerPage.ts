@@ -56,7 +56,7 @@ export default {
       // Only allow play if localPlayerId === activePlayerId
     const tableCardsInPlay = computed(() => sortCardsInPlayBySlot(state.value.cardsInPlay, state.value.activePlayerId))
     const currentPlayingUserLabel = computed(() => {
-      const currentId = Number(state.value.currentUser ?? state.value.activePlayerId ?? 0)
+      const currentId = Number(state.value.playerId ?? state.value.activePlayerId ?? 0)
       const player = (state.value.players || []).find((p: PlayerView) => Number(p.id) === currentId)
       if (player?.name) return `${player.name} (Player ${currentId})`
       return `Player ${currentId}`
@@ -82,7 +82,7 @@ export default {
         ...createEmptyGameStateView(),
         ...rawState,
         activePlayerId: Number(rawState.activePlayerId || 0),
-        currentUser: Number(rawState.currentUser ?? rawState.activePlayerId ?? 0),
+        playerId: Number(rawState.playerId ?? rawState.activePlayerId ?? 0),
         round: Number(rawState.round ?? 0),
         gameOver: Boolean(rawState.gameOver),
         loserPlayerId: rawState.loserPlayerId == null ? null : Number(rawState.loserPlayerId),

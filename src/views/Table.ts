@@ -23,7 +23,7 @@ export default {
         ...createEmptyGameStateView(),
         ...rawState,
         activePlayerId: Number(rawState.activePlayerId || 0),
-        currentUser: Number(rawState.currentUser ?? rawState.activePlayerId ?? 0),
+        playerId: Number(rawState.playerId ?? rawState.activePlayerId ?? 0),
         round: Number(rawState.round ?? 0),
         players: (rawState.players || []).map((player: any): PlayerView => ({
           ...player,
