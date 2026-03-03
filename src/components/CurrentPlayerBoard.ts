@@ -164,6 +164,7 @@ export default {
       shareSocialOutline,
       timeOutline,
       addCircleOutline,
+      trashOutline,
       settingsOpen,
       isFullscreen,
       fullscreenLabel,
