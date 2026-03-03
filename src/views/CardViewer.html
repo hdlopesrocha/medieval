@@ -1,10 +1,11 @@
 <ion-page>
-  <ion-content class="ion-padding deck-bg">
+  <ion-content class="ion-padding">
     <div class="deck-grid">
       <div v-for="(c, i) in cardsToShow" :key="i" class="deck-card-slot">
         <CardItem :card="c" :show-export="true" />
         <ion-button v-if="isLocalPlayersTurn" size="small" :disabled="!canPlayFromHand || localPlayerId !== activePlayerId" @click="playFromHand(i)">Play</ion-button>
       </div>
     </div>
+    <HorizontalScrollSlider target-selector=".deck-grid" />
   </ion-content>
 </ion-page>
