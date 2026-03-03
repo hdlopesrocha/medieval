@@ -1,12 +1,10 @@
 import CardItem from '../components/CardItem.vue'
-import InspiraCard from '../components/InspiraCard.vue'
 // import GameContext from '../models/GameContext' if needed
 import deckService from '../services/deckService'
 import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { IonPage, IonContent, IonButton, IonButtons } from '@ionic/vue'
 import { useRouter } from 'vue-router'
 import engine from '../game/engineInstance'
-import gameState from '../services/gameState'
 import HorizontalScrollSlider from '../components/HorizontalScrollSlider.vue'
 
 type JsonLike = Record<string, unknown>
@@ -36,7 +34,7 @@ export default {
       default: 'deck'
     }
   },
-  components: { CardItem, InspiraCard, IonPage, IonContent, IonButton, IonButtons },
+  components: { CardItem, HorizontalScrollSlider, IonPage, IonContent, IonButton, IonButtons },
   setup(props: CardViewerProps) {
     const router = useRouter()
     // Replace with GameContext instance usage
@@ -85,7 +83,7 @@ export default {
         return props.cards.map(cloneCard).filter(Boolean)
       }
       if (props.mode === 'hand') {
-        const playerCards = gameState.getPlayerCards(handPlayerId.value)
+        const playerCards = engine.gameContext.getPlayerCards(handPlayerId.value)
         if (playerCards.length) return playerCards.map(cloneCard).filter(Boolean)
         return engine.gameContext.getDeck().slice(0, 5).map(cloneCard).filter(Boolean)
       }

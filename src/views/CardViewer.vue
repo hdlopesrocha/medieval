@@ -3,43 +3,43 @@
 <script lang="ts" src="./CardViewer.ts"></script>
 
 <style scoped>
-.deck-grid {
-	display: flex;
-	flex-wrap: nowrap;
-	gap: 8px;
-	overflow-x: auto;
-	overflow-y: hidden;
-	-webkit-overflow-scrolling: touch;
-	scrollbar-width: none;
-	-ms-overflow-style: none;
-	align-items: flex-start;
-	height: auto;
-}
 
-.deck-grid::-webkit-scrollbar {
-	display: none;
-}
 
 .deck-card-slot {
 	display: flex;
 	flex-direction: column;
 	gap: 6px;
 	flex: 0 0 auto;
-	height: auto;
+	/* Make each slot use half of the grid height so there are 2 rows */
+	height: calc((100% - 8px) / 2);
 	width: auto;
 	align-items: stretch;
+	aspect-ratio: 2 / 3; /* width will be computed from height (2:3 => width:height*2/3) */
 }
 
-.deck-card-slot > *:not(.card-action-btn) {
+.cards-list {
+	/* allow the list element to size to its children so it grows horizontally */
+	display: inline-flex;
+	flex-direction: row;
+	flex-wrap: nowrap;
+	overflow-y: auto;
+	overflow-x: auto;
+	height: 100%;
+	width: auto;
+	padding-bottom: 64px;
+}
+
+
+.card-item {
+	display: flex;
+	/* keep each card at its intrinsic width (from aspect-ratio/height) */
 	flex: 0 0 auto;
-	min-height: 0;
-	width: 100%;
-	aspect-ratio: 3 / 5;
-	object-fit: contain;
+	flex-direction: column;
+	aspect-ratio: 2 / 3;
 }
 
-.deck-card-slot ion-button,
-.deck-card-slot .card-action-btn {
+ion-button,
+.card-action-btn {
 	height: 64px !important;
 	min-height: 64px !important;
 	max-height: 64px !important;
