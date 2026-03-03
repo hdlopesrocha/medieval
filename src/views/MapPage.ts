@@ -31,21 +31,20 @@ export default {
   name: 'MapPage',
   components: { IonPage, IonContent, IonButton, CardItem, MiniCardItem },
   setup() {
-    const anyEngine = engine as any
     // Use engine state directly; `tick` forces recompute in computed getters.
     const tick = ref(0)
     const state = computed(() => {
       tick.value
-      const rawPlayers = Array.isArray((engine as any).players) ? (engine as any).players : []
-      const rawCards = Array.isArray((engine as any).gameContext?.cardsInPlay) ? (engine as any).gameContext.cardsInPlay : []
-      const wf = (engine as any).gameWorkflow || {}
-      const ctx = (engine as any).gameContext || {}
+      const rawPlayers = Array.isArray(engine.players)
+      const rawCards = Array.isArray(engine.gameContext.cardsInPlay)
+      const wf = engine.gameWorkflow
+      const ctx = engine.gameContext
       const nextState: any = {
         activePlayerId: Number(wf.activePlayerId || 0),
         playerId: Number(ctx.playerId ?? wf.activePlayerId ?? 0),
         round: Number(wf.round ?? 0),
-        players: rawPlayers.map((p: any) => ({ id: Number(p?.id || 0), name: p?.name })),
-        cardsInPlay: rawCards.map((entry: any) => ({ id: String(entry?.id || ''), ownerId: Number(entry?.ownerId || 0), position: Number(entry?.position || 0), hidden: !!entry?.hidden, card: entry?.card }))
+        players: engine.players,
+        cardsInPlay: engine.gameContext.cardsInPlay
       }
       return nextState
     })
@@ -212,8 +211,8 @@ export default {
       const targetId = String(picked || '').trim()
       const playerId = Number(state.value.activePlayerId || 0)
       const result: any = targetId
-        ? anyEngine.useCardAbility(String(selectedEntry.value.id), playerId, targetId)
-        : anyEngine.useCardAbility(String(selectedEntry.value.id), playerId)
+        ? engine.useCardAbility(String(selectedEntry.value.id), playerId, targetId)
+        : engine.useCardAbility(String(selectedEntry.value.id), playerId)
       if (!result?.ok) return alert('Ability failed: ' + String(result?.reason || 'invalid action'))
       refreshState()
     }

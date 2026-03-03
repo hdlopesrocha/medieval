@@ -1,7 +1,7 @@
 import { GameHistoryEntry } from './GameHistoryEntry'
 
 export class GameWorkflowState {
-  started: boolean = false;
+  started: boolean = true;
   activePlayerId: number = 0;
   ownerRole: string = '';
   round: number = 0;

@@ -52,12 +52,7 @@ ion-app, .ion-page, #app {
   padding: 16px;
 }
 
-/* Deck view background */
-.deck-bg {
-  background-image: url('/medieval/assets/country.png');
-  background-size: cover;
-  background-position: center center;
-}
+
 
 .deck-grid {
   display:flex;

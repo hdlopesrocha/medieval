@@ -13,38 +13,36 @@ export default {
   components: { CardItem, IonPage, IonContent, IonButton },
   setup() {
     const router = useRouter()
-    const anyEngine = engine as any
     // Use engine.getState(); `tick` drives reactivity for computed readers
     const tick = ref(0)
     const state = computed(() => {
       tick.value
-      const rawPlayers = Array.isArray((engine as any).players) ? (engine as any).players : []
-      const rawCards = Array.isArray((engine as any).gameContext?.cardsInPlay) ? (engine as any).gameContext.cardsInPlay : []
-      const wf = (engine as any).gameWorkflow || {}
-      const ctx = (engine as any).gameContext || {}
+      const rawPlayers = Array.isArray(engine.players) ? engine.players : []
+      const rawCards = Array.isArray(engine.gameContext?.cardsInPlay) ? engine.gameContext.cardsInPlay : []
+  
       return {
-        activePlayerId: Number(wf.activePlayerId || 0),
-        playerId: Number(ctx.playerId ?? wf.activePlayerId ?? 0),
-        round: Number(wf.round ?? 0),
-        players: rawPlayers.map((p: any) => ({ id: Number(p?.id || 0), name: p?.name })),
-        cardsInPlay: rawCards.map((entry: any) => ({ id: String(entry?.id || ''), ownerId: Number(entry?.ownerId || 0), position: Number(entry?.position || 0), hidden: !!entry?.hidden, card: entry?.card })),
-        playedThisRound: Object.fromEntries(Object.entries(((engine as any).gameWorkflow && (engine as any).gameWorkflow.actionByPlayer) || {}).map(([k, v]) => [k, v === 'action-taken'])),
+        activePlayerId: engine.gameWorkflow.activePlayerId,
+        playerId: engine.gameContext.playerId,
+        round: engine.gameWorkflow.round,
+        players: rawPlayers,
+        cardsInPlay: rawCards,
+        playedThisRound: Object.fromEntries(Object.entries((engine.gameWorkflow && engine.gameWorkflow.actionByPlayer) || {}).map(([k, v]) => [k, v === 'action-taken'])),
       }
     })
     const sortedCardsInPlay = computed(() => sortCardsInPlayBySlot(state.value?.cardsInPlay, state.value?.activePlayerId))
     let timer: ReturnType<typeof setInterval> | null = null
     function normalizedStateFromEngine(): any {
-      const rawPlayers = Array.isArray((engine as any).players) ? (engine as any).players : []
-      const rawCards = Array.isArray((engine as any).gameContext?.cardsInPlay) ? (engine as any).gameContext.cardsInPlay : []
-      const wf = (engine as any).gameWorkflow || {}
-      const ctx = (engine as any).gameContext || {}
+      const rawPlayers = Array.isArray(engine.players) ? engine.players : []
+      const rawCards = Array.isArray(engine.gameContext?.cardsInPlay) ? engine.gameContext.cardsInPlay : []
+      const wf = engine.gameWorkflow || {}
+      const ctx = engine.gameContext || {}
       return {
-        activePlayerId: Number(wf.activePlayerId || 0),
-        playerId: Number(ctx.playerId ?? wf.activePlayerId ?? 0),
-        round: Number(wf.round ?? 0),
+        activePlayerId: engine.gameWorkflow.activePlayerId,
+        playerId: engine.gameContext.playerId,
+        round: engine.gameWorkflow.round,
         players: rawPlayers.map((p: any) => ({ id: Number(p?.id || 0), name: p?.name })),
         cardsInPlay: rawCards.map((entry: any) => ({ id: String(entry?.id || ''), ownerId: Number(entry?.ownerId || 0), position: Number(entry?.position || 0), hidden: !!entry?.hidden, card: entry?.card })),
-        playedThisRound: Object.fromEntries(Object.entries(((engine as any).gameWorkflow && (engine as any).gameWorkflow.actionByPlayer) || {}).map(([k, v]) => [k, v === 'action-taken'])),
+        playedThisRound: Object.fromEntries(Object.entries((engine.gameWorkflow && engine.gameWorkflow.actionByPlayer) || {}).map(([k, v]) => [k, v === 'action-taken'])),
       }
     }
     function refresh() { tick.value++; }
@@ -140,15 +138,15 @@ export default {
       const targetId = String(picked || '').trim()
       const playerId = Number(state.value.activePlayerId || 0)
       const result = targetId
-        ? anyEngine.useCardAbility(cardId, playerId, targetId)
-        : anyEngine.useCardAbility(cardId, playerId)
+        ? engine.useCardAbility(cardId, playerId, targetId)
+        : engine.useCardAbility(cardId, playerId)
         if (!result?.ok) return alert('Ability failed: ' + String((result as any)?.reason || 'invalid action'))
       refresh()
     }
 
     function useAbilityNoTarget(cardId: string) {
       const playerId = Number(state.value.activePlayerId || 0)
-      const result = anyEngine.useCardAbility(cardId, playerId)
+      const result = engine.useCardAbility(cardId, playerId)
         if (!result?.ok) return alert('Ability failed: ' + String((result as any)?.reason || 'invalid action'))
       refresh()
     }

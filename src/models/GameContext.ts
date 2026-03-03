@@ -1,15 +1,14 @@
 import { GameWorkflowState } from './GameWorkflowState'
 import { GameHistoryEntry } from './GameHistoryEntry'
+import { Player } from './Player'
 
 // Removed: use GameWorkflowState and GameHistoryEntry classes instead.
 
 
 export class GameContext {
   deck: any[] = [];
-  // `players` stores per-player hands (keyed by player id)
-  players: Record<string, any[]> = {};
-  // persisted list of players (id/name)
-  playersList: Array<{ id: number; name?: string }> = [];
+  // persisted list of players (id/name) - hands are stored on each entry as `hand` when present
+  playersList: Player[] = [];
   // persisted cards in play (serialized)
   cardsInPlay: any[] = [];
   playerId: number = 0;
@@ -21,7 +20,7 @@ export class GameContext {
   constructor(init?: Partial<GameContext>) {
     if (init) {
       if (init.deck) this.deck = [...init.deck];
-      if (init.players) this.players = { ...init.players };
+      if (init.playersList) this.playersList = init.playersList;
       if (init.playerId !== undefined) this.playerId = init.playerId;
       if (init.ownerRole !== undefined) this.ownerRole = init.ownerRole;
       if (init.actionByPlayer !== undefined) this.actionByPlayer = { ...init.actionByPlayer };
@@ -49,28 +48,42 @@ export class GameContext {
   }
 
   setPlayerCards(playerId: string | number, cards: any[]) {
-    const playerKey = String(playerId)
-    this.players = {
-      ...this.players,
-      [playerKey]: this.cloneCards(cards)
+    const id = Number(playerId)
+    const idx = (this.playersList || []).findIndex(p => Number(p.id) === id)
+    const hand = this.cloneCards(cards)
+    if (idx === -1) {
+      this.playersList = [...(this.playersList || []), { id, hand }]
+    } else {
+      const copy = [...this.playersList]
+      copy[idx] = { ...copy[idx], hand }
+      this.playersList = copy
     }
   }
 
   getPlayerCards(playerId: string | number) {
-    const playerKey = String(playerId)
-    return this.cloneCards(this.players[playerKey] || [])
+    const id = Number(playerId)
+    const entry = (this.playersList || []).find(p => Number(p.id) === id)
+    return this.cloneCards((entry && Array.isArray(entry.hand)) ? entry.hand : [])
   }
 
   setAllPlayerCards(players: Record<string, any[]>) {
-    const cloned: Record<string, any[]> = {}
+    // Merge provided hands into playersList entries (create entries when missing)
+    const copy = Array.isArray(this.playersList) ? [...this.playersList] : []
     for (const playerKey of Object.keys(players || {})) {
-      cloned[playerKey] = this.cloneCards(players[playerKey] || [])
+      const id = Number(playerKey)
+      const hand = this.cloneCards(players[playerKey] || [])
+      const idx = copy.findIndex(p => Number(p.id) === id)
+      if (idx === -1) {
+        copy.push({ id, hand })
+      } else {
+        copy[idx] = { ...copy[idx], hand }
+      }
     }
-    this.players = cloned
+    this.playersList = copy
   }
 
-  setPlayersList(players: Array<{ id: number; name?: string }>) {
-    this.playersList = Array.isArray(players) ? players.map(p => ({ id: Number(p.id || 0), name: typeof p.name === 'string' ? p.name : undefined })) : []
+  setPlayersList(players: Player[]) {
+    this.playersList = Array.isArray(players) ? players.map((p: any) => ({ id: Number(p.id || 0), name: typeof p.name === 'string' ? p.name : undefined, hand: Array.isArray(p.hand) ? this.cloneCards(p.hand) : undefined })) : []
   }
 
   getPlayersList() {
@@ -89,7 +102,7 @@ export class GameContext {
 
   clearContext(workflow: GameWorkflowState) {
     this.deck = []
-    this.players = {}
+    this.playersList = []
     Object.assign(workflow, {
       started: false,
       playerId: 0,

@@ -2,9 +2,11 @@ import { computed } from 'vue'
 import engine from '../game/engineInstance'
 import { GameContext } from '../models/GameContext'
 import { GameWorkflowState } from '../models/GameWorkflowState'
+import Card from '../models/Card'
 
-function getPlayerCards(playerId: number, _contextName?: string) {
-  return engine.gameContext.getPlayerCards(playerId)
+function getPlayerCards(playerId: number, _contextName?: string): Card[] {
+  const raw = engine.gameContext.getPlayerCards(playerId) || []
+  return (raw || []).map((c: any) => Card.fromJSON(c))
 }
 
 function getDeckRef(_contextName?: string) {
