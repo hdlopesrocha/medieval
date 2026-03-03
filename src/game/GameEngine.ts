@@ -1,7 +1,12 @@
 import Card from '../models/Card'
 import { getCommandFor } from './commands/registry'
-import gameStateService from '../services/gameStateService'
+// import GameContext from '../models/GameContext' if needed
 import deckService from '../services/deckService'
+import gameStateService from '../services/gameStateService'
+import { GameWorkflowState } from '../models/GameWorkflowState'
+import { GameContext } from '../models/GameContext'
+
+
 
 
 export const ZONES = [
@@ -49,17 +54,15 @@ export default class GameEngine {
   // market removed: cards are drawn/played directly from deck
   players: PlayerState[] = []
   cardsInPlay: GameCard[] = []
-  storageKey = 'tocabola_game_state_v1'
-  activePlayerId: number = 0
   playerId: number = 0
   round: number = 0
   hands: { [p: number]: Card[] } = {}
   playedThisRound: { [p: number]: boolean } = {}
-  castleMaxHp: { [p: number]: number } = { 0: 20, 1: 20 }
-  castleHpByPlayer: { [p: number]: number } = { 0: 20, 1: 20 }
   gameOver: boolean = false
   loserPlayerId: number | null = null
   winnerPlayerId: number | null = null
+  gameContext: GameContext = new GameContext()
+  gameWorkflow: GameWorkflowState = new GameWorkflowState()
 
   normalizePlayedThisRound(input: any) {
     const raw = (input && typeof input === 'object') ? input : {}
@@ -73,31 +76,29 @@ export default class GameEngine {
     return normalized
   }
 
-  syncGameStateService(lastAction = '') {
-    gameStateService.setDeck(this.deck.map(d => d.toJSON()), 'game')
+  syncGameStateService() {
+    // Replace with GameContext instance usage
     const handsPayload: Record<string, any[]> = {}
     for (const playerId of Object.keys(this.hands || {})) {
       handsPayload[playerId] = (this.hands[Number(playerId)] || []).map(c => c.toJSON())
     }
-    gameStateService.setAllPlayerCards(handsPayload, 'game')
-    gameStateService.setWorkflow({
+    const workflow = {
       started: (this.players || []).length > 0,
-      activePlayerId: this.activePlayerId,
-      playerId: this.playerId,
-      round: this.round,
-      lastAction: String(lastAction || ''),
+      activePlayerId: this.gameWorkflow.activePlayerId,
+      playerId: this.gameWorkflow.playerId,
+      round: this.gameWorkflow.round,
       actionByPlayer: Object.fromEntries(Object.entries(this.playedThisRound || {}).map(([k, v]) => [k, v ? 'action-taken' : ''])),
-      castleHpByPlayer: Object.fromEntries(Object.entries(this.castleHpByPlayer || {}).map(([k, v]) => [k, Number(v)])),
-      castleMaxHp: Object.fromEntries(Object.entries(this.castleMaxHp || {}).map(([k, v]) => [k, Number(v)])),
-      gameOver: this.gameOver,
-      loserPlayerId: this.loserPlayerId,
-      winnerPlayerId: this.winnerPlayerId
-    }, 'game')
+      gameOver: this.gameWorkflow.gameOver,
+      loserPlayerId: this.gameWorkflow.loserPlayerId,
+      winnerPlayerId: this.gameWorkflow.winnerPlayerId
+    };
+    // Use workflow object as needed, e.g. this.gameContext.setWorkflow(workflow)
   }
 
   constructor(deck: Card[]) {
     this.deck = [...deck]
-    gameStateService.setDeck(this.deck.map(d => d.toJSON()), 'game')
+    this.gameContext = new GameContext()
+    this.gameContext.setDeck(this.deck.map(d => d.toJSON()))
     // attempt to restore persisted state (if running in browser)
     try {
       const restored = this.loadState()
@@ -140,7 +141,7 @@ export default class GameEngine {
 
   canAct(p: number) {
     if (this.gameOver) return { ok: false, reason: 'game is over' }
-    if (p !== this.activePlayerId) return { ok: false, reason: 'not your turn' }
+    if (p !== this.gameWorkflow.activePlayerId) return { ok: false, reason: 'not your turn' }
     if (Boolean(this.playedThisRound[p])) return { ok: false, reason: 'already played this round' }
     return { ok: true }
   }
@@ -171,12 +172,12 @@ export default class GameEngine {
     const enemyId = this.players.find(p => p.id !== ownerId)?.id
     if (enemyId == null) return
     const totalAtk = attackers.reduce((sum, g) => sum + Math.max(0, Number(g.card.attackPoints || 0)), 0)
-    const enemyMaxHp = Number(this.castleMaxHp[enemyId] ?? 20)
-    this.castleHpByPlayer[enemyId] = Math.max(0, (this.castleHpByPlayer[enemyId] ?? enemyMaxHp) - totalAtk)
-    if (this.castleHpByPlayer[enemyId] <= 0) {
-      this.gameOver = true
-      this.loserPlayerId = enemyId
-      this.winnerPlayerId = ownerId
+    const enemyMaxHp = Number(this.gameContext.castleMaxHp[enemyId] ?? 20)
+    this.gameContext.castleHpByPlayer[enemyId] = Math.max(0, (this.gameContext.castleHpByPlayer[enemyId] ?? enemyMaxHp) - totalAtk)
+    if (this.gameContext.castleHpByPlayer[enemyId] <= 0) {
+      this.gameWorkflow.gameOver = true
+      this.gameWorkflow.loserPlayerId = enemyId
+      this.gameWorkflow.winnerPlayerId = ownerId
     }
   }
 
@@ -195,7 +196,7 @@ export default class GameEngine {
     this.players = playerNames.map((n, i) => ({ id: i, name: n }))
     // create a fresh randomized deck
     this.deck = deckService.createDeck()
-    gameStateService.setDeck(this.deck.map(d => d.toJSON()), 'game')
+    this.gameContext.setDeck(this.deck.map(d => d.toJSON()))
     // shuffle the deck so order is randomized at game start
     this.shuffleDeck()
     this.cardsInPlay = []
@@ -208,19 +209,19 @@ export default class GameEngine {
       }
     }
     // market phase removed
-    this.activePlayerId = 0
-    this.playerId = this.activePlayerId
+    this.gameWorkflow.activePlayerId = 0
+    this.playerId = this.gameWorkflow.activePlayerId
     this.round = 0
     this.playedThisRound = {}
-    this.castleMaxHp = {}
-    for (let i = 0; i < this.players.length; i++) this.castleMaxHp[i] = 20
-    this.castleHpByPlayer = {}
-    for (let i = 0; i < this.players.length; i++) this.castleHpByPlayer[i] = this.castleMaxHp[i]
-    this.gameOver = false
-    this.loserPlayerId = null
-    this.winnerPlayerId = null
-    // Set playerId for local user (default to 0, can be set externally for client)
-    gameStateService.setWorkflow({ playerId: this.playerId }, 'game')
+    this.gameContext.castleMaxHp = {}
+    for (let i = 0; i < this.players.length; i++) this.gameContext.castleMaxHp[i] = 20
+    this.gameContext.castleHpByPlayer = {}
+    for (let i = 0; i < this.players.length; i++) this.gameContext.castleHpByPlayer[i] = this.gameContext.castleMaxHp[i]
+    this.gameWorkflow.gameOver = false
+    this.gameWorkflow.loserPlayerId = null
+    this.gameWorkflow.winnerPlayerId = null
+    // Create workflow object and set playerId
+    const workflow = { playerId: this.playerId };
     this.saveState('startGame')
   }
 
@@ -378,67 +379,55 @@ export default class GameEngine {
   endTurn() {
     if (this.gameOver) {
       this.saveState('endTurn')
-      return { ok: true, activePlayerId: this.activePlayerId, playerId: this.playerId, round: this.round, gameOver: true, winnerPlayerId: this.winnerPlayerId, loserPlayerId: this.loserPlayerId }
+      return { ok: true, activePlayerId: this.gameWorkflow.activePlayerId, playerId: this.gameWorkflow.playerId, round: this.gameWorkflow.round, gameOver: true, winnerPlayerId: this.gameWorkflow.winnerPlayerId, loserPlayerId: this.gameWorkflow.loserPlayerId }
     }
-    const previousPlayerId = this.activePlayerId
+    const previousPlayerId = this.gameWorkflow.activePlayerId
     this.applyCastleDamageFromOwner(previousPlayerId)
     if (this.gameOver) {
       this.saveState('endTurn')
-      return { ok: true, activePlayerId: this.activePlayerId, playerId: this.playerId, round: this.round, gameOver: true, winnerPlayerId: this.winnerPlayerId, loserPlayerId: this.loserPlayerId }
+      return { ok: true, activePlayerId: this.gameWorkflow.activePlayerId, playerId: this.gameWorkflow.playerId, round: this.gameWorkflow.round, gameOver: true, winnerPlayerId: this.gameWorkflow.winnerPlayerId, loserPlayerId: this.gameWorkflow.loserPlayerId }
     }
     if (!this.players || !this.players.length) return { ok: false, reason: 'no players' }
-    this.activePlayerId = (this.activePlayerId + 1) % this.players.length
-    this.playerId = this.activePlayerId
-    this.playedThisRound[this.activePlayerId] = false
-    if (this.activePlayerId === 0) {
-      this.round = (Number.isFinite(this.round) ? this.round : 0) + 1
+    this.gameWorkflow.activePlayerId = (this.gameWorkflow.activePlayerId + 1) % this.players.length
+    this.gameWorkflow.playerId = this.gameWorkflow.activePlayerId
+    this.playedThisRound[this.gameWorkflow.activePlayerId] = false
+    if (this.gameWorkflow.activePlayerId === 0) {
+      this.gameWorkflow.round = (Number.isFinite(this.gameWorkflow.round) ? this.gameWorkflow.round : 0) + 1
       this.playedThisRound = {}
     }
     this.saveState('endTurn')
-    return { ok: true, activePlayerId: this.activePlayerId, playerId: this.playerId     , round: this.round, gameOver: false }
+    return { ok: true, activePlayerId: this.gameWorkflow.activePlayerId, playerId: this.gameWorkflow.playerId, round: this.gameWorkflow.round, gameOver: false }
   }
 
   // Persist internal state to localStorage (browser). Silent on failure.
   saveState(action = 'stateUpdate') {
-    this.syncGameStateService(action)
-    gameStateService.appendHistory({
-      action: String(action || 'stateUpdate'),
-      activePlayerId: this.activePlayerId,
-      round: this.round,
-      gameOver: this.gameOver,
-      deckCount: this.deck.length,
-      cardsInPlayCount: this.cardsInPlay.length,
-      castleHpByPlayer: Object.fromEntries(Object.entries(this.castleHpByPlayer || {}).map(([k, v]) => [k, Number(v)]))
-    }, 'game')
-    try {
-      if (typeof window === 'undefined' || !window.localStorage) return false
-      const payload = {
-        deck: this.deck.map(d => d.toJSON()),
-        players: this.players,
-        cardsInPlay: this.cardsInPlay.map(g => ({ id: g.id, ownerId: g.ownerId, position: g.position, hidden: !!g.hidden, card: g.card.toJSON() })),
-        hands: Object.fromEntries(Object.entries(this.hands || {}).map(([k, arr]) => [k, arr.map(c => c.toJSON())])),
-        activePlayerId: this.activePlayerId,
-        playerId: this.playerId,
-        round: this.round,
-        playedThisRound: this.playedThisRound || {},
-        castleMaxHp: this.castleMaxHp,
-        castleHpByPlayer: this.castleHpByPlayer,
-        gameOver: this.gameOver,
-        loserPlayerId: this.loserPlayerId,
-        winnerPlayerId: this.winnerPlayerId
-      }
-      window.localStorage.setItem(this.storageKey, JSON.stringify(payload))
-      return true
-    } catch (e) {
-      return false
+    this.syncGameStateService()
+    
+      try {
+        // TODO: create a history entry and persist it to workflow
+        const historyEntry = {
+          action: String(action || 'stateUpdate'),
+          activePlayerId: Number(this.gameWorkflow.activePlayerId || 0),
+          round: Number(this.gameWorkflow.round || 0),
+          gameOver: Boolean(this.gameWorkflow.gameOver),
+          deckCount: Math.max(0, Number(this.deck?.length || 0)),
+        }
+
+   
+        gameStateService.saveWorkflowState(this.gameWorkflow)
+        gameStateService.saveGameState(this.gameContext)
+
+        return true
+      } catch (e) {
+        return false
     }
   }
 
   hasStoredState() {
     try {
-      if (typeof window === 'undefined' || !window.localStorage) return false
-      const raw = window.localStorage.getItem(this.storageKey)
-      return !!raw
+      const storedGame = gameStateService.loadGameState()
+      const storedWorkflow = gameStateService.loadWorkflowState()
+      return !!(storedGame || storedWorkflow)
     } catch (_e) {
       return false
     }
@@ -447,70 +436,63 @@ export default class GameEngine {
   ensureStoredState(playerNames: string[] = ['Server', 'Client']) {
     const restored = this.loadState()
     if (restored) {
-      this.syncGameStateService('restoreState')
+      this.syncGameStateService()
       return { ok: true, restored: true }
     }
     this.startGame(playerNames)
     return { ok: true, restored: false }
   }
 
-  // Attempt to load state from localStorage. Returns true if restored.
+  // Attempt to load state from separated storage keys. Returns true if restored.
   loadState() {
     try {
-      if (typeof window === 'undefined' || !window.localStorage) return false
-      const raw = window.localStorage.getItem(this.storageKey)
-      if (!raw) return false
-      const obj = JSON.parse(raw)
-      if (!obj) return false
-      // reconstruct cards
+      if (typeof window === 'undefined') return false
+      const storedGame = gameStateService.loadGameState()
+      const storedWorkflow = gameStateService.loadWorkflowState()
+      if (!storedGame) return false
+
+      const obj: any = storedGame
+
+      // reconstruct basic game structures
       this.deck = (obj.deck || []).map((c: any) => Card.fromJSON(c))
       this.players = obj.players || []
       this.cardsInPlay = (obj.cardsInPlay || []).map((g: any) => ({ id: g.id, ownerId: g.ownerId, position: g.position, hidden: !!g.hidden, card: Card.fromJSON(g.card) }))
+
+      // restore hands
       this.hands = {}
       const rawHands = obj.hands || {}
-      for (const k of Object.keys(rawHands)) {
-        this.hands[Number(k)] = (rawHands[k] || []).map((c: any) => Card.fromJSON(c))
-      }
-      this.activePlayerId = obj.activePlayerId ?? this.activePlayerId
-      this.playerId = Number(obj.playerId ?? this.activePlayerId)
-      this.round = obj.round ?? this.round
+      for (const k of Object.keys(rawHands)) this.hands[Number(k)] = (rawHands[k] || []).map((c: any) => Card.fromJSON(c))
+
+      // workflow & gameplay metadata
+      this.gameWorkflow.playerId = Number(obj.playerId ?? this.gameWorkflow.playerId)
+      this.gameWorkflow.round = obj.round ?? this.gameWorkflow.round
       this.playedThisRound = this.normalizePlayedThisRound(obj.playedThisRound)
+
+      // castle hp/max (handle object or legacy numeric max)
       if (obj.castleMaxHp && typeof obj.castleMaxHp === 'object') {
-        this.castleMaxHp = obj.castleMaxHp
+        this.gameContext.castleMaxHp = obj.castleMaxHp
       } else {
         const legacyMax = Number(obj.castleMaxHp || 20)
-        this.castleMaxHp = Object.fromEntries(
-          Object.keys(this.castleHpByPlayer || { 0: 0, 1: 0 }).map((k) => [Number(k), legacyMax])
-        )
+        this.gameContext.castleMaxHp = Object.fromEntries(Object.keys(this.gameContext.castleHpByPlayer || { 0: 0, 1: 0 }).map((k) => [Number(k), legacyMax]))
       }
-      this.castleHpByPlayer = obj.castleHpByPlayer || this.castleHpByPlayer
-      this.gameOver = !!obj.gameOver
-      this.loserPlayerId = obj.loserPlayerId == null ? null : Number(obj.loserPlayerId)
-      this.winnerPlayerId = obj.winnerPlayerId == null ? null : Number(obj.winnerPlayerId)
+      this.gameContext.castleHpByPlayer = obj.castleHpByPlayer || this.gameContext.castleHpByPlayer
+
+      this.gameWorkflow.gameOver = !!obj.gameOver
+      this.gameWorkflow.loserPlayerId = obj.loserPlayerId == null ? null : Number(obj.loserPlayerId)
+      this.gameWorkflow.winnerPlayerId = obj.winnerPlayerId == null ? null : Number(obj.winnerPlayerId)
+
+      // overlay any stored workflow (adds history, last action, etc.)
+      if (storedWorkflow) {
+        try { Object.assign(this.gameWorkflow, storedWorkflow) } catch (_e) {}
+      }
+
       return true
     } catch (e) {
       return false
     }
   }
 
-  // Export a full JSON-serializable snapshot (full card data)
-  exportState() {
-      return {
-      deck: this.deck.map(d => d.toJSON()),
-      players: this.players,
-      cardsInPlay: this.cardsInPlay.map(g => ({ id: g.id, ownerId: g.ownerId, position: g.position, hidden: !!g.hidden, card: g.card.toJSON() })),
-      hands: Object.fromEntries(Object.entries(this.hands || {}).map(([k, arr]) => [k, arr.map((c: Card) => c.toJSON())])),
-      activePlayerId: this.activePlayerId,
-      playerId: this.playerId,
-      round: this.round,
-      playedThisRound: this.playedThisRound || {},
-      castleMaxHp: this.castleMaxHp,
-      castleHpByPlayer: this.castleHpByPlayer,
-      gameOver: this.gameOver,
-      loserPlayerId: this.loserPlayerId,
-      winnerPlayerId: this.winnerPlayerId
-    }
-  }
+
 
   // Import state from parsed JSON and persist it
   importState(obj: any) {
@@ -524,24 +506,9 @@ export default class GameEngine {
       for (const k of Object.keys(rawHands)) {
         this.hands[Number(k)] = (rawHands[k] || []).map((c: any) => Card.fromJSON(c))
       }
-      this.activePlayerId = obj.activePlayerId ?? this.activePlayerId
-      this.playerId = Number(obj.playerId ?? this.activePlayerId)
-      this.round = obj.round ?? this.round
-      this.playedThisRound = this.normalizePlayedThisRound(obj.playedThisRound)
-      // Set playerId for local user (default to playerId, can be set externally for client)
-      gameStateService.setWorkflow({ playerId: this.playerId }, 'game')
-      if (obj.castleMaxHp && typeof obj.castleMaxHp === 'object') {
-        this.castleMaxHp = obj.castleMaxHp
-      } else {
-        const legacyMax = Number(obj.castleMaxHp || 20)
-        this.castleMaxHp = Object.fromEntries(
-          Object.keys(this.castleHpByPlayer || { 0: 0, 1: 0 }).map((k) => [Number(k), legacyMax])
-        )
-      }
-      this.castleHpByPlayer = obj.castleHpByPlayer || this.castleHpByPlayer
-      this.gameOver = !!obj.gameOver
-      this.loserPlayerId = obj.loserPlayerId == null ? null : Number(obj.loserPlayerId)
-      this.winnerPlayerId = obj.winnerPlayerId == null ? null : Number(obj.winnerPlayerId)
+    
+      this.gameContext = new GameContext(obj.castleHpByPlayer || this.gameContext.castleHpByPlayer)
+      this.gameWorkflow = new GameWorkflowState(obj.workflow || {})
       this.saveState('importState')
       return { ok: true }
     } catch (e) {
@@ -551,19 +518,12 @@ export default class GameEngine {
 
   getState() {
     return {
-      activePlayerId: this.activePlayerId,
-      playerId: this.playerId,
-      round: this.round,
       deckCount: this.deck.length,
       // market removed
       players: this.players,
       cardsInPlay: this.cardsInPlay.map(g => ({ id: g.id, ownerId: g.ownerId, position: g.position, hidden: !!g.hidden, card: g.card.toJSON() })),
       playedThisRound: this.playedThisRound || {},
-      castleMaxHp: this.castleMaxHp,
-      castleHpByPlayer: this.castleHpByPlayer,
-      gameOver: this.gameOver,
-      loserPlayerId: this.loserPlayerId,
-      winnerPlayerId: this.winnerPlayerId
+      workflow: this.gameWorkflow
     }
   }
 }

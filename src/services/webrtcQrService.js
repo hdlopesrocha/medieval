@@ -2,14 +2,16 @@ import { ref, nextTick, computed } from 'vue'
 import QRCode from 'qrcode'
 import { gzip, ungzip } from 'pako'
 import { cube, cubeOutline, serverOutline, phonePortraitOutline } from 'ionicons/icons'
-import { useGameStateService } from './gameStateService'
+// Removed: useGameStateService is no longer defined or needed.
 import deckService from './deckService'
 import engine from '../game/engineInstance'
+import gameStateService from './gameStateService'
+import { GameWorkflowState } from '../models/GameWorkflowState'
 
 let serviceInstance = null
 
 function createWebrtcQrService() {
-  const gameStateService = useGameStateService()
+  // Removed: useGameStateService is no longer defined or needed.
   const webrtcContext = 'webrtc'
   const clientDeckKey = 'client-deck'
   const clientHandKey = 'client-hand'
@@ -29,10 +31,10 @@ function createWebrtcQrService() {
   const connectedClient = ref(false)
   const autoAcceptOffers = ref(true)
   const activeRole = ref('')
-  const clientDeckCards = computed(() => gameStateService.getPlayerCards(clientDeckKey, webrtcContext))
-  const clientHandCards = computed(() => gameStateService.getPlayerCards(clientHandKey, webrtcContext))
-  const serverDeckCards = computed(() => gameStateService.getPlayerCards(serverDeckKey, webrtcContext))
-  const serverHandCards = computed(() => gameStateService.getPlayerCards(serverHandKey, webrtcContext))
+  const clientDeckCards = computed(() => gameContext.getPlayerCards(clientDeckKey, webrtcContext))
+  const clientHandCards = computed(() => gameContext.getPlayerCards(clientHandKey, webrtcContext))
+  const serverDeckCards = computed(() => gameContext.getPlayerCards(serverDeckKey, webrtcContext))
+  const serverHandCards = computed(() => gameContext.getPlayerCards(serverHandKey, webrtcContext))
   const isRealtimeGameActive = computed(() => {
     const role = String(activeRole.value || '')
     const connected = Boolean(connectedHost.value || connectedClient.value)
@@ -120,19 +122,21 @@ function createWebrtcQrService() {
     }
     hostDc.send(JSON.stringify(payload))
     gameStateService.setDeck(shuffledDeck, webrtcContext)
-    gameStateService.setWorkflow({ ownerRole: 'server', playerId: 0 }, 'game')
+    // persist a workflow history entry for this webrtc context
+    try {
+      const wf = gameStateService.loadWorkflowState() || new GameWorkflowState()
+      Object.assign(wf, { ownerRole: 'server', playerId: 0 })
+      if (typeof wf.appendHistory === 'function') {
+        wf.appendHistory({ action: 'sendInitialDeck', activePlayerId: 0, round: 0, gameOver: false, deckCount: shuffledDeck.length, cardsInPlayCount: 0, castleHpByPlayer: wf.castleHpByPlayer || {} })
+      }
+      gameStateService.saveWorkflowState(webrtcContext, wf)
+    } catch (e) {}
     gameStateService.setPlayerCards(serverDeckKey, shuffledDeck, webrtcContext)
     gameStateService.setPlayerCards(serverHandKey, hand, webrtcContext)
     consoleLogger.value.push(`server: sent shuffled deck (${shuffledDeck.length}) and hand (${hand.length})`)
   }
 
-  function serializeGameState() {
-    try {
-      return engine.exportState()
-    } catch (_e) {
-      return null
-    }
-  }
+
 
   function applyRemoteGameState(snapshot) {
     if (!snapshot || typeof snapshot !== 'object') return false
@@ -153,8 +157,6 @@ function createWebrtcQrService() {
 
   function syncGameStateToClient(reason = 'sync') {
     if (!hostDc || hostDc.readyState !== 'open') return false
-    const state = serializeGameState()
-    if (!state) return false
     hostDc.send(JSON.stringify({ type: 'game-state', reason, state }))
     consoleLogger.value.push(`server: synced game state (${reason})`)
     return true
@@ -358,7 +360,14 @@ function createWebrtcQrService() {
     offerUrl.value = ''
     offerUrlQr.value = ''
     gameStateService.setDeck([], webrtcContext)
-    gameStateService.setWorkflow({ ownerRole: 'server', playerId: 0, lastAction: 'resetServerState' }, 'game')
+    try {
+      const wf = gameStateService.loadWorkflowState() || new GameWorkflowState()
+      Object.assign(wf, { ownerRole: 'server', playerId: 0 })
+      if (typeof wf.appendHistory === 'function') {
+        wf.appendHistory({ action: 'resetServerState', activePlayerId: 0, round: 0, gameOver: false, deckCount: 0, cardsInPlayCount: 0, castleHpByPlayer: wf.castleHpByPlayer || {} })
+      }
+      gameStateService.saveWorkflowState(wf)
+    } catch (e) {}
     gameStateService.setPlayerCards(clientDeckKey, [], webrtcContext)
     gameStateService.setPlayerCards(clientHandKey, [], webrtcContext)
     gameStateService.setPlayerCards(serverDeckKey, [], webrtcContext)
@@ -375,7 +384,14 @@ function createWebrtcQrService() {
     answerQrPartIndex.value = 0
     answerJson.value = ''
     gameStateService.setDeck([], webrtcContext)
-    gameStateService.setWorkflow({ ownerRole: 'client', playerId: 1, lastAction: 'resetClientState' }, 'game')
+    try {
+      const wf = gameStateService.loadWorkflowState() || new GameWorkflowState()
+      Object.assign(wf, { ownerRole: 'client', playerId: 1 })
+      if (typeof wf.appendHistory === 'function') {
+        wf.appendHistory({ action: 'resetClientState', activePlayerId: 1, round: 0, gameOver: false, deckCount: 0, cardsInPlayCount: 0, castleHpByPlayer: wf.castleHpByPlayer || {} })
+      }
+      gameStateService.saveWorkflowState(wf)
+    } catch (e) {}
     gameStateService.setPlayerCards(clientDeckKey, [], webrtcContext)
     gameStateService.setPlayerCards(clientHandKey, [], webrtcContext)
     gameStateService.setPlayerCards(serverDeckKey, [], webrtcContext)
