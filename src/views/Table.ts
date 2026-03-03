@@ -5,8 +5,8 @@ import { ZONES, ZONE_ELEMENTS } from '../game/GameEngine'
 import { IonPage, IonContent, IonButton } from '@ionic/vue'
 import { useRouter } from 'vue-router'
 import { sortCardsInPlayBySlot } from '../utils/sortCardsInPlay'
-import { createEmptyGameStateView } from '../models/GameStateView'
-import type { GameStateView, InPlayCardView, PlayerView } from '../models/GameStateView'
+import type { GameContext } from '../models/GameContext'
+import type { GameWorkflowState } from '../models/GameWorkflowState'
 
 export default {
   name: 'Table',
@@ -16,50 +16,50 @@ export default {
     const anyEngine = engine as any
     // Use engine.getState(); `tick` drives reactivity for computed readers
     const tick = ref(0)
-    const state = computed<GameStateView>(() => {
+    const state = computed(() => {
       tick.value
       const rawPlayers = Array.isArray((engine as any).players) ? (engine as any).players : []
-      const rawCards = Array.isArray((engine as any).cardsInPlay) ? (engine as any).cardsInPlay.map((g: any) => ({ id: g.id, ownerId: g.ownerId, position: g.position, hidden: !!g.hidden, card: g.card && typeof g.card.toJSON === 'function' ? g.card.toJSON() : g.card })) : []
+      const rawCards = Array.isArray((engine as any).gameContext?.cardsInPlay) ? (engine as any).gameContext.cardsInPlay : []
       const wf = (engine as any).gameWorkflow || {}
+      const ctx = (engine as any).gameContext || {}
       return {
-        ...createEmptyGameStateView(),
         activePlayerId: Number(wf.activePlayerId || 0),
-        playerId: Number(wf.playerId ?? wf.activePlayerId ?? 0),
+        playerId: Number(ctx.playerId ?? wf.activePlayerId ?? 0),
         round: Number(wf.round ?? 0),
-        players: rawPlayers.map((player: any): PlayerView => ({ ...player, id: Number(player.id) })),
-        cardsInPlay: rawCards.map((entry: any): InPlayCardView => ({ ...entry, ownerId: Number(entry.ownerId), position: Number(entry.position) })),
-        playedThisRound: (engine as any).playedThisRound || {}
+        players: rawPlayers.map((p: any) => ({ id: Number(p?.id || 0), name: p?.name })),
+        cardsInPlay: rawCards.map((entry: any) => ({ id: String(entry?.id || ''), ownerId: Number(entry?.ownerId || 0), position: Number(entry?.position || 0), hidden: !!entry?.hidden, card: entry?.card })),
+        playedThisRound: Object.fromEntries(Object.entries(((engine as any).gameWorkflow && (engine as any).gameWorkflow.actionByPlayer) || {}).map(([k, v]) => [k, v === 'action-taken'])),
       }
     })
     const sortedCardsInPlay = computed(() => sortCardsInPlayBySlot(state.value?.cardsInPlay, state.value?.activePlayerId))
     let timer: ReturnType<typeof setInterval> | null = null
-    function normalizedStateFromEngine(): GameStateView {
-      const rawState = (engine.getState() || {}) as Record<string, any>
+    function normalizedStateFromEngine(): any {
+      const rawPlayers = Array.isArray((engine as any).players) ? (engine as any).players : []
+      const rawCards = Array.isArray((engine as any).gameContext?.cardsInPlay) ? (engine as any).gameContext.cardsInPlay : []
+      const wf = (engine as any).gameWorkflow || {}
+      const ctx = (engine as any).gameContext || {}
       return {
-        ...createEmptyGameStateView(),
-        ...rawState,
-        activePlayerId: Number(rawState.activePlayerId || 0),
-        playerId: Number(rawState.playerId ?? rawState.activePlayerId ?? 0),
-        round: Number(rawState.round ?? 0),
-        players: (rawState.players || []).map((player: any): PlayerView => ({
-          ...player,
-          id: Number(player.id)
-        })),
-        cardsInPlay: (rawState.cardsInPlay || []).map((entry: any): InPlayCardView => ({
-          ...entry,
-          ownerId: Number(entry.ownerId),
-          position: Number(entry.position)
-        }))
+        activePlayerId: Number(wf.activePlayerId || 0),
+        playerId: Number(ctx.playerId ?? wf.activePlayerId ?? 0),
+        round: Number(wf.round ?? 0),
+        players: rawPlayers.map((p: any) => ({ id: Number(p?.id || 0), name: p?.name })),
+        cardsInPlay: rawCards.map((entry: any) => ({ id: String(entry?.id || ''), ownerId: Number(entry?.ownerId || 0), position: Number(entry?.position || 0), hidden: !!entry?.hidden, card: entry?.card })),
+        playedThisRound: Object.fromEntries(Object.entries(((engine as any).gameWorkflow && (engine as any).gameWorkflow.actionByPlayer) || {}).map(([k, v]) => [k, v === 'action-taken'])),
       }
     }
     function refresh() { tick.value++; }
     function goMain() { router.push('/main') }
 
+    const isLocalPlayersTurn = computed(() => {
+      tick.value
+      return Number(state.value.playerId || 0) === Number(state.value.activePlayerId || 0)
+    })
+
     function zoneName(position: number) {
       return ZONES[position] ?? String(position)
     }
 
-    function canConvert(attacker: InPlayCardView | undefined | null) {
+    function canConvert(attacker: any | undefined | null) {
       if (!attacker || !attacker.card) return false
       const range = Number(attacker.card.range || 0)
       const targets = state.value.cardsInPlay.filter((card) => card.ownerId !== state.value.activePlayerId)
@@ -163,6 +163,7 @@ export default {
     return {
       state,
       sortedCardsInPlay,
+      isLocalPlayersTurn,
       refresh,
       goMain,
       zoneName,

@@ -4,8 +4,8 @@ import engine from '../game/engineInstance'
 import { ZONES, ZONE_ELEMENTS } from '../game/GameEngine'
 import CardItem from '../components/CardItem.vue'
 import MiniCardItem from '../components/MiniCardItem.vue'
-import { createEmptyGameStateView } from '../models/GameStateView'
-import type { GameStateView, InPlayCardView, PlayerView } from '../models/GameStateView'
+import type { GameContext } from '../models/GameContext'
+import type { GameWorkflowState } from '../models/GameWorkflowState'
 
 const ZONE_COUNT = 8
 const MAX_ZONE_VISIBLE_CARDS = 4
@@ -34,25 +34,25 @@ export default {
     const anyEngine = engine as any
     // Use engine state directly; `tick` forces recompute in computed getters.
     const tick = ref(0)
-    const state = computed<GameStateView>(() => {
+    const state = computed(() => {
       tick.value
       const rawPlayers = Array.isArray((engine as any).players) ? (engine as any).players : []
-      const rawCards = Array.isArray((engine as any).cardsInPlay) ? (engine as any).cardsInPlay.map((g: any) => ({ id: g.id, ownerId: g.ownerId, position: g.position, hidden: !!g.hidden, card: g.card && typeof g.card.toJSON === 'function' ? g.card.toJSON() : g.card })) : []
+      const rawCards = Array.isArray((engine as any).gameContext?.cardsInPlay) ? (engine as any).gameContext.cardsInPlay : []
       const wf = (engine as any).gameWorkflow || {}
-      const nextState: GameStateView = {
-        ...createEmptyGameStateView(),
+      const ctx = (engine as any).gameContext || {}
+      const nextState: any = {
         activePlayerId: Number(wf.activePlayerId || 0),
-        playerId: Number(wf.playerId ?? wf.activePlayerId ?? 0),
+        playerId: Number(ctx.playerId ?? wf.activePlayerId ?? 0),
         round: Number(wf.round ?? 0),
-        players: rawPlayers.map((player: any): PlayerView => ({ ...player, id: Number(player.id) })),
-        cardsInPlay: rawCards.map((entry: any): InPlayCardView => ({ ...entry, ownerId: Number(entry.ownerId), position: Number(entry.position) }))
+        players: rawPlayers.map((p: any) => ({ id: Number(p?.id || 0), name: p?.name })),
+        cardsInPlay: rawCards.map((entry: any) => ({ id: String(entry?.id || ''), ownerId: Number(entry?.ownerId || 0), position: Number(entry?.position || 0), hidden: !!entry?.hidden, card: entry?.card }))
       }
       return nextState
     })
-    const selectedEntry = ref<InPlayCardView | null>(null)
+    const selectedEntry = ref<any | null>(null)
     let timer: ReturnType<typeof setInterval> | null = null
 
-    function selectCard(entry: InPlayCardView) {
+    function selectCard(entry: any) {
       selectedEntry.value = entry || null
     }
 
@@ -63,6 +63,11 @@ export default {
       if (!selectedEntry.value) return false
       if (state.value.gameOver) return false
       return Number(selectedEntry.value.ownerId) === Number(state.value.activePlayerId)
+    })
+
+    const isLocalPlayersTurn = computed(() => {
+      tick.value
+      return Number(state.value.playerId || 0) === Number(state.value.activePlayerId || 0)
     })
 
     function refreshState() {
@@ -77,7 +82,7 @@ export default {
     const cardsInPlayCount = computed(() => (state.value.cardsInPlay || []).length)
 
     const cardsByZone = computed(() => {
-      const grouped: Record<number, InPlayCardView[]> = {}
+      const grouped: Record<number, any[]> = {}
       for (let index = 0; index < ZONE_COUNT; index++) grouped[index] = []
       for (const card of (state.value.cardsInPlay || [])) {
         const pos = Number(card.position)
@@ -123,7 +128,7 @@ export default {
       return ZONES[position] ?? String(position)
     }
 
-    function canConvert(attacker: InPlayCardView | undefined | null) {
+    function canConvert(attacker: any | undefined | null) {
       if (!attacker || !attacker.card) return false
       const range = Number(attacker.card.range || 0)
       const targets = state.value.cardsInPlay.filter((card) => card.ownerId !== state.value.activePlayerId)
@@ -225,6 +230,7 @@ export default {
     return {
       mapStripImages,
       state,
+      isLocalPlayersTurn,
       cardsInPlayCount,
       selectedEntry,
       selectedCard,

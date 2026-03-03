@@ -4,8 +4,8 @@ import engine from '../game/engineInstance'
 import gameState from '../services/gameState'
 import { ZONES } from '../game/GameEngine'
 // import GameContext from '../models/GameContext' if needed
-import { createEmptyGameStateView } from '../models/GameStateView'
-import type { GameStateView, InPlayCardView, PlayerView } from '../models/GameStateView'
+import type { GameContext } from '../models/GameContext'
+import type { GameWorkflowState } from '../models/GameWorkflowState'
 
 export default {
   name: 'BoardView',
@@ -15,7 +15,7 @@ export default {
     const zones = ZONES
     // Use engine.getState() as the authoritative source. `tick` forces recompute.
     const tick = ref(0)
-    const state = computed<GameStateView>(() => { tick.value; return normalizedStateFromEngine() })
+    const state = computed(() => { tick.value; return normalizedStateFromEngine() })
     let timer: ReturnType<typeof setInterval> | null = null
 
     const dragged = ref<{ id: string, pos: number, vel: number } | null>(null) // { id, pos, vel }
@@ -25,13 +25,19 @@ export default {
     const blockedShake = ref(-1)
     const handDragVel = ref<number | null>(null)
 
-    function normalizedStateFromEngine(): GameStateView {
+    function normalizedStateFromEngine(): any {
       const rawPlayers = Array.isArray((engine as any).players) ? (engine as any).players : []
-      const rawCards = Array.isArray((engine as any).cardsInPlay) ? (engine as any).cardsInPlay.map((g: any) => ({ id: g.id, ownerId: g.ownerId, position: g.position, hidden: !!g.hidden, card: g.card && typeof g.card.toJSON === 'function' ? g.card.toJSON() : g.card })) : []
+      const rawCards = Array.isArray((engine as any).gameContext?.cardsInPlay) ? (engine as any).gameContext.cardsInPlay : []
       const wf = (engine as any).gameWorkflow || {}
       const ctx = (engine as any).gameContext || {}
       return {
-        ...createEmptyGameStateView()
+        activePlayerId: Number(wf.activePlayerId || 0),
+        playerId: Number(ctx.playerId ?? wf.activePlayerId ?? 0),
+        round: Number(wf.round ?? 0),
+        players: rawPlayers.map((p: any) => ({ id: Number(p?.id || 0), name: p?.name })),
+        cardsInPlay: rawCards.map((entry: any) => ({ id: String(entry?.id || ''), ownerId: Number(entry?.ownerId || 0), position: Number(entry?.position || 0), hidden: !!entry?.hidden, card: entry?.card })),
+        playedThisRound: Object.fromEntries(Object.entries(((engine as any).gameWorkflow && (engine as any).gameWorkflow.actionByPlayer) || {}).map(([k, v]) => [k, v === 'action-taken'])),
+        gameOver: Boolean(wf.gameOver)
       }
     }
 
