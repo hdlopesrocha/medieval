@@ -38,7 +38,27 @@ ion-card {
   object-fit: cover;
 }
 
+ion-button.card-action-btn {
+  height: 64px !important;
+  min-height: 64px !important;
+  max-height: 64px !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
 
+.confirm-card-actions ion-button,
+.confirm-actions-row ion-button,
+.deck-card-slot ion-button,
+.map-card-overlay-actions ion-button,
+.card-item-wrapper ion-button {
+  height: 64px !important;
+  min-height: 64px !important;
+  max-height: 64px !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
 
 .hp-section {
   display: flex;
