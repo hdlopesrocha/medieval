@@ -14,7 +14,7 @@ export default {
     const gameState = useGameStateService()
     const router = useRouter()
     const route = useRoute()
-    const state = ref<any>({ activePlayerId: 0, currentUser: 0, round: 0, players: [] })
+    const state = ref<any>({ playerId: 0, activePlayerId: 0, round: 0, players: [] })
     const settingsOpen = ref(false)
     const isFullscreen = ref(false)
     const settingsTriggerId = 'current-player-board-settings-trigger'
@@ -27,9 +27,9 @@ export default {
 
     function refresh() {
       const nextState: any = engine.getState() || {}
-      nextState.activePlayerId = Number(nextState.activePlayerId || 0)
-      nextState.currentUser = Number(nextState.currentUser ?? nextState.activePlayerId ?? 0)
-      nextState.round = Number(nextState.round ?? 0)
+      nextState.playerId = Number(nextState.playerId)
+      nextState.activePlayerId = Number(nextState.activePlayerId?.value + 1)
+      nextState.round = Number(nextState.round)
       nextState.players = (nextState.players || []).map((player: any) => ({
         ...player,
         id: Number(player.id)
@@ -37,35 +37,34 @@ export default {
       state.value = nextState
     }
 
-    const currentUserId = computed(() => Number(state.value.currentUser ?? state.value.activePlayerId ?? 0))
-    const activePlayerId = computed(() => Number(state.value.activePlayerId ?? 0))
-    const roundNumber = computed(() => Number(state.value.round ?? 0))
+    const activePlayerId = computed(() => Number(state.value.activePlayerId))
+    const roundNumber = computed(() => Number(state.value.round))
     const multiplayerMode = computed(() => Boolean((webrtcQr as any).isRealtimeGameActive?.value))
     const role = computed(() => String((webrtcQr as any).activeRole?.value || ''))
     const connected = computed(() => Boolean((webrtcQr as any).connectedHost?.value || (webrtcQr as any).connectedClient?.value))
-    const localPlayerId = computed(() => {
+    const playerId = computed(() => {
       if (!multiplayerMode.value) return activePlayerId.value
       return role.value === 'client' ? 1 : 0
     })
-    const isLocalPlayersTurn = computed(() => Number(localPlayerId.value) === Number(activePlayerId.value))
+    const isLocalPlayersTurn = computed(() => Number(playerId.value) === Number(activePlayerId.value))
     const isStateOwner = computed(() => {
       if (!connected.value) return true
       return role.value === 'server' || role.value === 'local'
     })
-    const showCreateButton = computed(() => isStateOwner.value && Number(currentUserId.value) === Number(localPlayerId.value))
+    const showCreateButton = computed(() => isStateOwner.value && Number(playerId.value) === Number(playerId.value))
     const playerCastleHp = computed(() => {
       const hpByPlayer = (state.value && state.value.castleHpByPlayer) || {}
-      return Number(hpByPlayer[localPlayerId.value] ?? hpByPlayer[String(localPlayerId.value)] ?? 0)
+      return Number(hpByPlayer[playerId.value] ?? hpByPlayer[String(playerId.value)] ?? 0)
     })
     const enemyCastleHp = computed(() => {
-      const enemyId = Number(localPlayerId.value) === 0 ? 1 : 0
+      const enemyId = Number(playerId.value) === 0 ? 1 : 0
       const hpByPlayer = (state.value && state.value.castleHpByPlayer) || {}
       return Number(hpByPlayer[enemyId] ?? hpByPlayer[String(enemyId)] ?? 0)
     })
     const currentPlayerLabel = computed(() => {
-      const player = (state.value.players || []).find((entry: any) => Number(entry.id) === currentUserId.value)
-      if (player?.name) return `${player.name} (Player ${currentUserId.value})`
-      return `Player ${currentUserId.value}`
+      const player = (state.value.players || []).find((entry: any) => Number(entry.id) === playerId.value)
+      if (player?.name) return `${player.name} (Player ${playerId.value})`
+      return `Player ${playerId.value}`
     })
     const turnIcon = computed(() => (isLocalPlayersTurn.value ? '▶️' : '⏳'))
     const turnLabel = computed(() => {
@@ -90,8 +89,8 @@ export default {
         const playerId = ownerRole === 'client' ? 1 : 0
         gameState.setWorkflow({ ownerRole, playerId, lastAction: 'createGameState' }, 'game')
         ;(webrtcQr as any).syncGameStateToClient?.('createGame')
-        // Set currentUser and activePlayerId for local context
-        gameState.setWorkflow({ currentUser: playerId, activePlayerId: 0 }, 'game')
+        // Set playerId and activePlayerId for local context
+        gameState.setWorkflow({ playerId: playerId, activePlayerId: 0 }, 'game')
         refresh()
       } catch (e) {
         alert('Create failed: ' + e)
@@ -140,6 +139,7 @@ export default {
     })
 
     return {
+      playerId,
       currentPlayerLabel,
       roundNumber,
       playerCastleHp,

@@ -1,5 +1,3 @@
-
-
 <ion-button v-if="!boardVisible" size="small" fill="dark" style="margin-bottom: 8px; background: #222; color: #fff;" @click="toggleBoardVisible">
   <ion-icon slot="start" :icon="expandOutline"></ion-icon>
   Show Player Board
@@ -73,6 +71,7 @@
 
   <div class="current-player-board-row">
     <div><strong>Player:</strong> {{ playerId }}</div>
+    <div><strong>Active Player:</strong> {{ activePlayerId }}</div>
     <div><strong>Round:</strong> {{ roundNumber }}</div>
     <div><strong>Player Castle HP:</strong> {{ playerCastleHp }}</div>
     <div><strong>Enemy Castle HP:</strong> {{ enemyCastleHp }}</div>
