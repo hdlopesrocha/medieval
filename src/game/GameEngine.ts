@@ -213,6 +213,9 @@ export default class GameEngine {
     for (const pid of Object.keys(this.hands)) {
       handsPayload[pid] = (this.hands[Number(pid)] || []).map(c => c.toJSON())
     }
+    // Ensure both player slots exist (0 = server, 1 = client)
+    if (!Object.prototype.hasOwnProperty.call(handsPayload, '0')) handsPayload['0'] = []
+    if (!Object.prototype.hasOwnProperty.call(handsPayload, '1')) handsPayload['1'] = []
     this.gameContext.setAllPlayerCards(handsPayload)
     this.gameContext.started = true
     this.gameContext.playerId = this.playerId
@@ -476,6 +479,8 @@ export default class GameEngine {
       for (const k of Object.keys(this.hands)) {
         handsPayload[k] = (this.hands[Number(k)] || []).map(c => c.toJSON())
       }
+      if (!Object.prototype.hasOwnProperty.call(handsPayload, '0')) handsPayload['0'] = []
+      if (!Object.prototype.hasOwnProperty.call(handsPayload, '1')) handsPayload['1'] = []
       this.gameContext.setAllPlayerCards(handsPayload)
 
       // workflow & gameplay metadata
@@ -527,6 +532,8 @@ export default class GameEngine {
       for (const k of Object.keys(this.hands)) {
         handsPayload2[k] = (this.hands[Number(k)] || []).map(c => c.toJSON())
       }
+      if (!Object.prototype.hasOwnProperty.call(handsPayload2, '0')) handsPayload2['0'] = []
+      if (!Object.prototype.hasOwnProperty.call(handsPayload2, '1')) handsPayload2['1'] = []
       this.gameContext.setAllPlayerCards(handsPayload2)
       this.gameWorkflow = new GameWorkflowState(obj.workflow || {})
       this.saveState('importState')
