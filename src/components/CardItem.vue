@@ -3,12 +3,8 @@
 <script lang="ts" src="./CardItem.ts"></script>
 
 <style scoped>
-ion-card {
-  max-width: 320px;
-  margin: 8px;
-}
 
-.card-item-wrapper { display:inline-block; position:relative }
+
 .export-btn {
   position: absolute;
   right: -8px;
@@ -23,19 +19,9 @@ ion-card {
 }
 .export-btn:hover { opacity: 0.95 }
 
-/* Enforce a 3:4 ratio for all card items */
-.card-item-wrapper ion-card {
-  width: 320px;
-  max-width: 100%;
-  aspect-ratio: 3 / 5;
-  display: block;
-  overflow: hidden;
-}
-.card-item-wrapper ion-img,
-.card-item-wrapper img {
-  width: 100%;
-  height: auto;
-  object-fit: cover;
+.card-image {
+  position: relative;
+  padding: 0px 5%;
 }
 
 ion-button.card-action-btn {
@@ -51,14 +37,7 @@ ion-button.card-action-btn {
 .confirm-actions-row ion-button,
 .deck-card-slot ion-button,
 .map-card-overlay-actions ion-button,
-.card-item-wrapper ion-button {
-  height: 64px !important;
-  min-height: 64px !important;
-  max-height: 64px !important;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
+
 
 .hp-section {
   display: flex;

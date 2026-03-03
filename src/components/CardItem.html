@@ -1,5 +1,4 @@
-<div class="card-item-wrapper">
-  <ion-card>
+<ion-card>
     <div v-if="hidden" class="card-back">
       <div class="card-back-text">Card Back</div>
     </div>
@@ -12,8 +11,9 @@
 
       </ion-card-header>
       <ion-card-content>
-        <ion-img :src="imageSrc" alt="card image" />
-
+        <div class="card-image">
+          <ion-img :src="imageSrc" alt="card image" />
+        </div>
         <div v-if="subCategoryIconItems.length" class="subcat-icons-row">
           <span
             v-for="item in subCategoryIconItems"
@@ -44,7 +44,11 @@
 
 
       </ion-card-content>
+      <ion-card-footer>
+        <div class="card-footer-row">
+          <button v-if="showExportButton" class="export-btn" @click="exportCardToPng">Export PNG</button>
+          <slot name="actions"></slot>
+        </div>
+      </ion-card-footer>
     </template>
-  </ion-card>
-  <button v-if="showExportButton" class="export-btn" @click="exportCardToPng">Export PNG</button>
-</div>
+</ion-card>
