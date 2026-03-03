@@ -50,19 +50,54 @@ function uuid() {
 
 export default class GameEngine {
   ZONES = ZONES
-  // market removed: cards are drawn/played directly from deck
-  deck: Card[] = []
-  players: PlayerState[] = []
-  cardsInPlay: GameCard[] = []
-  playerId: number = 0
-  round: number = 0
-  hands: { [p: number]: Card[] } = {}
-  playedThisRound: { [p: number]: boolean } = {}
-  gameOver: boolean = false
-  loserPlayerId: number | null = null
-  winnerPlayerId: number | null = null
+  // Persistence: deck, players, cardsInPlay and hands are persisted in `gameContext`.
   gameContext: GameContext = new GameContext()
   gameWorkflow: GameWorkflowState = new GameWorkflowState()
+
+  // Deck accessors backed by gameContext (serialize/deserialize)
+  get deck(): Card[] {
+    return (this.gameContext.getDeck() || []).map((c: any) => Card.fromJSON(c))
+  }
+  set deck(cards: Card[]) {
+    try { this.gameContext.setDeck((cards || []).map(c => (c && typeof (c as any).toJSON === 'function') ? (c as any).toJSON() : c)) } catch (e) {}
+  }
+
+  // Players list persisted in gameContext.playersList
+  get players(): PlayerState[] {
+    return (this.gameContext.getPlayersList ? this.gameContext.getPlayersList() : (this.gameContext.playersList || [])).map((p: any) => ({ id: Number(p.id || 0), name: p.name }))
+  }
+  set players(pl: PlayerState[]) {
+    try { this.gameContext.setPlayersList(pl || []) } catch (e) {}
+  }
+
+  // Cards in play persisted in gameContext.cardsInPlay (card as JSON)
+  get cardsInPlay(): GameCard[] {
+    return (this.gameContext.getCardsInPlay ? this.gameContext.getCardsInPlay() : (this.gameContext.cardsInPlay || [])).map((g: any) => ({ id: g.id, ownerId: Number(g.ownerId || 0), position: Number(g.position || 0), hidden: !!g.hidden, card: Card.fromJSON(g.card) }))
+  }
+  set cardsInPlay(arr: GameCard[]) {
+    try {
+      this.gameContext.setCardsInPlay((arr || []).map(g => ({ id: g.id, ownerId: g.ownerId, position: g.position, hidden: !!g.hidden, card: (g.card && typeof (g.card as any).toJSON === 'function') ? (g.card as any).toJSON() : g.card })))
+    } catch (e) {}
+  }
+
+  // Hands mapped to gameContext.players (per-player hands stored as JSON)
+  get hands(): { [p: number]: Card[] } {
+    const out: { [p: number]: Card[] } = {}
+    const raw = this.gameContext.players || {}
+    for (const k of Object.keys(raw || {})) {
+      out[Number(k)] = (raw[k] || []).map((c: any) => Card.fromJSON(c))
+    }
+    return out
+  }
+  set hands(map: { [p: number]: Card[] }) {
+    try {
+      const payload: Record<string, any[]> = {}
+      for (const k of Object.keys(map || {})) {
+        payload[k] = (map[Number(k)] || []).map((c: any) => (c && typeof c.toJSON === 'function') ? c.toJSON() : c)
+      }
+      this.gameContext.setAllPlayerCards(payload)
+    } catch (e) {}
+  }
 
   normalizePlayedThisRound(input: any) {
     const raw = (input && typeof input === 'object') ? input : {}
@@ -85,9 +120,9 @@ export default class GameEngine {
     const workflow = {
       started: (this.players || []).length > 0,
       activePlayerId: this.gameWorkflow.activePlayerId,
-      playerId: this.gameWorkflow.playerId,
+      playerId: this.gameContext.playerId,
       round: this.gameWorkflow.round,
-      actionByPlayer: Object.fromEntries(Object.entries(this.playedThisRound || {}).map(([k, v]) => [k, v ? 'action-taken' : ''])),
+      actionByPlayer: this.gameWorkflow.actionByPlayer || {},
       gameOver: this.gameWorkflow.gameOver,
       loserPlayerId: this.gameWorkflow.loserPlayerId,
       winnerPlayerId: this.gameWorkflow.winnerPlayerId
@@ -115,9 +150,13 @@ export default class GameEngine {
 
   // revive top of deck into owner's castle
   reviveTopToCastle(owner: number) {
-    if (!this.deck.length) return false
-    const c = this.deck.shift()!
-    this.cardsInPlay.push({ id: uuid(), card: c, ownerId: owner, position: this.getSpawnZone(c, owner), hidden: false })
+    const deckArr = this.deck
+    if (!deckArr.length) return false
+    const c = deckArr.shift()!
+    this.deck = deckArr
+    const cip = this.cardsInPlay
+    cip.push({ id: uuid(), card: c, ownerId: owner, position: this.getSpawnZone(c, owner), hidden: false })
+    this.cardsInPlay = cip
     return true
   }
 
@@ -140,14 +179,17 @@ export default class GameEngine {
   }
 
   canAct(p: number) {
-    if (this.gameOver) return { ok: false, reason: 'game is over' }
+    if (this.gameWorkflow.gameOver) return { ok: false, reason: 'game is over' }
     if (p !== this.gameWorkflow.activePlayerId) return { ok: false, reason: 'not your turn' }
-    if (Boolean(this.playedThisRound[p])) return { ok: false, reason: 'already played this round' }
+    const played = this.normalizePlayedThisRound(this.gameWorkflow.actionByPlayer)
+    if (Boolean(played[p])) return { ok: false, reason: 'already played this round' }
     return { ok: true }
   }
 
   recordActionAndEndTurn(p: number, action = 'turnAction') {
-    this.playedThisRound[p] = true
+    // mark action taken in workflow.actionByPlayer
+    try { this.gameWorkflow.actionByPlayer = this.gameWorkflow.actionByPlayer || {} } catch (e) {}
+    this.gameWorkflow.actionByPlayer[String(p)] = 'action-taken'
     this.saveState(action)
     const et = this.endTurn()
     return { ok: true, endTurn: et }
@@ -182,12 +224,14 @@ export default class GameEngine {
   }
 
   shuffleDeck() {
-    for (let i = this.deck.length - 1; i > 0; i--) {
+    const deckArr = this.deck
+    for (let i = deckArr.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1))
-      const tmp = this.deck[i]
-      this.deck[i] = this.deck[j]
-      this.deck[j] = tmp
+      const tmp = deckArr[i]
+      deckArr[i] = deckArr[j]
+      deckArr[j] = tmp
     }
+    this.deck = deckArr
     this.saveState('shuffleDeck')
   }
 
@@ -195,35 +239,35 @@ export default class GameEngine {
     // reset players and create a fresh deck from the sample deck
     this.players = playerNames.map((n, i) => ({ id: i, name: n }))
     // create a fresh randomized deck
-    this.deck = deckService.createDeck()
-    this.gameContext.setDeck(this.deck.map(d => d.toJSON()))
+    const deckArr = deckService.createDeck()
+    this.deck = deckArr
     // shuffle the deck so order is randomized at game start
     this.shuffleDeck()
+    // use the (possibly shuffled) deck from the accessor
+    const remainingDeck = this.deck
+    // reset cards in play and deal hands into a local persisted structure
     this.cardsInPlay = []
-    // initialize hands: deal 7 cards to each player (secret)
-    this.hands = {}
-    for (let i = 0; i < this.players.length; i++) this.hands[i] = []
+    const handsLocal: Record<string, any[]> = {}
+    for (let i = 0; i < this.players.length; i++) handsLocal[String(i)] = []
     for (let p = 0; p < this.players.length; p++) {
-      for (let k = 0; k < 5 && this.deck.length; k++) {
-        this.hands[p].push(this.deck.shift()!)
+      for (let k = 0; k < 5 && remainingDeck.length; k++) {
+        const card = remainingDeck.shift()!
+        handsLocal[String(p)].push(card.toJSON())
       }
     }
-    // Populate GameContext with player hands so UI components can read player cards
-    const handsPayload: Record<string, any[]> = {}
-    for (const pid of Object.keys(this.hands)) {
-      handsPayload[pid] = (this.hands[Number(pid)] || []).map(c => c.toJSON())
-    }
     // Ensure both player slots exist (0 = server, 1 = client)
-    if (!Object.prototype.hasOwnProperty.call(handsPayload, '0')) handsPayload['0'] = []
-    if (!Object.prototype.hasOwnProperty.call(handsPayload, '1')) handsPayload['1'] = []
-    this.gameContext.setAllPlayerCards(handsPayload)
-    this.gameContext.playerId = this.playerId
+    if (!Object.prototype.hasOwnProperty.call(handsLocal, '0')) handsLocal['0'] = []
+    if (!Object.prototype.hasOwnProperty.call(handsLocal, '1')) handsLocal['1'] = []
+    // Persist player hands and remaining deck
+    this.gameContext.setAllPlayerCards(handsLocal)
+    this.deck = remainingDeck
     // market phase removed
     this.gameWorkflow.started = true
     this.gameWorkflow.activePlayerId = 0
-    this.playerId = this.gameWorkflow.activePlayerId
-    this.round = 0
-    this.playedThisRound = {}
+    // set initial playerId into gameContext and initialize workflow counters
+    this.gameContext.playerId = this.gameWorkflow.activePlayerId
+    this.gameWorkflow.round = 0
+    this.gameWorkflow.actionByPlayer = {}
     this.gameContext.castleMaxHp = {}
     for (let i = 0; i < this.players.length; i++) this.gameContext.castleMaxHp[i] = 20
     this.gameContext.castleHpByPlayer = {}
@@ -232,7 +276,7 @@ export default class GameEngine {
     this.gameWorkflow.loserPlayerId = null
     this.gameWorkflow.winnerPlayerId = null
     // Create workflow object and set playerId
-    const workflow = { playerId: this.playerId };
+    const workflow = { playerId: this.gameContext.playerId };
     this.saveState('startGame')
   }
 
@@ -242,10 +286,15 @@ export default class GameEngine {
   playCard(p: number, handIndex: number) {
     const can = this.canAct(p)
     if (!can.ok) return can
-    const hand = this.hands[p] || []
+    const handsMap = this.hands
+    const hand = handsMap[p] || []
     if (handIndex < 0 || handIndex >= hand.length) return { ok: false, reason: 'invalid hand index' }
     const card = hand.splice(handIndex, 1)[0]
-    this.cardsInPlay.push({ id: uuid(), card, ownerId: p, position: this.getSpawnZone(card, p), hidden: false })
+    handsMap[p] = hand
+    this.hands = handsMap
+    const cip = this.cardsInPlay
+    cip.push({ id: uuid(), card, ownerId: p, position: this.getSpawnZone(card, p), hidden: false })
+    this.cardsInPlay = cip
     return this.recordActionAndEndTurn(p, 'playCard')
   }
 
@@ -253,14 +302,19 @@ export default class GameEngine {
   playCardTo(p: number, handIndex: number, position: number) {
     const can = this.canAct(p)
     if (!can.ok) return can
-    const hand = this.hands[p] || []
+    const handsMap = this.hands
+    const hand = handsMap[p] || []
     if (handIndex < 0 || handIndex >= hand.length) 
       return { ok: false, reason: 'invalid hand index' }
     if (!Number.isFinite(position) || position < 0 || position >= ZONES.length) return { ok: false, reason: 'invalid position' }
     const spawn = this.getSpawnZone(hand[handIndex], p)
     if (position !== spawn) return { ok: false, reason: 'cards must be played in zone 0' }
     const card = hand.splice(handIndex, 1)[0]
-    this.cardsInPlay.push({ id: uuid(), card, ownerId: p, position: this.getSpawnZone(card, this.playerId), hidden: false })
+    handsMap[p] = hand
+    this.hands = handsMap
+    const cip = this.cardsInPlay
+    cip.push({ id: uuid(), card, ownerId: p, position: this.getSpawnZone(card, p), hidden: false })
+    this.cardsInPlay = cip
     return this.recordActionAndEndTurn(p, 'playCardTo')
   }
 
@@ -268,7 +322,8 @@ export default class GameEngine {
   moveCard(cardId: string, p: number, steps: number) {
     const can = this.canAct(p)
     if (!can.ok) return can
-    const g = this.cardsInPlay.find(c => c.id === cardId)
+    const cip = this.cardsInPlay
+    const g = cip.find(c => c.id === cardId)
     if (!g) return { ok: false, reason: 'card not found' }
     if (g.ownerId !== p) return { ok: false, reason: 'not your card' }
     if (!Number.isFinite(steps) || steps < 0) return { ok: false, reason: 'invalid steps' }
@@ -294,6 +349,8 @@ export default class GameEngine {
     } catch (e) {
       // ignore command errors
     }
+    // persist updated positions
+    this.cardsInPlay = cip
     return this.recordActionAndEndTurn(p, 'moveCard')
   }
 
@@ -362,7 +419,7 @@ export default class GameEngine {
   }
 
   nextPhase() {
-    if (this.gameOver) return
+    if (this.gameWorkflow.gameOver) return
     // Enemy automatic movement: move only non-player cards (ownerId !== 0)
     const maxPos = ZONES.length - 1
     for (const g of this.cardsInPlay.filter(c => c.ownerId !== 0)) {
@@ -388,26 +445,28 @@ export default class GameEngine {
 
   // Advance active player (end current player's turn)
   endTurn() {
-    if (this.gameOver) {
+    if (this.gameWorkflow.gameOver) {
       this.saveState('endTurn')
-      return { ok: true, activePlayerId: this.gameWorkflow.activePlayerId, playerId: this.gameWorkflow.playerId, round: this.gameWorkflow.round, gameOver: true, winnerPlayerId: this.gameWorkflow.winnerPlayerId, loserPlayerId: this.gameWorkflow.loserPlayerId }
+      return { ok: true, activePlayerId: this.gameWorkflow.activePlayerId, playerId: this.gameContext.playerId, round: this.gameWorkflow.round, gameOver: true, winnerPlayerId: this.gameWorkflow.winnerPlayerId, loserPlayerId: this.gameWorkflow.loserPlayerId }
     }
     const previousPlayerId = this.gameWorkflow.activePlayerId
     this.applyCastleDamageFromOwner(previousPlayerId)
-    if (this.gameOver) {
+    if (this.gameWorkflow.gameOver) {
       this.saveState('endTurn')
-      return { ok: true, activePlayerId: this.gameWorkflow.activePlayerId, playerId: this.gameWorkflow.playerId, round: this.gameWorkflow.round, gameOver: true, winnerPlayerId: this.gameWorkflow.winnerPlayerId, loserPlayerId: this.gameWorkflow.loserPlayerId }
+      return { ok: true, activePlayerId: this.gameWorkflow.activePlayerId, playerId: this.gameContext.playerId, round: this.gameWorkflow.round, gameOver: true, winnerPlayerId: this.gameWorkflow.winnerPlayerId, loserPlayerId: this.gameWorkflow.loserPlayerId }
     }
     if (!this.players || !this.players.length) return { ok: false, reason: 'no players' }
     this.gameWorkflow.activePlayerId = (this.gameWorkflow.activePlayerId + 1) % this.players.length
-    this.gameWorkflow.playerId = this.gameWorkflow.activePlayerId
-    this.playedThisRound[this.gameWorkflow.activePlayerId] = false
+    this.gameContext.playerId = this.gameWorkflow.activePlayerId
+    // clear played flag for the new active player
+    try { this.gameWorkflow.actionByPlayer = this.gameWorkflow.actionByPlayer || {} } catch (e) {}
+    this.gameWorkflow.actionByPlayer[String(this.gameWorkflow.activePlayerId)] = ''
     if (this.gameWorkflow.activePlayerId === 0) {
       this.gameWorkflow.round = (Number.isFinite(this.gameWorkflow.round) ? this.gameWorkflow.round : 0) + 1
-      this.playedThisRound = {}
+      this.gameWorkflow.actionByPlayer = {}
     }
     this.saveState('endTurn')
-    return { ok: true, activePlayerId: this.gameWorkflow.activePlayerId, playerId: this.gameWorkflow.playerId, round: this.gameWorkflow.round, gameOver: false }
+    return { ok: true, activePlayerId: this.gameWorkflow.activePlayerId, playerId: this.gameContext.playerId, round: this.gameWorkflow.round, gameOver: false }
   }
 
   // Persist internal state to localStorage (browser). Silent on failure.
@@ -469,24 +528,22 @@ export default class GameEngine {
       this.players = obj.players || []
       this.cardsInPlay = (obj.cardsInPlay || []).map((g: any) => ({ id: g.id, ownerId: g.ownerId, position: g.position, hidden: !!g.hidden, card: Card.fromJSON(g.card) }))
 
-      // restore hands
-      this.hands = {}
+      // restore hands into hands map and persist via setter
       const rawHands = obj.hands || {}
-      for (const k of Object.keys(rawHands)) this.hands[Number(k)] = (rawHands[k] || []).map((c: any) => Card.fromJSON(c))
-
-      // ensure GameContext has the same player hands representation
-      const handsPayload: Record<string, any[]> = {}
-      for (const k of Object.keys(this.hands)) {
-        handsPayload[k] = (this.hands[Number(k)] || []).map(c => c.toJSON())
-      }
-      if (!Object.prototype.hasOwnProperty.call(handsPayload, '0')) handsPayload['0'] = []
-      if (!Object.prototype.hasOwnProperty.call(handsPayload, '1')) handsPayload['1'] = []
-      this.gameContext.setAllPlayerCards(handsPayload)
+      const handsMap: { [p: number]: Card[] } = {}
+      for (const k of Object.keys(rawHands)) handsMap[Number(k)] = (rawHands[k] || []).map((c: any) => Card.fromJSON(c))
+      this.hands = handsMap
 
       // workflow & gameplay metadata
-      this.gameWorkflow.playerId = Number(obj.playerId ?? this.gameWorkflow.playerId)
+      this.gameContext.playerId = Number(obj.playerId ?? this.gameContext.playerId)
       this.gameWorkflow.round = obj.round ?? this.gameWorkflow.round
-      this.playedThisRound = this.normalizePlayedThisRound(obj.playedThisRound)
+      // reconcile played/action flags into workflow.actionByPlayer
+      if (obj.actionByPlayer && typeof obj.actionByPlayer === 'object') {
+        this.gameWorkflow.actionByPlayer = obj.actionByPlayer
+      } else {
+        const fromPlayed = Object.fromEntries(Object.keys(obj.playedThisRound || {}).map((k) => [k, (obj.playedThisRound || {})[k] ? 'action-taken' : '']))
+        this.gameWorkflow.actionByPlayer = fromPlayed
+      }
 
       // castle hp/max (handle object or legacy numeric max)
       if (obj.castleMaxHp && typeof obj.castleMaxHp === 'object') {
@@ -521,21 +578,24 @@ export default class GameEngine {
       this.deck = (obj.deck || []).map((c: any) => Card.fromJSON(c))
       this.players = obj.players || []
       this.cardsInPlay = (obj.cardsInPlay || []).map((g: any) => ({ id: g.id, ownerId: g.ownerId, position: g.position, hidden: !!g.hidden, card: Card.fromJSON(g.card) }))
-      this.hands = {}
       const rawHands = obj.hands || {}
+      const handsMap: { [p: number]: Card[] } = {}
       for (const k of Object.keys(rawHands)) {
-        this.hands[Number(k)] = (rawHands[k] || []).map((c: any) => Card.fromJSON(c))
+        handsMap[Number(k)] = (rawHands[k] || []).map((c: any) => Card.fromJSON(c))
       }
+      this.hands = handsMap
       this.gameContext = new GameContext(obj.castleHpByPlayer || this.gameContext.castleHpByPlayer)
-      // populate gameContext players from hands when importing
+      // ensure persisted hands exist
       const handsPayload2: Record<string, any[]> = {}
-      for (const k of Object.keys(this.hands)) {
-        handsPayload2[k] = (this.hands[Number(k)] || []).map(c => c.toJSON())
+      for (const k of Object.keys(handsMap)) {
+        handsPayload2[k] = (handsMap[Number(k)] || []).map(c => c.toJSON())
       }
       if (!Object.prototype.hasOwnProperty.call(handsPayload2, '0')) handsPayload2['0'] = []
       if (!Object.prototype.hasOwnProperty.call(handsPayload2, '1')) handsPayload2['1'] = []
       this.gameContext.setAllPlayerCards(handsPayload2)
       this.gameWorkflow = new GameWorkflowState(obj.workflow || {})
+      // import stored playerId into gameContext (favor explicit obj.playerId, fall back to workflow.playerId)
+      this.gameContext.playerId = Number(obj.playerId ?? (obj.workflow && obj.workflow.playerId) ?? this.gameContext.playerId)
       this.saveState('importState')
       return { ok: true }
     } catch (e) {

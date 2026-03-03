@@ -6,8 +6,12 @@ import { GameHistoryEntry } from './GameHistoryEntry'
 
 export class GameContext {
   deck: any[] = [];
+  // `players` stores per-player hands (keyed by player id)
   players: Record<string, any[]> = {};
-  started: boolean = false;
+  // persisted list of players (id/name)
+  playersList: Array<{ id: number; name?: string }> = [];
+  // persisted cards in play (serialized)
+  cardsInPlay: any[] = [];
   playerId: number = 0;
   ownerRole: string = '';
   actionByPlayer: Record<string, string> = {};
@@ -18,7 +22,6 @@ export class GameContext {
     if (init) {
       if (init.deck) this.deck = [...init.deck];
       if (init.players) this.players = { ...init.players };
-      if (init.started !== undefined) this.started = init.started;
       if (init.playerId !== undefined) this.playerId = init.playerId;
       if (init.ownerRole !== undefined) this.ownerRole = init.ownerRole;
       if (init.actionByPlayer !== undefined) this.actionByPlayer = { ...init.actionByPlayer };
@@ -64,6 +67,23 @@ export class GameContext {
       cloned[playerKey] = this.cloneCards(players[playerKey] || [])
     }
     this.players = cloned
+  }
+
+  setPlayersList(players: Array<{ id: number; name?: string }>) {
+    this.playersList = Array.isArray(players) ? players.map(p => ({ id: Number(p.id || 0), name: typeof p.name === 'string' ? p.name : undefined })) : []
+  }
+
+  getPlayersList() {
+    return (this.playersList || []).map(p => ({ id: Number(p.id || 0), name: p.name }))
+  }
+
+  setCardsInPlay(cards: any[]) {
+    // cards is an array of objects { id, ownerId, position, hidden, card }
+    this.cardsInPlay = Array.isArray(cards) ? cards.map(c => ({ id: c.id, ownerId: c.ownerId, position: c.position, hidden: !!c.hidden, card: this.cloneCard(c.card) })) : []
+  }
+
+  getCardsInPlay() {
+    return (this.cardsInPlay || []).map(c => ({ id: c.id, ownerId: Number(c.ownerId), position: Number(c.position), hidden: !!c.hidden, card: c.card }))
   }
 
 
