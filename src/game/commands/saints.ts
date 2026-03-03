@@ -48,6 +48,6 @@ saints.set('Santa Luzia', { onPlayed: (engine, g, playerId) => { const opp = eng
 
 saints.set('São Bento', removeTarget())
 
-saints.set('Nossa Senhora de Fátima', { onPlayed: (engine, g, playerId) => { healAllAllies(3).onPlayed!(engine, g, playerId); (engine as any)._skipEnemyAttacks = true } })
+saints.set('Nossa Senhora de Fátima', { onPlayed: (engine, g, playerId) => { healAllAllies(3).onPlayed!(engine, g, playerId); try { engine.setSkipEnemyAttacks?.(true) } catch (e) { /* best-effort */ } } })
 
 export default saints
