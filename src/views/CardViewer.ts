@@ -51,12 +51,10 @@ export default {
     }
 
     const titleText = computed(() => (props.mode === 'hand' ? 'Hand' : 'Deck'))
-    const isHandMode = computed(() => props.mode === 'hand')
     const handPlayerId = computed(() => viewerState.value.activePlayerId)
     // Assume localPlayerId is passed in or available in context
     const localPlayerId = computed(() => viewerState.value.playerId)
     const canPlayFromHand = computed(() => {
-      if (!isHandMode.value) return false
       if (viewerState.value.gameOver) return false
       // Only allow play if it's this player's turn and they haven't played yet
       if (viewerState.value.activePlayerId !== localPlayerId.value) return false
@@ -66,13 +64,18 @@ export default {
 
     function refreshState() {
       const wf = (engine as any).gameWorkflow || {}
+      const ctx = (engine as any).gameContext || {}
       viewerState.value = {
         activePlayerId: Number(wf.activePlayerId ?? 0),
-        playerId: Number(wf.playerId ?? 0),
-        playedThisRound: (engine as any).playedThisRound || {},
+        playerId: Number(ctx.playerId ?? 0),
+        playedThisRound: Object.fromEntries(Object.entries(((engine as any).gameWorkflow && (engine as any).gameWorkflow.actionByPlayer) || {}).map(([k, v]) => [k, v === 'action-taken'])),
         gameOver: Boolean(wf.gameOver)
       }
     }
+
+    const isLocalPlayersTurn = computed(() => {
+      return Number(viewerState.value.playerId || 0) === Number(viewerState.value.activePlayerId || 0)
+    })
 
     const cardsToShow = computed(() => {
       if (Array.isArray(props.cards) && props.cards.length) {
@@ -87,7 +90,6 @@ export default {
     })
 
     function playFromHand(index: number) {
-      if (!isHandMode.value) return
       if (!canPlayFromHand.value) return
       const playerId = localPlayerId.value
       const result: any = engine.playCard(playerId, Number(index || 0))
@@ -122,6 +124,6 @@ export default {
       if (timer) clearInterval(timer)
     })
 
-    return { titleText, isHandMode, cardsToShow, canPlayFromHand, playFromHand, goMain, goTable, goHand, goDeck, localPlayerId: localPlayerId.value, activePlayerId: handPlayerId.value }
+    return { titleText, cardsToShow, canPlayFromHand, playFromHand, goMain, goTable, goHand, goDeck, localPlayerId: localPlayerId.value, activePlayerId: handPlayerId.value, isLocalPlayersTurn: isLocalPlayersTurn.value }
   }
 }

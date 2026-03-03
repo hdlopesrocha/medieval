@@ -11,7 +11,7 @@
             <div>
               <div><strong>Pos:</strong> {{ g.position }} ({{ zoneName(g.position) }})</div>
               <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">
-                <template v-if="g.ownerId === state.activePlayerId && !state.gameOver">
+                <template v-if="g.ownerId === state.activePlayerId && isLocalPlayersTurn && !state.gameOver">
                   <ion-button size="small" @click="moveCardUI(g.id)">Move</ion-button>
                   <ion-button size="small" @click="attackCardUI(g.id)">Attack</ion-button>
                   <ion-button size="small" v-if="g.card && g.card.category === 'priest' && canConvert(g)" @click="convertCardUI(g.id)">Convert</ion-button>

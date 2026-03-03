@@ -3,7 +3,7 @@
     <div class="deck-grid">
       <div v-for="(c, i) in cardsToShow" :key="i" class="deck-card-slot">
         <CardItem :card="c" :show-export="true" />
-        <ion-button v-if="isHandMode && localPlayerId === activePlayerId" size="small" :disabled="!canPlayFromHand || localPlayerId !== activePlayerId" @click="playFromHand(i)">Play</ion-button>
+        <ion-button v-if="isLocalPlayersTurn" size="small" :disabled="!canPlayFromHand || localPlayerId !== activePlayerId" @click="playFromHand(i)">Play</ion-button>
       </div>
     </div>
   </ion-content>

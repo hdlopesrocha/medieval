@@ -2,7 +2,7 @@
   <div class="map-card-overlay-wrap">
     <CardItem :card="selectedCard" :showExport="false" />
     <div class="map-card-overlay-actions">
-      <template v-if="selectedCanAct">
+      <template v-if="selectedCanAct && isLocalPlayersTurn">
         <ion-button size="small" @click="moveSelectedCard">Move</ion-button>
         <ion-button size="small" @click="attackWithSelectedCard">Attack</ion-button>
         <ion-button size="small" v-if="selectedCard && selectedCard.category === 'priest' && canConvert(selectedEntry)" @click="convertWithSelectedCard">Convert</ion-button>
