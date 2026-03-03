@@ -1,4 +1,5 @@
 import Card from '../models/Card'
+import { Player } from '../models/Player'
 import { getCommandFor } from './commands/registry'
 // import GameContext from '../models/GameContext' if needed
 import deckService from '../services/deckService'
@@ -39,10 +40,6 @@ export type GameCard = {
   hidden?: boolean
 }
 
-export type PlayerState = {
-  id: number
-  name: string
-}
 
 function uuid() {
   return Math.random().toString(36).slice(2, 9)
@@ -53,6 +50,8 @@ export default class GameEngine {
   // Persistence: deck, players, cardsInPlay and hands are persisted in `gameContext`.
   gameContext: GameContext = new GameContext()
   gameWorkflow: GameWorkflowState = new GameWorkflowState()
+  // Internal flag to skip automatic enemy attacks for the next phase
+  private _skipEnemyAttacks = false
 
   // Deck accessors backed by gameContext (serialize/deserialize)
   get deck(): Card[] {
@@ -63,10 +62,10 @@ export default class GameEngine {
   }
 
   // Players list persisted in gameContext.playersList
-  get players(): PlayerState[] {
+  get players(): Player[] {
     return (this.gameContext.getPlayersList ? this.gameContext.getPlayersList() : (this.gameContext.playersList || [])).map((p: any) => ({ id: Number(p.id || 0), name: p.name }))
   }
-  set players(pl: PlayerState[]) {
+  set players(pl: Player[]) {
     try { this.gameContext.setPlayersList(pl || []) } catch (e) {}
   }
 
@@ -83,9 +82,11 @@ export default class GameEngine {
   // Hands mapped to gameContext.players (per-player hands stored as JSON)
   get hands(): { [p: number]: Card[] } {
     const out: { [p: number]: Card[] } = {}
-    const raw = this.gameContext.players || {}
-    for (const k of Object.keys(raw || {})) {
-      out[Number(k)] = (raw[k] || []).map((c: any) => Card.fromJSON(c))
+    const players = this.gameContext.getPlayersList ? this.gameContext.getPlayersList() : (this.gameContext.playersList || [])
+    for (const p of (players || [])) {
+      const id = Number(p.id || 0)
+      const raw = (this.gameContext.getPlayerCards ? this.gameContext.getPlayerCards(id) : []) || []
+      out[id] = (raw || []).map((c: any) => Card.fromJSON(c))
     }
     return out
   }
@@ -98,6 +99,9 @@ export default class GameEngine {
       this.gameContext.setAllPlayerCards(payload)
     } catch (e) {}
   }
+
+  // Public ability: use a card's special ability (invoked via views)
+  // (signature overload placed next to implementation to expose in type surface)
 
   normalizePlayedThisRound(input: any) {
     const raw = (input && typeof input === 'object') ? input : {}
@@ -130,10 +134,10 @@ export default class GameEngine {
     // Use workflow object as needed, e.g. this.gameContext.setWorkflow(workflow)
   }
 
-  constructor(deck: Card[]) {
-    this.deck = [...deck]
+  constructor() {
+    this.deck = [...deckService.createDeck()]
     this.gameContext = new GameContext()
-    this.gameContext.setDeck(this.deck.map(d => d.toJSON()))
+    this.gameContext.setDeck(this.deck)
     // attempt to restore persisted state (if running in browser)
     try {
       const restored = this.loadState()
@@ -418,6 +422,34 @@ export default class GameEngine {
     return this.recordActionAndEndTurn(p, 'convertCard')
   }
 
+  // Use a card's special ability (invokes command.onPlayed)
+  useCardAbility(cardId: string, p: number, targetId?: string) {
+    const can = this.canAct(p)
+    if (!can.ok) return can
+    const g = this.cardsInPlay.find(c => c.id === cardId)
+    if (!g) return { ok: false, reason: 'card not found' }
+    if (g.ownerId !== p) return { ok: false, reason: 'not your card' }
+    try {
+      const cmd = getCommandFor(g.card.title || '')
+      if (cmd && cmd.onPlayed) {
+        const res = cmd.onPlayed(this, g, p, targetId)
+        if (res && res.ok === false) return res
+      } else {
+        return { ok: false, reason: 'ability not implemented' }
+      }
+    } catch (e) {
+      return { ok: false, reason: String(e) }
+    }
+    // cleanup dead units and persist
+    this.cardsInPlay = this.cardsInPlay.filter(g2 => g2.card.hp > 0)
+    return this.recordActionAndEndTurn(p, 'useCardAbility')
+  }
+
+  // Public: set whether automatic enemy attacks should be skipped for the next phase
+  setSkipEnemyAttacks(value: boolean) {
+    this._skipEnemyAttacks = !!value
+  }
+
   nextPhase() {
     if (this.gameWorkflow.gameOver) return
     // Enemy automatic movement: move only non-player cards (ownerId !== 0)
@@ -428,12 +460,17 @@ export default class GameEngine {
     }
 
     // Enemy automatic attacks: enemy cards attack player cards within range
-    for (const attacker of [...this.cardsInPlay].filter(c => c.ownerId !== 0)) {
-      const enemies = this.cardsInPlay.filter(e => e.ownerId === 0)
-      for (const enemy of enemies) {
-        const dist = Math.abs(enemy.position - attacker.position)
-        if (dist <= (attacker.card.range ?? 0)) {
-          enemy.card.hp = Math.max(0, enemy.card.hp - (attacker.card.attackPoints ?? 0))
+    if (this._skipEnemyAttacks) {
+      // consume the flag and skip enemy attacks for this phase
+      this._skipEnemyAttacks = false
+    } else {
+      for (const attacker of [...this.cardsInPlay].filter(c => c.ownerId !== 0)) {
+        const enemies = this.cardsInPlay.filter(e => e.ownerId === 0)
+        for (const enemy of enemies) {
+          const dist = Math.abs(enemy.position - attacker.position)
+          if (dist <= (attacker.card.range ?? 0)) {
+            enemy.card.hp = Math.max(0, enemy.card.hp - (attacker.card.attackPoints ?? 0))
+          }
         }
       }
     }
