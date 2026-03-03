@@ -432,7 +432,7 @@ function createWebrtcQrService() {
       connectedHost.value = true
       if (typeof engine.ensureStoredState === 'function') {
         engine.ensureStoredState(['Server', 'Client'])
-      } else if (!Array.isArray((engine as any).players) || !(engine as any).players.length) {
+      } else if (!Array.isArray(engine.players) || !engine.players.length) {
         engine.startGame(['Server', 'Client'])
       }
       sendInitialDeckToClient()
