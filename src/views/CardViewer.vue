@@ -12,8 +12,8 @@
 	-webkit-overflow-scrolling: touch;
 	scrollbar-width: none;
 	-ms-overflow-style: none;
-	align-items: stretch;
-	height: 100%;
+	align-items: flex-start;
+	height: auto;
 }
 
 .deck-grid::-webkit-scrollbar {
@@ -25,13 +25,13 @@
 	flex-direction: column;
 	gap: 6px;
 	flex: 0 0 auto;
-	height: 100%;
+	height: auto;
 	width: auto;
 	align-items: stretch;
 }
 
 .deck-card-slot > *:not(.card-action-btn) {
-	flex: 1 1 auto;
+	flex: 0 0 auto;
 	min-height: 0;
 	width: 100%;
 	aspect-ratio: 3 / 5;
