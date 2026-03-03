@@ -22,6 +22,7 @@
   "devDependencies": {
     "@vitejs/plugin-basic-ssl": "^2.1.4",
     "@vitejs/plugin-vue": "latest",
+    "typescript": "^5.9.3",
     "vite": "latest"
   }
 }
