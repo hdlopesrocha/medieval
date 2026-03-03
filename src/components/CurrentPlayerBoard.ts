@@ -30,8 +30,8 @@ export default {
       tick.value = (tick.value || 0) + 1
     }
 
-    const activePlayerId = computed(() => Number((engine as any).gameWorkflow?.activePlayerId ?? 0))
-    const roundNumber = computed(() => Number((engine as any).gameWorkflow?.round ?? 0))
+    const activePlayerId = computed(() => Number(engine.gameWorkflow?.activePlayerId ?? 0))
+    const roundNumber = computed(() => Number(engine.gameWorkflow?.round ?? 0))
     const multiplayerMode = computed(() => Boolean((webrtcQr as any).isRealtimeGameActive?.value))
     const role = computed(() => String((webrtcQr as any).activeRole?.value || ''))
     const connected = computed(() => Boolean((webrtcQr as any).connectedHost?.value || (webrtcQr as any).connectedClient?.value))
@@ -41,18 +41,18 @@ export default {
     })
     const isLocalPlayersTurn = computed(() => engine.gameContext.playerId === engine.gameWorkflow.activePlayerId)
     const playerCastleHp = computed(() => {
-      const ctx = (engine as any).gameContext || {}
+      const ctx: any = engine.gameContext || {}
       const hpByPlayer = ctx.castleHpByPlayer || {}
       return hpByPlayer[String(playerId.value)]
     })
     const enemyCastleHp = computed(() => {
-      const ctx = (engine as any).gameContext || {}
+      const ctx: any = engine.gameContext || {}
       const hpByPlayer = ctx.castleHpByPlayer || {}
       const enemyId = playerId.value === 0 ? 1 : 0
       return hpByPlayer[String(enemyId)]
     })
     const currentPlayerLabel = computed(() => {
-      const players = Array.isArray((engine as any).players) ? (engine as any).players.map((p: any) => ({ ...p, id: Number(p.id) })) : []
+      const players = Array.isArray(engine.players) ? engine.players.map((p: any) => ({ ...p, id: Number(p.id) })) : []
       const player = (players || []).find((entry: any) => Number(entry.id) === playerId.value)
       if (player?.name) return `${player.name} (Player ${playerId.value})`
       return `Player ${playerId.value}`

@@ -31,7 +31,6 @@ export default {
   name: 'LocalPlayerPage',
   components: { IonPage, IonContent, IonButton, CardItem, ModalCard },
   setup() {
-    const anyEngine = engine as any
     const router = useRouter()
     // Use engine.getState() as the authoritative source; `tick` forces recompute.
     const tick = ref(0)
@@ -78,10 +77,10 @@ export default {
     }>(null)
 
     function normalizedStateFromEngine(): any {
-      const rawPlayers = Array.isArray((engine as any).players) ? (engine as any).players : []
-      const rawCardsInPlay = Array.isArray((engine as any).gameContext?.cardsInPlay) ? (engine as any).gameContext.cardsInPlay : []
-      const wf = (engine as any).gameWorkflow || {}
-      const ctx = (engine as any).gameContext || {}
+      const rawPlayers = Array.isArray(engine.players) ? engine.players : []
+      const rawCardsInPlay = Array.isArray(engine.gameContext?.cardsInPlay) ? engine.gameContext.cardsInPlay : []
+      const wf: any = engine.gameWorkflow || {}
+      const ctx: any = engine.gameContext || {}
       const nextState: any = {
         activePlayerId: Number(wf.activePlayerId ?? 0),
         playerId: Number(ctx.playerId ?? wf.activePlayerId ?? 0),
@@ -89,7 +88,7 @@ export default {
         gameOver: Boolean(wf.gameOver),
         loserPlayerId: wf.loserPlayerId == null ? null : Number(wf.loserPlayerId),
         winnerPlayerId: wf.winnerPlayerId == null ? null : Number(wf.winnerPlayerId),
-        playedThisRound: Object.fromEntries(Object.entries(((engine as any).gameWorkflow && (engine as any).gameWorkflow.actionByPlayer) || {}).map(([k, v]) => [k, v === 'action-taken'])),
+          playedThisRound: Object.fromEntries(Object.entries(engine.gameWorkflow.actionByPlayer || {}).map(([k, v]) => [k, v === 'action-taken'])),
         castleHpByPlayer: (ctx.castleHpByPlayer || {}),
         players: rawPlayers.map((player: any) => ({ id: Number(player?.id || 0), name: player?.name })),
         cardsInPlay: rawCardsInPlay.map((entry: any) => ({ id: String(entry?.id || ''), ownerId: Number(entry?.ownerId || 0), position: Number(entry?.position || 0), hidden: Boolean(entry?.hidden), card: entry?.card }))
@@ -410,8 +409,8 @@ export default {
         const targetId = pending.targetId ? String(pending.targetId) : undefined
         const playerId = Number(pending.playerId || state.value.activePlayerId || 0)
         const res = targetId
-          ? anyEngine.useCardAbility(sourceId, playerId, targetId)
-          : anyEngine.useCardAbility(sourceId, playerId)
+          ? engine.useCardAbility(sourceId, playerId, targetId)
+          : engine.useCardAbility(sourceId, playerId)
         if (!res.ok) return alert('Ability failed: ' + res.reason)
         refreshState()
       }
@@ -428,9 +427,7 @@ export default {
     onMounted(() => {
       if (!multiplayerMode.value) {
         try {
-          const result = (engine as any).ensureStoredState
-            ? (engine as any).ensureStoredState(['Server', 'Client'])
-            : { restored: false }
+              const result = engine.ensureStoredState ? engine.ensureStoredState(['Server', 'Client']) : { restored: false }
           if (!result?.restored) {
             try { engine.saveState('autoCreateLocalGame') } catch (e) {}
           }

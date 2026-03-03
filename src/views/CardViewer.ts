@@ -5,6 +5,8 @@ import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { IonPage, IonContent, IonButton, IonButtons } from '@ionic/vue'
 import { useRouter } from 'vue-router'
 import engine from '../game/engineInstance'
+import gameState from '../services/gameState'
+import HorizontalScrollSlider from '../components/HorizontalScrollSlider.vue'
 
 type JsonLike = Record<string, unknown>
 
@@ -63,12 +65,12 @@ export default {
     })
 
     function refreshState() {
-      const wf = (engine as any).gameWorkflow || {}
-      const ctx = (engine as any).gameContext || {}
+      const wf: any = engine.gameWorkflow || {}
+      const ctx: any = engine.gameContext || {}
       viewerState.value = {
         activePlayerId: Number(wf.activePlayerId ?? 0),
         playerId: Number(ctx.playerId ?? 0),
-        playedThisRound: Object.fromEntries(Object.entries(((engine as any).gameWorkflow && (engine as any).gameWorkflow.actionByPlayer) || {}).map(([k, v]) => [k, v === 'action-taken'])),
+        playedThisRound: Object.fromEntries(Object.entries(engine.gameWorkflow.actionByPlayer || {}).map(([k, v]) => [k, v === 'action-taken'])),
         gameOver: Boolean(wf.gameOver)
       }
     }
@@ -82,7 +84,7 @@ export default {
         return props.cards.map(cloneCard).filter(Boolean)
       }
       if (props.mode === 'hand') {
-        const playerCards = engine.gameContext.getPlayerCards(handPlayerId.value)
+        const playerCards = gameState.getPlayerCards(handPlayerId.value)
         if (playerCards.length) return playerCards.map(cloneCard).filter(Boolean)
         return engine.gameContext.getDeck().slice(0, 5).map(cloneCard).filter(Boolean)
       }

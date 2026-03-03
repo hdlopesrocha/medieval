@@ -26,17 +26,17 @@ export default {
     const handDragVel = ref<number | null>(null)
 
     function normalizedStateFromEngine(): any {
-      const rawPlayers = Array.isArray((engine as any).players) ? (engine as any).players : []
-      const rawCards = Array.isArray((engine as any).gameContext?.cardsInPlay) ? (engine as any).gameContext.cardsInPlay : []
-      const wf = (engine as any).gameWorkflow || {}
-      const ctx = (engine as any).gameContext || {}
+      const rawPlayers = Array.isArray(engine.players) ? engine.players : []
+      const rawCards = Array.isArray(engine.gameContext?.cardsInPlay) ? engine.gameContext.cardsInPlay : []
+      const wf: any = engine.gameWorkflow || {}
+      const ctx: any = engine.gameContext || {}
       return {
         activePlayerId: Number(wf.activePlayerId || 0),
         playerId: Number(ctx.playerId ?? wf.activePlayerId ?? 0),
-        round: Number(wf.round ?? 0),
+        round: Number(wf.round || 0),
         players: rawPlayers.map((p: any) => ({ id: Number(p?.id || 0), name: p?.name })),
         cardsInPlay: rawCards.map((entry: any) => ({ id: String(entry?.id || ''), ownerId: Number(entry?.ownerId || 0), position: Number(entry?.position || 0), hidden: !!entry?.hidden, card: entry?.card })),
-        playedThisRound: Object.fromEntries(Object.entries(((engine as any).gameWorkflow && (engine as any).gameWorkflow.actionByPlayer) || {}).map(([k, v]) => [k, v === 'action-taken'])),
+        playedThisRound: Object.fromEntries(Object.entries(engine.gameWorkflow.actionByPlayer || {}).map(([k, v]) => [k, v === 'action-taken'])),
         gameOver: Boolean(wf.gameOver)
       }
     }
