@@ -4,14 +4,14 @@ import { albumsOutline, handLeftOutline, gridOutline, mapOutline, shareSocialOut
 import { useRoute, useRouter } from 'vue-router'
 import engine from '../game/engineInstance'
 import { useWebrtcQrService } from '../services/webrtcQrService'
-import { useGameStateService } from '../services/gameStateService'
+// import GameContext from '../models/GameContext' if needed
 
 export default {
   name: 'CurrentPlayerBoard',
   components: { IonButton, IonIcon, IonPopover },
   setup() {
     const webrtcQr = useWebrtcQrService()
-    const gameState = useGameStateService()
+    // Replace with GameContext instance usage
     const router = useRouter()
     const route = useRoute()
     const state = ref<any>({ playerId: 0, activePlayerId: 0, round: 0, players: [] })
@@ -27,12 +27,12 @@ export default {
 
     function refresh() {
       const nextState: any = engine.getState() || {}
-      nextState.playerId = Number(nextState.playerId)
-      nextState.activePlayerId = Number(nextState.activePlayerId?.value + 1)
-      nextState.round = Number(nextState.round)
-      nextState.players = (nextState.players || []).map((player: any) => ({
+      nextState.playerId = nextState.playerId
+      nextState.activePlayerId = nextState.activePlayerId
+      nextState.round = nextState.round
+      nextState.players = nextState.players.map((player: any) => ({
         ...player,
-        id: Number(player.id)
+        id: Number(player.id),
       }))
       state.value = nextState
     }
@@ -46,7 +46,7 @@ export default {
       if (!multiplayerMode.value) return activePlayerId.value
       return role.value === 'client' ? 1 : 0
     })
-    const isLocalPlayersTurn = computed(() => Number(playerId.value) === Number(activePlayerId.value))
+    const isLocalPlayersTurn = computed(() => playerId.value === activePlayerId.value)
     const isStateOwner = computed(() => {
       if (!connected.value) return true
       return role.value === 'server' || role.value === 'local'
@@ -54,12 +54,12 @@ export default {
     const showCreateButton = computed(() => isStateOwner.value && Number(playerId.value) === Number(playerId.value))
     const playerCastleHp = computed(() => {
       const hpByPlayer = (state.value && state.value.castleHpByPlayer) || {}
-      return Number(hpByPlayer[playerId.value] ?? hpByPlayer[String(playerId.value)] ?? 0)
+      return hpByPlayer[hpByPlayer[String(playerId.value)]]
     })
     const enemyCastleHp = computed(() => {
-      const enemyId = Number(playerId.value) === 0 ? 1 : 0
+      const enemyId = playerId.value
       const hpByPlayer = (state.value && state.value.castleHpByPlayer) || {}
-      return Number(hpByPlayer[enemyId] ?? hpByPlayer[String(enemyId)] ?? 0)
+      return hpByPlayer[enemyId]
     })
     const currentPlayerLabel = computed(() => {
       const player = (state.value.players || []).find((entry: any) => Number(entry.id) === playerId.value)
@@ -86,11 +86,12 @@ export default {
       try {
         engine.startGame(['Server', 'Client'])
         const ownerRole = role.value === 'server' ? 'server' : (role.value === 'client' ? 'client' : 'local')
-        const playerId = ownerRole === 'client' ? 1 : 0
-        gameState.setWorkflow({ ownerRole, playerId, lastAction: 'createGameState' }, 'game')
+        const createPlayerId = ownerRole === 'client' ? 1 : 0
+        // Persist create action into workflow/history
+        try {
+          engine.saveState('createGameState')
+        } catch (e) {}
         ;(webrtcQr as any).syncGameStateToClient?.('createGame')
-        // Set playerId and activePlayerId for local context
-        gameState.setWorkflow({ playerId: playerId, activePlayerId: 0 }, 'game')
         refresh()
       } catch (e) {
         alert('Create failed: ' + e)
@@ -140,6 +141,7 @@ export default {
 
     return {
       playerId,
+      activePlayerId,
       currentPlayerLabel,
       roundNumber,
       playerCastleHp,
@@ -171,6 +173,7 @@ export default {
       toggleSettings,
       boardVisible,
       toggleBoardVisible
+      
     }
   }
 }

@@ -1,5 +1,5 @@
 import CardItem from '../components/CardItem.vue'
-import { useGameStateService } from '../services/gameStateService'
+// import GameContext from '../models/GameContext' if needed
 import deckService from '../services/deckService'
 import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { IonPage, IonContent, IonButton, IonButtons } from '@ionic/vue'
@@ -36,39 +36,41 @@ export default {
   components: { CardItem, IonPage, IonContent, IonButton, IonButtons },
   setup(props: CardViewerProps) {
     const router = useRouter()
-    const gameState = useGameStateService()
-    const viewerState = ref<{ activePlayerId: number, playedThisRound: Record<string, unknown>, gameOver: boolean }>({
+    // Replace with GameContext instance usage
+    const viewerState = ref<{ playerId: number, activePlayerId: number, playedThisRound: Record<string, boolean>, gameOver: boolean }>({
+      playerId: 0,
       activePlayerId: 0,
       playedThisRound: {},
       gameOver: false
     })
     let timer: ReturnType<typeof setInterval> | null = null
-    gameState.ensureDeck('game')
-    const currentDeck = gameState.getDeck('game')
+    engine.gameContext.ensureDeck()
+    const currentDeck = engine.gameContext.getDeck()
     if (!currentDeck.length) {
-      gameState.setDeck(deckService.createDeck(), 'game')
+      engine.gameContext.setDeck(deckService.createDeck())
     }
 
     const titleText = computed(() => (props.mode === 'hand' ? 'Hand' : 'Deck'))
     const isHandMode = computed(() => props.mode === 'hand')
-    const handPlayerId = computed(() => Number(viewerState.value.activePlayerId || 0))
+    const handPlayerId = computed(() => viewerState.value.activePlayerId)
     // Assume localPlayerId is passed in or available in context
-    const localPlayerId = computed(() => Number(viewerState.value.playerId ?? 0))
+    const localPlayerId = computed(() => viewerState.value.playerId)
     const canPlayFromHand = computed(() => {
       if (!isHandMode.value) return false
       if (viewerState.value.gameOver) return false
       // Only allow play if it's this player's turn and they haven't played yet
       if (viewerState.value.activePlayerId !== localPlayerId.value) return false
-      const playedMap = viewerState.value.playedThisRound || {}
-      return !Boolean(playedMap[localPlayerId.value] ?? playedMap[String(localPlayerId.value)])
+      const playedMap = viewerState.value.playedThisRound
+      return !playedMap[String(localPlayerId.value)]
     })
 
     function refreshState() {
-      const state = engine.getState() || {}
+      const state = (engine.getState() || {}) as any
       viewerState.value = {
-        activePlayerId: Number(state.activePlayerId || 0),
+        activePlayerId: state.activePlayerId,
+        playerId: state.playerId,
         playedThisRound: state.playedThisRound || {},
-        gameOver: Boolean(state.gameOver)
+        gameOver: state.gameOver
       }
     }
 
@@ -77,11 +79,11 @@ export default {
         return props.cards.map(cloneCard).filter(Boolean)
       }
       if (props.mode === 'hand') {
-        const playerCards = gameState.getPlayerCards(handPlayerId.value, 'game')
+        const playerCards = engine.gameContext.getPlayerCards(handPlayerId.value)
         if (playerCards.length) return playerCards.map(cloneCard).filter(Boolean)
-        return gameState.getDeck('game').slice(0, 5).map(cloneCard).filter(Boolean)
+        return engine.gameContext.getDeck().slice(0, 5).map(cloneCard).filter(Boolean)
       }
-      return gameState.getDeck('game').map(cloneCard).filter(Boolean)
+      return engine.gameContext.getDeck().map(cloneCard).filter(Boolean)
     })
 
     function playFromHand(index: number) {
@@ -120,6 +122,6 @@ export default {
       if (timer) clearInterval(timer)
     })
 
-    return { titleText, isHandMode, cardsToShow, canPlayFromHand, playFromHand, goMain, goTable, goHand, goDeck }
+    return { titleText, isHandMode, cardsToShow, canPlayFromHand, playFromHand, goMain, goTable, goHand, goDeck, localPlayerId: localPlayerId.value, activePlayerId: handPlayerId.value }
   }
 }

@@ -4,9 +4,10 @@ import engine from '../game/engineInstance'
 import CardItem from '../components/CardItem.vue'
 import ModalCard from '../components/ModalCard.vue'
 import { ZONES, ZONE_ELEMENTS } from '../game/GameEngine'
-import { useGameStateService } from '../services/gameStateService'
+// import GameContext from '../models/GameContext' if needed
 import { useRouter } from 'vue-router'
 import { useWebrtcQrService } from '../services/webrtcQrService'
+import gameState from '../services/gameState'
 import { sortCardsInPlayBySlot } from '../utils/sortCardsInPlay'
 import { createEmptyGameStateView } from '../models/GameStateView'
 import type { GameStateView, InPlayCardView, PlayerView } from '../models/GameStateView'
@@ -33,7 +34,7 @@ export default {
     const anyEngine = engine as any
     const router = useRouter()
     const state = ref<GameStateView>(createEmptyGameStateView())
-    const gameState = useGameStateService()
+    // Replace with GameContext instance usage
     const webrtcQr = useWebrtcQrService()
     const realtime = webrtcQr as unknown as RealtimeBridge
     let timer: ReturnType<typeof setInterval> | null = null
@@ -42,9 +43,9 @@ export default {
       return String(unref(realtime.activeRole) || '')
     }
 
-    const deckCards = gameState.getDeckRef('game')
-    const activeHandCards = computed(() => gameState.getPlayerCards(state.value.activePlayerId || 0, 'game'))
-    const localHandCards = computed(() => gameState.getPlayerCards(localPlayerId.value || 0, 'game'))
+    const deckCards = gameState.getDeckRef()
+    const activeHandCards = computed(() => gameState.getPlayerCards(state.value.activePlayerId || 0))
+    const localHandCards = computed(() => gameState.getPlayerCards(localPlayerId.value || 0))
     const localPlayerId = computed(() => {
       // Always use playerId from workflow if available
       return Number(state.value.playerId ?? (currentRole() === 'client' ? 1 : 0))
@@ -181,22 +182,7 @@ export default {
 
     const fileInput = ref<HTMLInputElement | null>(null)
 
-    function exportState() {
-      try {
-        const data = engine.exportState()
-        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
-        const url = URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = url
-        a.download = 'tocabola_state.json'
-        document.body.appendChild(a)
-        a.click()
-        a.remove()
-        URL.revokeObjectURL(url)
-      } catch (e) {
-        alert('Export failed: ' + e)
-      }
-    }
+   
 
     function triggerImport() {
       if (fileInput.value) fileInput.value.click()
@@ -451,7 +437,7 @@ export default {
             ? (engine as any).ensureStoredState(['Server', 'Client'])
             : { restored: false }
           if (!result?.restored) {
-            gameState.setWorkflow({ ownerRole: 'local', playerId: 0, lastAction: 'autoCreateLocalGame' }, 'game')
+            try { engine.saveState('autoCreateLocalGame') } catch (e) {}
           }
         } catch (_e) {
           // ignore create errors and continue with current state
@@ -486,7 +472,6 @@ export default {
       zoneName,
       moveCardUI,
       attackCardUI,
-      exportState,
       triggerImport,
       onFileChange,
       fileInput,

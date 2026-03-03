@@ -76,7 +76,6 @@
         <ion-button v-if="multiplayerMode && isLocalPlayersTurn && !state.gameOver" @click="endTurn">End Turn</ion-button>
         <ion-button @click="goHistory" color="medium">View History</ion-button>
         <ion-button @click="goMap" color="medium">View Map</ion-button>
-        <ion-button @click="exportState">Export State</ion-button>
         <ion-button @click="triggerImport">Import State</ion-button>
         <input type="file" accept=".json" style="display:none" @change="onFileChange" ref="fileInput" />
       </div>

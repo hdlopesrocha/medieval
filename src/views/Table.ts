@@ -79,7 +79,7 @@ export default {
       if (!Number.isFinite(steps)) steps = 0
       steps = Math.max(0, Math.min(maxSteps, Math.trunc(steps)))
       const result = engine.moveCard(cardId, playerId, steps)
-      if (!result?.ok) return alert('Move failed: ' + String(result?.reason || 'invalid action'))
+      if (!result?.ok) return alert('Move failed: ' + String((result as any)?.reason || 'invalid action'))
       refresh()
     }
 
@@ -102,7 +102,7 @@ export default {
       const targetId = chooseEnemyTarget(attackerId, 'Attack')
       if (!targetId) return
       const result = engine.attackCard(attackerId, targetId, playerId)
-      if (!result?.ok) return alert('Attack failed: ' + String(result?.reason || 'invalid action'))
+      if (!result?.ok) return alert('Attack failed: ' + String((result as any)?.reason || 'invalid action'))
       refresh()
     }
 
@@ -111,7 +111,7 @@ export default {
       const targetId = chooseEnemyTarget(attackerId, 'Convert')
       if (!targetId) return
       const result = engine.convertCard(attackerId, targetId, playerId)
-      if (!result?.ok) return alert('Convert failed: ' + String(result?.reason || 'invalid action'))
+      if (!result?.ok) return alert('Convert failed: ' + String((result as any)?.reason || 'invalid action'))
       refresh()
     }
 
@@ -126,14 +126,14 @@ export default {
       const result = targetId
         ? anyEngine.useCardAbility(cardId, playerId, targetId)
         : anyEngine.useCardAbility(cardId, playerId)
-      if (!result?.ok) return alert('Ability failed: ' + String(result?.reason || 'invalid action'))
+        if (!result?.ok) return alert('Ability failed: ' + String((result as any)?.reason || 'invalid action'))
       refresh()
     }
 
     function useAbilityNoTarget(cardId: string) {
       const playerId = Number(state.value.activePlayerId || 0)
       const result = anyEngine.useCardAbility(cardId, playerId)
-      if (!result?.ok) return alert('Ability failed: ' + String(result?.reason || 'invalid action'))
+        if (!result?.ok) return alert('Ability failed: ' + String((result as any)?.reason || 'invalid action'))
       refresh()
     }
 

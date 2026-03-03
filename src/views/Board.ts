@@ -1,8 +1,9 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import CardItem from '../components/CardItem.vue'
 import engine from '../game/engineInstance'
+import gameState from '../services/gameState'
 import { ZONES } from '../game/GameEngine'
-import { useGameStateService } from '../services/gameStateService'
+// import GameContext from '../models/GameContext' if needed
 import { createEmptyGameStateView } from '../models/GameStateView'
 import type { GameStateView, InPlayCardView, PlayerView } from '../models/GameStateView'
 
@@ -10,7 +11,7 @@ export default {
   name: 'BoardView',
   components: { CardItem },
   setup() {
-    const gameState = useGameStateService()
+    // Replace with GameContext instance usage
     const zones = ZONES
     const state = ref<GameStateView>(createEmptyGameStateView())
     let timer: ReturnType<typeof setInterval> | null = null
@@ -63,7 +64,7 @@ export default {
     }
 
     function handCountForPlayer(p: number) {
-      return gameState.getPlayerCards(p, 'game').length
+      return gameState.getPlayerCards(p).length
     }
 
     function onDragStart(evt: DragEvent, cardId: string) {
@@ -124,7 +125,7 @@ export default {
         const playerId = Number(parts[1])
         const handIndex = Number(parts[2])
         if (playerId !== state.value.activePlayerId) return alert('not your hand')
-        const hand = gameState.getPlayerCards(playerId, 'game')
+        const hand = gameState.getPlayerCards(playerId)
         window.alert('DEBUG: playerId ' + playerId + ' handIndex ' + handIndex + ' handCount ' + hand.length + ' hand ' + JSON.stringify(hand))
         console.error('DEBUG: playerId', playerId, 'handIndex', handIndex, 'handCount', hand.length, 'hand', hand)
         if (handIndex < 0 || handIndex >= hand.length) 

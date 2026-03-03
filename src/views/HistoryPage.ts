@@ -1,20 +1,21 @@
 import { computed } from 'vue'
 import { IonPage, IonContent, IonButton } from '@ionic/vue'
-import { useGameStateService } from '../services/gameStateService'
+import gameState from '../services/gameState'
+// import GameContext from '../models/GameContext' if needed
 
 export default {
   name: 'HistoryPage',
   components: { IonPage, IonContent, IonButton },
   setup() {
-    const gameState = useGameStateService()
-    const entries = computed(() => gameState.getHistory('game'))
+    // Replace with GameContext instance usage
+    const entries = computed(() => gameState.getHistory())
 
     function refresh() {
-      void gameState.getHistory('game')
+      void gameState.getHistory()
     }
 
     function clear() {
-      gameState.clearHistory('game')
+      gameState.clearHistory()
     }
 
     function formatTime(value: number) {
