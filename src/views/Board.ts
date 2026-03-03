@@ -1,4 +1,4 @@
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import CardItem from '../components/CardItem.vue'
 import engine from '../game/engineInstance'
 import gameState from '../services/gameState'
@@ -13,7 +13,9 @@ export default {
   setup() {
     // Replace with GameContext instance usage
     const zones = ZONES
-    const state = ref<GameStateView>(createEmptyGameStateView())
+    // Use engine.getState() as the authoritative source. `tick` forces recompute.
+    const tick = ref(0)
+    const state = computed<GameStateView>(() => { tick.value; return normalizedStateFromEngine() })
     let timer: ReturnType<typeof setInterval> | null = null
 
     const dragged = ref<{ id: string, pos: number, vel: number } | null>(null) // { id, pos, vel }
@@ -44,7 +46,9 @@ export default {
     }
 
     function refresh() {
-      state.value = normalizedStateFromEngine()
+      // Touch engine state and bump tick so computed `state` updates.
+      tick.value++
+      try { engine.getState() } catch (e) {}
     }
 
     function computeReachable() {

@@ -14,7 +14,24 @@ export default {
   setup() {
     const router = useRouter()
     const anyEngine = engine as any
-    const state = ref<GameStateView>(createEmptyGameStateView())
+    // Use engine.getState(); `tick` drives reactivity for computed readers
+    const tick = ref(0)
+    const state = computed<GameStateView>(() => { tick.value; const rawState = (engine.getState() || {}) as Record<string, any>; return {
+      ...createEmptyGameStateView(),
+      ...rawState,
+      activePlayerId: Number(rawState.activePlayerId || 0),
+      playerId: Number(rawState.playerId ?? rawState.activePlayerId ?? 0),
+      round: Number(rawState.round ?? 0),
+      players: (rawState.players || []).map((player: any): PlayerView => ({
+        ...player,
+        id: Number(player.id)
+      })),
+      cardsInPlay: (rawState.cardsInPlay || []).map((entry: any): InPlayCardView => ({
+        ...entry,
+        ownerId: Number(entry.ownerId),
+        position: Number(entry.position)
+      }))
+    } })
     const sortedCardsInPlay = computed(() => sortCardsInPlayBySlot(state.value?.cardsInPlay, state.value?.activePlayerId))
     let timer: ReturnType<typeof setInterval> | null = null
     function normalizedStateFromEngine(): GameStateView {
@@ -36,7 +53,7 @@ export default {
         }))
       }
     }
-    function refresh() { state.value = normalizedStateFromEngine() }
+    function refresh() { tick.value++; try { engine.getState() } catch (e) {} }
     function goMain() { router.push('/main') }
 
     function zoneName(position: number) {

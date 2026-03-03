@@ -33,7 +33,8 @@ export default {
   setup() {
     const anyEngine = engine as any
     const router = useRouter()
-    const state = ref<GameStateView>(createEmptyGameStateView())
+    // Use engine.getState() as the authoritative source; `tick` forces recompute.
+    const tick = ref(0)
     // Replace with GameContext instance usage
     const webrtcQr = useWebrtcQrService()
     const realtime = webrtcQr as unknown as RealtimeBridge
@@ -112,7 +113,12 @@ export default {
     }
 
     function refreshState() {
-      state.value = normalizedStateFromEngine()
+      // Build the normalized state to allow side-effects (e.g., selected entry updates),
+      // then bump `tick` so computed `state` readers refresh.
+      const next = normalizedStateFromEngine()
+      // keep any UI selections in sync if needed (previously assigned to state.value)
+      tick.value++
+      try { engine.getState() } catch (e) {}
     }
 
     function runGameAction(action: string, payload: Record<string, unknown>, localExec: () => GameActionResult): GameActionResult {
@@ -452,7 +458,7 @@ export default {
     })
 
     return {
-      state,
+      state: computed(() => { tick.value; return normalizedStateFromEngine() }),
       tableCardsInPlay,
       deckCards,
       activeHandCards,

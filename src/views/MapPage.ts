@@ -32,24 +32,9 @@ export default {
   components: { IonPage, IonContent, IonButton, CardItem, MiniCardItem },
   setup() {
     const anyEngine = engine as any
-    const state = ref<GameStateView>(createEmptyGameStateView())
-    const selectedEntry = ref<InPlayCardView | null>(null)
-    let timer: ReturnType<typeof setInterval> | null = null
-
-    function selectCard(entry: InPlayCardView) {
-      selectedEntry.value = entry || null
-    }
-
-    const selectedCard = computed(() => selectedEntry.value?.card || null)
-    const selectedCardId = computed(() => String(selectedEntry.value?.id || ''))
-    const selectedCardPosition = computed(() => Number(selectedEntry.value?.position ?? -1))
-    const selectedCanAct = computed(() => {
-      if (!selectedEntry.value) return false
-      if (state.value.gameOver) return false
-      return Number(selectedEntry.value.ownerId) === Number(state.value.activePlayerId)
-    })
-
-    function refreshState() {
+    // Use engine state directly; `tick` forces recompute in computed getters.
+    const tick = ref(0)
+    const state = computed<GameStateView>(() => { tick.value; return ((): GameStateView => {
       const rawState = (engine.getState() || {}) as Record<string, any>
       const nextState: GameStateView = {
         ...createEmptyGameStateView(),
@@ -67,9 +52,30 @@ export default {
           position: Number(entry.position)
         }))
       }
-      state.value = nextState
+      return nextState
+    })() })
+    const selectedEntry = ref<InPlayCardView | null>(null)
+    let timer: ReturnType<typeof setInterval> | null = null
+
+    function selectCard(entry: InPlayCardView) {
+      selectedEntry.value = entry || null
+    }
+
+    const selectedCard = computed(() => selectedEntry.value?.card || null)
+    const selectedCardId = computed(() => String(selectedEntry.value?.id || ''))
+    const selectedCardPosition = computed(() => Number(selectedEntry.value?.position ?? -1))
+    const selectedCanAct = computed(() => {
+      if (!selectedEntry.value) return false
+      if (state.value.gameOver) return false
+      return Number(selectedEntry.value.ownerId) === Number(state.value.activePlayerId)
+    })
+
+    function refreshState() {
+      // Bump tick to force computed readers to refresh and touch engine state.
+      tick.value++
+      try { engine.getState() } catch (e) {}
       if (selectedCardId.value) {
-        const latest = nextState.cardsInPlay.find((entry) => String(entry.id) === selectedCardId.value) || null
+        const latest = (state.value.cardsInPlay || []).find((entry) => String(entry.id) === selectedCardId.value) || null
         selectedEntry.value = latest
       }
     }
