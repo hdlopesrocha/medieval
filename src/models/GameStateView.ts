@@ -15,7 +15,7 @@ export type InPlayCardView = {
 
 export type GameStateView = {
   activePlayerId: number
-  currentUser: number
+  playerId: number
   round: number
   players: PlayerView[]
   cardsInPlay: InPlayCardView[]
@@ -29,7 +29,7 @@ export type GameStateView = {
 export function createEmptyGameStateView(): GameStateView {
   return {
     activePlayerId: 0,
-    currentUser: 0,
+    playerId: 0,
     round: 0,
     players: [],
     cardsInPlay: [],

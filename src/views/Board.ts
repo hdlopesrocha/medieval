@@ -27,8 +27,8 @@ export default {
       return {
         ...createEmptyGameStateView(),
         ...rawState,
-        activePlayerId: Number(rawState.activePlayerId || 0),
-        currentUser: Number(rawState.currentUser ?? rawState.activePlayerId ?? 0),
+        activePlayerId: Number(rawState.activePlayerId),
+        playerId: Number(rawState.playerId),
         round: Number(rawState.round ?? 0),
         players: (rawState.players || []).map((player: any): PlayerView => ({
           ...player,
@@ -62,8 +62,8 @@ export default {
       return (state.value.cardsInPlay || []).filter((g) => g.position === idx)
     }
 
-    function handCountForPlayer(playerId: number) {
-      return gameState.getPlayerCards(playerId, 'game').length
+    function handCountForPlayer(p: number) {
+      return gameState.getPlayerCards(p, 'game').length
     }
 
     function onDragStart(evt: DragEvent, cardId: string) {
