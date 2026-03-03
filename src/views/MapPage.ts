@@ -4,6 +4,7 @@ import engine from '../game/engineInstance'
 import { ZONES, ZONE_ELEMENTS } from '../game/GameEngine'
 import CardItem from '../components/CardItem.vue'
 import MiniCardItem from '../components/MiniCardItem.vue'
+import ConfirmActionModal from '../components/ConfirmActionModal.vue'
 import type { GameContext } from '../models/GameContext'
 import type { GameWorkflowState } from '../models/GameWorkflowState'
 
@@ -29,7 +30,7 @@ const mapStripImages = [
 
 export default {
   name: 'MapPage',
-  components: { IonPage, IonContent, IonButton, CardItem, MiniCardItem },
+  components: { IonPage, IonContent, IonButton, CardItem, MiniCardItem, ConfirmActionModal },
   setup() {
     // Use engine state directly; `tick` forces recompute in computed getters.
     const tick = ref(0)
@@ -49,7 +50,27 @@ export default {
       return nextState
     })
     const selectedEntry = ref<any | null>(null)
+    const confirmVisible = ref(false)
+    const confirmTitle = ref('')
+    const confirmMessage = ref('')
+    let confirmResolver: ((ok: boolean) => void) | null = null
     let timer: ReturnType<typeof setInterval> | null = null
+
+    function askConfirm(title: string, message: string) {
+      confirmTitle.value = title
+      confirmMessage.value = message
+      confirmVisible.value = true
+      return new Promise<boolean>((resolve) => {
+        confirmResolver = (ok: boolean) => {
+          confirmVisible.value = false
+          resolve(ok)
+          confirmResolver = null
+        }
+      })
+    }
+
+    function onConfirm() { if (confirmResolver) confirmResolver(true) }
+    function onCancel() { if (confirmResolver) confirmResolver(false) }
 
     function selectCard(entry: any) {
       selectedEntry.value = entry || null
@@ -148,7 +169,7 @@ export default {
       return exists ? id : ''
     }
 
-    function moveSelectedCard() {
+    async function moveSelectedCard() {
       if (!selectedEntry.value || !selectedCanAct.value) return
       const card = selectedEntry.value
       const velocity = Number(card.card?.velocity ?? 0)
@@ -176,32 +197,38 @@ export default {
       let steps = Number(raw)
       if (!Number.isFinite(steps)) steps = 0
       steps = Math.max(0, Math.min(maxSteps, Math.trunc(steps)))
+      const confirmed = await askConfirm('Confirm move', `Move card ${card.id} by ${steps} step(s)?`)
+      if (!confirmed) return
       const result: any = engine.moveCard(String(card.id), playerId, steps)
       if (!result?.ok) return alert('Move failed: ' + String(result?.reason || 'invalid action'))
       refreshState()
     }
 
-    function attackWithSelectedCard() {
+    async function attackWithSelectedCard() {
       if (!selectedEntry.value || !selectedCanAct.value) return
       const playerId = Number(state.value.activePlayerId || 0)
       const targetId = chooseEnemyTarget('Attack')
       if (!targetId) return
+      const confirmed = await askConfirm('Confirm attack', `Attack target ${targetId} with ${selectedEntry.value.id}?`)
+      if (!confirmed) return
       const result: any = engine.attackCard(String(selectedEntry.value.id), targetId, playerId)
       if (!result?.ok) return alert('Attack failed: ' + String(result?.reason || 'invalid action'))
       refreshState()
     }
 
-    function convertWithSelectedCard() {
+    async function convertWithSelectedCard() {
       if (!selectedEntry.value || !selectedCanAct.value) return
       const playerId = Number(state.value.activePlayerId || 0)
       const targetId = chooseEnemyTarget('Convert')
       if (!targetId) return
+      const confirmed = await askConfirm('Confirm convert', `Convert target ${targetId} using ${selectedEntry.value.id}?`)
+      if (!confirmed) return
       const result: any = engine.convertCard(String(selectedEntry.value.id), targetId, playerId)
       if (!result?.ok) return alert('Convert failed: ' + String(result?.reason || 'invalid action'))
       refreshState()
     }
 
-    function useSelectedAbility() {
+    async function useSelectedAbility() {
       if (!selectedEntry.value || !selectedCanAct.value) return
       const options = state.value.cardsInPlay
         .map((entry) => `${entry.id} :: ${String(entry.card?.title || 'unknown')} (owner ${entry.ownerId}, pos ${entry.position})`)
@@ -210,6 +237,8 @@ export default {
       if (picked == null) return
       const targetId = String(picked || '').trim()
       const playerId = Number(state.value.activePlayerId || 0)
+      const confirmed = await askConfirm('Confirm ability', targetId ? `Use ability of ${selectedEntry.value.id} on ${targetId}?` : `Use ability of ${selectedEntry.value.id}?`)
+      if (!confirmed) return
       const result: any = targetId
         ? engine.useCardAbility(String(selectedEntry.value.id), playerId, targetId)
         : engine.useCardAbility(String(selectedEntry.value.id), playerId)
@@ -232,6 +261,11 @@ export default {
       isLocalPlayersTurn,
       cardsInPlayCount,
       selectedEntry,
+      confirmVisible,
+      confirmTitle,
+      confirmMessage,
+      onConfirm,
+      onCancel,
       selectedCard,
       selectedCanAct,
       selectedCardPosition,

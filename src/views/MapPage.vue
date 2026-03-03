@@ -102,11 +102,6 @@
   pointer-events: auto;
 }
 
-.played-card :deep(.mini-card-button) {
-  height: 100% !important;
-  width: 100% !important;
-}
-
 .map-card-overlay-wrap {
   display: flex;
   flex-direction: column;

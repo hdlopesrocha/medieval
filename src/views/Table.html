@@ -24,3 +24,5 @@
         </div>
     </ion-content>
   </ion-page>
+
+<ConfirmActionModal :visible="confirmVisible" :title="confirmTitle" :message="confirmMessage" @confirm="onConfirm" @cancel="onCancel" />

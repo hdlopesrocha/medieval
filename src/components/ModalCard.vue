@@ -5,7 +5,6 @@
 <style scoped>
 .modal-card {
   min-width: 240px;
-  max-width: 320px;
   border: 1px solid #d6dce6;
   border-radius: 8px;
   padding: 10px;

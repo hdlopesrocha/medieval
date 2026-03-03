@@ -7,7 +7,6 @@ import { ZONES, ZONE_ELEMENTS } from '../game/GameEngine'
 // import GameContext from '../models/GameContext' if needed
 import { useRouter } from 'vue-router'
 import { useWebrtcQrService } from '../services/webrtcQrService'
-import gameState from '../services/gameState'
 import { sortCardsInPlayBySlot } from '../utils/sortCardsInPlay'
 import type { GameContext } from '../models/GameContext'
 import type { GameWorkflowState } from '../models/GameWorkflowState'
@@ -45,13 +44,13 @@ export default {
       return String(unref(realtime.activeRole) || '')
     }
 
-    const deckCards = gameState.getDeckRef()
+    const deckCards = computed(() => engine.deck)
     const localPlayerId = computed(() => {
       // Always use playerId from workflow if available
       return Number(state.value.playerId ?? (currentRole() === 'client' ? 1 : 0))
     })
-    const activeHandCards = computed(() => gameState.getPlayerCards(state.value.activePlayerId || 0))
-    const localHandCards = computed(() => gameState.getPlayerCards(localPlayerId.value || 0))
+    const activeHandCards = computed(() => engine.gameContext.getPlayerCards(state.value.activePlayerId || 0))
+    const localHandCards = computed(() => engine.gameContext.getPlayerCards(localPlayerId.value || 0))
     const multiplayerMode = computed(() => Boolean(unref(realtime.isRealtimeGameActive)))
     const isServerAuthority = computed(() => multiplayerMode.value && currentRole() === 'server')
     const isClientProxy = computed(() => multiplayerMode.value && currentRole() === 'client')
@@ -128,7 +127,7 @@ export default {
     }
 
     function playerHandCards(playerId: number) {
-      return gameState.getPlayerCards(playerId, 'game')
+      return engine.gameContext.getPlayerCards(playerId)
     }
 
     function handCountByPlayer(playerId: number) {
@@ -224,6 +223,7 @@ export default {
         maxSteps = maxWaterSteps
       }
 
+      closeOpenModals()
       pendingConfirmation.value = {
         kind: 'move-card',
         playerId,
@@ -238,6 +238,7 @@ export default {
         ]
       }
     }
+
 
     function setPendingMoveSteps(rawValue: unknown) {
       if (!pendingConfirmation.value || pendingConfirmation.value.kind !== 'move-card') return
@@ -286,6 +287,7 @@ export default {
       const targetCard = state.value.cardsInPlay.find((x) => x.id === targetId)
 
       if (selection.value.mode === 'attack') {
+        closeOpenModals()
         pendingConfirmation.value = {
           kind: 'attack-card',
           playerId,
@@ -302,6 +304,7 @@ export default {
         if (!res.ok) return alert('Convert failed: ' + res.reason)
         refreshState()
       } else if (selection.value.mode === 'ability') {
+        closeOpenModals()
         pendingConfirmation.value = {
           kind: 'use-ability',
           playerId,
@@ -327,6 +330,7 @@ export default {
     function useAbilityNoTarget(cardId: string) {
       const playerId = state.value.activePlayerId || 0
       const sourceCard = state.value.cardsInPlay.find((x) => x.id === cardId)
+      closeOpenModals()
       pendingConfirmation.value = {
         kind: 'use-ability',
         playerId,
@@ -351,6 +355,14 @@ export default {
         : Number(state.value.activePlayerId || 0)
       const card = localHandCards.value[idx]
       if (!card) return alert('Card not found in hand')
+      // close any open card modal (if Play was clicked from inside a modal)
+      try {
+        const modals = Array.from(document.querySelectorAll('ion-modal'))
+        for (const m of modals) {
+          try { (m as any).dismiss && (m as any).dismiss() } catch (e) { try { m.remove() } catch (_) {} }
+        }
+      } catch (e) {}
+
       pendingConfirmation.value = {
         kind: 'play-card',
         handIndex: idx,
@@ -358,6 +370,15 @@ export default {
         actionLabel: 'Play card',
         card
       }
+    }
+
+    function closeOpenModals() {
+      try {
+        const modals = Array.from(document.querySelectorAll('ion-modal'))
+        for (const m of modals) {
+          try { (m as any).dismiss && (m as any).dismiss() } catch (e) { try { m.remove() } catch (_) {} }
+        }
+      } catch (e) {}
     }
 
     function cancelPendingConfirmation() {

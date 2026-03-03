@@ -1,4 +1,5 @@
 import CardItem from '../components/CardItem.vue'
+import ConfirmActionModal from '../components/ConfirmActionModal.vue'
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import engine from '../game/engineInstance'
 import { ZONES, ZONE_ELEMENTS } from '../game/GameEngine'
@@ -10,7 +11,7 @@ import type { GameWorkflowState } from '../models/GameWorkflowState'
 
 export default {
   name: 'Table',
-  components: { CardItem, IonPage, IonContent, IonButton },
+  components: { CardItem, IonPage, IonContent, IonButton, ConfirmActionModal },
   setup() {
     const router = useRouter()
     // Use engine.getState(); `tick` drives reactivity for computed readers
@@ -31,6 +32,26 @@ export default {
     })
     const sortedCardsInPlay = computed(() => sortCardsInPlayBySlot(state.value?.cardsInPlay, state.value?.activePlayerId))
     let timer: ReturnType<typeof setInterval> | null = null
+    const confirmVisible = ref(false)
+    const confirmTitle = ref('')
+    const confirmMessage = ref('')
+    let confirmResolver: ((ok: boolean) => void) | null = null
+
+    function askConfirm(title: string, message: string) {
+      confirmTitle.value = title
+      confirmMessage.value = message
+      confirmVisible.value = true
+      return new Promise<boolean>((resolve) => {
+        confirmResolver = (ok: boolean) => {
+          confirmVisible.value = false
+          resolve(ok)
+          confirmResolver = null
+        }
+      })
+    }
+
+    function onConfirm() { if (confirmResolver) confirmResolver(true) }
+    function onCancel() { if (confirmResolver) confirmResolver(false) }
     function normalizedStateFromEngine(): any {
       const rawPlayers = Array.isArray(engine.players) ? engine.players : []
       const rawCards = Array.isArray(engine.gameContext?.cardsInPlay) ? engine.gameContext.cardsInPlay : []
@@ -64,7 +85,7 @@ export default {
       return targets.some((target) => Math.abs(Number(target.position) - Number(attacker.position)) <= range)
     }
 
-    function moveCardUI(cardId: string) {
+    async function moveCardUI(cardId: string) {
       const card = state.value.cardsInPlay.find((entry) => entry.id === cardId)
       if (!card) return alert('card not found')
       const velocity = Number(card.card?.velocity ?? 0)
@@ -92,6 +113,8 @@ export default {
       let steps = Number(raw)
       if (!Number.isFinite(steps)) steps = 0
       steps = Math.max(0, Math.min(maxSteps, Math.trunc(steps)))
+      const confirmed = await askConfirm('Confirm move', `Move card ${cardId} by ${steps} step(s)?`)
+      if (!confirmed) return
       const result = engine.moveCard(cardId, playerId, steps)
       if (!result?.ok) return alert('Move failed: ' + String((result as any)?.reason || 'invalid action'))
       refresh()
@@ -111,25 +134,29 @@ export default {
       return exists ? id : ''
     }
 
-    function attackCardUI(attackerId: string) {
+    async function attackCardUI(attackerId: string) {
       const playerId = Number(state.value.activePlayerId || 0)
       const targetId = chooseEnemyTarget(attackerId, 'Attack')
       if (!targetId) return
+      const confirmed = await askConfirm('Confirm attack', `Attack target ${targetId} with ${attackerId}?`)
+      if (!confirmed) return
       const result = engine.attackCard(attackerId, targetId, playerId)
       if (!result?.ok) return alert('Attack failed: ' + String((result as any)?.reason || 'invalid action'))
       refresh()
     }
 
-    function convertCardUI(attackerId: string) {
+    async function convertCardUI(attackerId: string) {
       const playerId = Number(state.value.activePlayerId || 0)
       const targetId = chooseEnemyTarget(attackerId, 'Convert')
       if (!targetId) return
+      const confirmed = await askConfirm('Confirm convert', `Convert target ${targetId} using ${attackerId}?`)
+      if (!confirmed) return
       const result = engine.convertCard(attackerId, targetId, playerId)
       if (!result?.ok) return alert('Convert failed: ' + String((result as any)?.reason || 'invalid action'))
       refresh()
     }
 
-    function openAbilitySelector(cardId: string) {
+    async function openAbilitySelector(cardId: string) {
       const options = state.value.cardsInPlay
         .map((entry) => `${entry.id} :: ${String(entry.card?.title || 'unknown')} (owner ${entry.ownerId}, pos ${entry.position})`)
         .join('\n')
@@ -137,6 +164,8 @@ export default {
       if (picked == null) return
       const targetId = String(picked || '').trim()
       const playerId = Number(state.value.activePlayerId || 0)
+      const confirmed = await askConfirm('Confirm ability', targetId ? `Use ability of ${cardId} on ${targetId}?` : `Use ability of ${cardId}?`)
+      if (!confirmed) return
       const result = targetId
         ? engine.useCardAbility(cardId, playerId, targetId)
         : engine.useCardAbility(cardId, playerId)
@@ -144,8 +173,10 @@ export default {
       refresh()
     }
 
-    function useAbilityNoTarget(cardId: string) {
+    async function useAbilityNoTarget(cardId: string) {
       const playerId = Number(state.value.activePlayerId || 0)
+      const confirmed = await askConfirm('Confirm ability', `Use ability of ${cardId}?`)
+      if (!confirmed) return
       const result = engine.useCardAbility(cardId, playerId)
         if (!result?.ok) return alert('Ability failed: ' + String((result as any)?.reason || 'invalid action'))
       refresh()
@@ -166,6 +197,11 @@ export default {
       goMain,
       zoneName,
       canConvert,
+      confirmVisible,
+      confirmTitle,
+      confirmMessage,
+      onConfirm,
+      onCancel,
       moveCardUI,
       attackCardUI,
       convertCardUI,
