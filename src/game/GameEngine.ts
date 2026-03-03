@@ -208,6 +208,14 @@ export default class GameEngine {
         this.hands[p].push(this.deck.shift()!)
       }
     }
+    // Populate GameContext with player hands so UI components can read player cards
+    const handsPayload: Record<string, any[]> = {}
+    for (const pid of Object.keys(this.hands)) {
+      handsPayload[pid] = (this.hands[Number(pid)] || []).map(c => c.toJSON())
+    }
+    this.gameContext.setAllPlayerCards(handsPayload)
+    this.gameContext.started = true
+    this.gameContext.playerId = this.playerId
     // market phase removed
     this.gameWorkflow.activePlayerId = 0
     this.playerId = this.gameWorkflow.activePlayerId
@@ -463,6 +471,13 @@ export default class GameEngine {
       const rawHands = obj.hands || {}
       for (const k of Object.keys(rawHands)) this.hands[Number(k)] = (rawHands[k] || []).map((c: any) => Card.fromJSON(c))
 
+      // ensure GameContext has the same player hands representation
+      const handsPayload: Record<string, any[]> = {}
+      for (const k of Object.keys(this.hands)) {
+        handsPayload[k] = (this.hands[Number(k)] || []).map(c => c.toJSON())
+      }
+      this.gameContext.setAllPlayerCards(handsPayload)
+
       // workflow & gameplay metadata
       this.gameWorkflow.playerId = Number(obj.playerId ?? this.gameWorkflow.playerId)
       this.gameWorkflow.round = obj.round ?? this.gameWorkflow.round
@@ -506,8 +521,13 @@ export default class GameEngine {
       for (const k of Object.keys(rawHands)) {
         this.hands[Number(k)] = (rawHands[k] || []).map((c: any) => Card.fromJSON(c))
       }
-    
       this.gameContext = new GameContext(obj.castleHpByPlayer || this.gameContext.castleHpByPlayer)
+      // populate gameContext players from hands when importing
+      const handsPayload2: Record<string, any[]> = {}
+      for (const k of Object.keys(this.hands)) {
+        handsPayload2[k] = (this.hands[Number(k)] || []).map(c => c.toJSON())
+      }
+      this.gameContext.setAllPlayerCards(handsPayload2)
       this.gameWorkflow = new GameWorkflowState(obj.workflow || {})
       this.saveState('importState')
       return { ok: true }
