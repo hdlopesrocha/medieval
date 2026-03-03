@@ -16,22 +16,28 @@ export default {
     const anyEngine = engine as any
     // Use engine.getState(); `tick` drives reactivity for computed readers
     const tick = ref(0)
-    const state = computed<GameStateView>(() => { tick.value; const rawState = (engine.getState() || {}) as Record<string, any>; return {
-      ...createEmptyGameStateView(),
-      ...rawState,
-      activePlayerId: Number(rawState.activePlayerId || 0),
-      playerId: Number(rawState.playerId ?? rawState.activePlayerId ?? 0),
-      round: Number(rawState.round ?? 0),
-      players: (rawState.players || []).map((player: any): PlayerView => ({
-        ...player,
-        id: Number(player.id)
-      })),
-      cardsInPlay: (rawState.cardsInPlay || []).map((entry: any): InPlayCardView => ({
-        ...entry,
-        ownerId: Number(entry.ownerId),
-        position: Number(entry.position)
-      }))
-    } })
+    const state = computed<GameStateView>(() => {
+      tick.value
+      const rawState = (engine.getState() || {}) as Record<string, any>
+      const rawPlayers = Array.isArray(rawState.players) ? rawState.players : []
+      const rawCards = Array.isArray(rawState.cardsInPlay) ? rawState.cardsInPlay : []
+      return {
+        ...createEmptyGameStateView(),
+        ...rawState,
+        activePlayerId: Number(rawState.activePlayerId || 0),
+        playerId: Number(rawState.playerId ?? rawState.activePlayerId ?? 0),
+        round: Number(rawState.round ?? 0),
+        players: rawPlayers.map((player: any): PlayerView => ({
+          ...player,
+          id: Number(player.id)
+        })),
+        cardsInPlay: rawCards.map((entry: any): InPlayCardView => ({
+          ...entry,
+          ownerId: Number(entry.ownerId),
+          position: Number(entry.position)
+        }))
+      }
+    })
     const sortedCardsInPlay = computed(() => sortCardsInPlayBySlot(state.value?.cardsInPlay, state.value?.activePlayerId))
     let timer: ReturnType<typeof setInterval> | null = null
     function normalizedStateFromEngine(): GameStateView {

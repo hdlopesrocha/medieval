@@ -27,17 +27,19 @@ export default {
 
     function normalizedStateFromEngine(): GameStateView {
       const rawState = (engine.getState() || {}) as Record<string, any>
+      const rawPlayers = Array.isArray(rawState.players) ? rawState.players : []
+      const rawCards = Array.isArray(rawState.cardsInPlay) ? rawState.cardsInPlay : []
       return {
         ...createEmptyGameStateView(),
         ...rawState,
         activePlayerId: Number(rawState.activePlayerId),
         playerId: Number(rawState.playerId),
         round: Number(rawState.round ?? 0),
-        players: (rawState.players || []).map((player: any): PlayerView => ({
+        players: rawPlayers.map((player: any): PlayerView => ({
           ...player,
           id: Number(player.id)
         })),
-        cardsInPlay: (rawState.cardsInPlay || []).map((entry: any): InPlayCardView => ({
+        cardsInPlay: rawCards.map((entry: any): InPlayCardView => ({
           ...entry,
           ownerId: Number(entry.ownerId),
           position: Number(entry.position)
