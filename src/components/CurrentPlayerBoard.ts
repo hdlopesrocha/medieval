@@ -1,9 +1,10 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { IonButton, IonIcon, IonPopover } from '@ionic/vue'
-import { albumsOutline, handLeftOutline, gridOutline, mapOutline, shareSocialOutline, timeOutline, addCircleOutline, settingsOutline, homeOutline, expandOutline, contractOutline } from 'ionicons/icons'
+import { albumsOutline, handLeftOutline, gridOutline, mapOutline, shareSocialOutline, timeOutline, addCircleOutline, settingsOutline, homeOutline, expandOutline, contractOutline, trashOutline } from 'ionicons/icons'
 import { useRoute, useRouter } from 'vue-router'
 import engine from '../game/engineInstance'
 import { useWebrtcQrService } from '../services/webrtcQrService'
+import gameStateService from '../services/gameStateService'
 // import GameContext from '../models/GameContext' if needed
 
 export default {
@@ -14,7 +15,7 @@ export default {
     // Replace with GameContext instance usage
     const router = useRouter()
     const route = useRoute()
-    const state = ref<any>({ playerId: 0, activePlayerId: 0, round: 0, players: [] })
+    const tick = ref(0)
     const settingsOpen = ref(false)
     const isFullscreen = ref(false)
     const settingsTriggerId = 'current-player-board-settings-trigger'
@@ -26,20 +27,11 @@ export default {
     }
 
     function refresh() {
-      const wf = (engine as any).gameWorkflow || {}
-      const ctx = (engine as any).gameContext || {}
-      const nextState: any = {
-        playerId: Number(wf.playerId ?? 0),
-        activePlayerId: Number(wf.activePlayerId ?? 0),
-        round: Number(wf.round ?? 0),
-        players: Array.isArray((engine as any).players) ? (engine as any).players.map((p: any) => ({ ...p, id: Number(p.id) })) : [],
-        castleHpByPlayer: ctx.castleHpByPlayer || {}
-      }
-      state.value = nextState
+      tick.value = (tick.value || 0) + 1
     }
 
-    const activePlayerId = computed(() => Number(state.value.activePlayerId))
-    const roundNumber = computed(() => Number(state.value.round))
+    const activePlayerId = computed(() => Number((engine as any).gameWorkflow?.activePlayerId ?? 0))
+    const roundNumber = computed(() => Number((engine as any).gameWorkflow?.round ?? 0))
     const multiplayerMode = computed(() => Boolean((webrtcQr as any).isRealtimeGameActive?.value))
     const role = computed(() => String((webrtcQr as any).activeRole?.value || ''))
     const connected = computed(() => Boolean((webrtcQr as any).connectedHost?.value || (webrtcQr as any).connectedClient?.value))
@@ -47,23 +39,21 @@ export default {
       if (!multiplayerMode.value) return activePlayerId.value
       return role.value === 'client' ? 1 : 0
     })
-    const isLocalPlayersTurn = computed(() => playerId.value === activePlayerId.value)
-    const isStateOwner = computed(() => {
-      if (!connected.value) return true
-      return role.value === 'server' || role.value === 'local'
-    })
-    const showCreateButton = computed(() => isStateOwner.value && Number(playerId.value) === Number(playerId.value))
+    const isLocalPlayersTurn = computed(() => engine.gameContext.playerId === engine.gameWorkflow.activePlayerId)
     const playerCastleHp = computed(() => {
-      const hpByPlayer = (state.value && state.value.castleHpByPlayer) || {}
-      return hpByPlayer[hpByPlayer[String(playerId.value)]]
+      const ctx = (engine as any).gameContext || {}
+      const hpByPlayer = ctx.castleHpByPlayer || {}
+      return hpByPlayer[String(playerId.value)]
     })
     const enemyCastleHp = computed(() => {
-      const enemyId = playerId.value
-      const hpByPlayer = (state.value && state.value.castleHpByPlayer) || {}
-      return hpByPlayer[enemyId]
+      const ctx = (engine as any).gameContext || {}
+      const hpByPlayer = ctx.castleHpByPlayer || {}
+      const enemyId = playerId.value === 0 ? 1 : 0
+      return hpByPlayer[String(enemyId)]
     })
     const currentPlayerLabel = computed(() => {
-      const player = (state.value.players || []).find((entry: any) => Number(entry.id) === playerId.value)
+      const players = Array.isArray((engine as any).players) ? (engine as any).players.map((p: any) => ({ ...p, id: Number(p.id) })) : []
+      const player = (players || []).find((entry: any) => Number(entry.id) === playerId.value)
       if (player?.name) return `${player.name} (Player ${playerId.value})`
       return `Player ${playerId.value}`
     })
@@ -83,7 +73,7 @@ export default {
     }
 
     function createGameState() {
-      if (!showCreateButton.value) return
+      if (!isLocalPlayersTurn.value) return
       try {
         engine.startGame(['Server', 'Client'])
         const ownerRole = role.value === 'server' ? 'server' : (role.value === 'client' ? 'client' : 'local')
@@ -109,6 +99,20 @@ export default {
 
     function toggleBoardVisible() {
       boardVisible.value = !boardVisible.value
+    }
+
+    function clearLocalStorage() {
+      try {
+        // clear persisted keys via service
+        try { gameStateService.clearGameState() } catch (e) {}
+        try { gameStateService.clearWorkflowState() } catch (e) {}
+        // best-effort full localStorage clear
+        try { if (typeof window !== 'undefined' && window.localStorage) window.localStorage.clear() } catch (e) {}
+        // reload to reset in-memory engine state
+        try { window.location.reload() } catch (e) {}
+      } catch (e) {
+        alert('Failed to clear local storage: ' + String(e))
+      }
     }
 
     async function toggleFullscreen() {
@@ -160,7 +164,6 @@ export default {
       shareSocialOutline,
       timeOutline,
       addCircleOutline,
-      showCreateButton,
       settingsOpen,
       isFullscreen,
       fullscreenLabel,
@@ -173,7 +176,9 @@ export default {
       toggleFullscreen,
       toggleSettings,
       boardVisible,
-      toggleBoardVisible
+      toggleBoardVisible,
+      clearLocalStorage,
+      isLocalPlayersTurn,
       
     }
   }

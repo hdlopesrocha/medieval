@@ -36,7 +36,7 @@
         :dismiss-on-select="true"
       >
       <div class="settings-menu">
-        <ion-button v-if="showCreateButton" size="small" color="success" fill="clear" @click="createGameState">
+        <ion-button v-if="isLocalPlayersTurn" size="small" color="success" fill="clear" @click="createGameState">
           <ion-icon slot="start" :icon="addCircleOutline"></ion-icon>
           Create
         </ion-button>
@@ -63,6 +63,10 @@
         <ion-button v-if="!boardVisible" size="small" fill="dark" style="margin-top: 8px;" @click="toggleBoardVisible">
           <ion-icon slot="start" :icon="expandOutline"></ion-icon>
           Show Player Board
+        </ion-button>
+        <ion-button size="small" color="danger" fill="clear" style="margin-top: 8px;" @click="clearLocalStorage">
+          <ion-icon slot="start" :icon="trashOutline"></ion-icon>
+          Erase local storage
         </ion-button>
       </div>
       </ion-popover>
