@@ -26,9 +26,13 @@
 	overflow-x: auto;
 	height: 100%;
 	width: auto;
-	padding-bottom: 64px;
-}
+		padding-bottom: 128px;
 
+}
+.card-item-wrapper {
+	display: inline-flex;
+	padding: 16px;
+}
 
 .card-item {
 	display: flex;
@@ -36,7 +40,7 @@
 	flex: 0 0 auto;
 	flex-direction: column;
 	aspect-ratio: 2 / 3;
-	padding: 16px;
+	padding: 0px;
 }
 
 ion-button,

@@ -1,3 +1,4 @@
+<div>
 <ion-card>
     <div v-if="hidden" class="card-back">
       <div class="card-back-text">Card Back</div>
@@ -44,11 +45,11 @@
 
 
       </ion-card-content>
-      <ion-card-footer>
-        <div class="card-footer-row">
-          <button v-if="showExportButton" class="export-btn" @click="exportCardToPng">Export PNG</button>
-          <slot name="actions"></slot>
-        </div>
-      </ion-card-footer>
+      
     </template>
-</ion-card>
+
+  </ion-card>
+
+    <button v-if="showExportButton" class="export-btn" @click="exportCardToPng">Export PNG</button>
+    <slot name="actions"></slot>
+  </div>

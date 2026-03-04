@@ -4,7 +4,6 @@ import { IonicVue } from '@ionic/vue'
 import App from './App.vue'
 import MainPage from './views/MainPage.vue'
 import CardViewer from './views/CardViewer.vue'
-import Table from './views/Table.vue'
 import Board from './views/Board.vue'
 import HistoryPage from './views/HistoryPage.vue'
 import MapPage from './views/MapPage.vue'
@@ -27,7 +26,7 @@ const routes = [
 	{ path: '/', component: MainPage },
 	{ path: '/deck', component: CardViewer, props: { mode: 'deck' } }
 	,{ path: '/hand', component: CardViewer, props: { mode: 'hand' } }
-	,{ path: '/table', component: Table }
+	/* Table route removed (legacy). */
 	,{ path: '/local', redirect: '/hand' }
 	,{ path: '/board', component: Board }
 	,{ path: '/history', component: HistoryPage }

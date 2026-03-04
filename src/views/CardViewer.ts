@@ -105,7 +105,8 @@ export default {
     }
 
     function goTable() {
-      router.push('/table')
+      // Table view removed; redirect to board instead
+      router.push('/board')
     }
 
     function goHand() {
