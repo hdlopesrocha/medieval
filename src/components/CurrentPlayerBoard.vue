@@ -8,11 +8,27 @@
 .current-player-board-row {
   display: flex;
   gap: 16px;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: flex-start;
+<style scoped>
+.current-player-board {
+  color: #e9f3ff;
 }
-
+.current-player-navbar[aria-label="Secondary"] {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+.cpb-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: inherit;
+  font-weight: 600;
+}
+.cpb-item ion-icon {
+  color: inherit;
+  font-size: 1.1em;
+}
+</style>
 .current-player-navbar {
   position: relative;
   z-index: 110;
