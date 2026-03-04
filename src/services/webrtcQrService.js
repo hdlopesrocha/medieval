@@ -304,6 +304,19 @@ function createWebrtcQrService() {
     return parts
   }
 
+  function splitBytesIntoParts(bytes, total = qrPartsTotal) {
+    const arr = bytes instanceof Uint8Array ? bytes : new Uint8Array(Array.from(bytes || []))
+    const safeTotal = Math.max(1, Number(total) || qrPartsTotal)
+    const partSize = Math.max(1, Math.ceil(arr.length / safeTotal))
+    const parts = []
+    for (let index = 0; index < safeTotal; index++) {
+      const start = index * partSize
+      const end = Math.min(arr.length, start + partSize)
+      parts.push(arr.slice(start, end))
+    }
+    return parts
+  }
+
   function buildQrPartPayloads(payload, kind) {
     const sequenceId = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
     const parts = splitPayloadIntoParts(payload, qrPartsTotal)
@@ -317,16 +330,59 @@ function createWebrtcQrService() {
     }))
   }
 
+  // Build binary QR payloads: compress the provided text and split the raw
+  // gzipped bytes into parts. Each part is a Buffer containing a JSON header
+  // followed by a 0x1E separator and the raw bytes. This enables QR binary
+  // encoding which is more compact than text-mode encodings.
+  function buildQrPartBinaryPayloads(text, kind) {
+    const sequenceId = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
+    const encoded = new TextEncoder().encode(String(text || ''))
+    const compressed = gzip(encoded)
+    const parts = splitBytesIntoParts(compressed, qrPartsTotal)
+    return parts.map((chunk, index) => {
+      const header = JSON.stringify({ qrm: qrPartMarker, id: sequenceId, kind, index, total: parts.length })
+      const sep = new Uint8Array([0x1E])
+      const packet = new Uint8Array(header.length + 1 + chunk.length)
+      for (let i = 0; i < header.length; i++) packet[i] = header.charCodeAt(i)
+      packet[header.length] = sep[0]
+      packet.set(chunk, header.length + 1)
+      return packet
+    })
+  }
+
   function parseQrPartPayload(payload) {
     try {
-      const parsed = JSON.parse(String(payload || ''))
-      if (!parsed || parsed.qrm !== qrPartMarker) return null
-      if (typeof parsed.id !== 'string' || !parsed.id) return null
-      if (typeof parsed.kind !== 'string' || !parsed.kind) return null
-      if (!Number.isInteger(parsed.index)) return null
-      if (!Number.isInteger(parsed.total)) return null
-      if (typeof parsed.data !== 'string') return null
-      return parsed
+      const raw = String(payload || '')
+      try {
+        const parsed = JSON.parse(raw)
+        if (!parsed || parsed.qrm !== qrPartMarker) return null
+        if (typeof parsed.id !== 'string' || !parsed.id) return null
+        if (typeof parsed.kind !== 'string' || !parsed.kind) return null
+        if (!Number.isInteger(parsed.index)) return null
+        if (!Number.isInteger(parsed.total)) return null
+        if (typeof parsed.data !== 'string') return null
+        return { ...parsed, __binary: false }
+      } catch (_e) {
+        // Attempt to locate a JSON header inside a potentially binary payload
+        const start = raw.indexOf('{')
+        const end = raw.indexOf('}')
+        if (start >= 0 && end > start) {
+          const headerText = raw.slice(start, end + 1)
+          try {
+            const parsed = JSON.parse(headerText)
+            if (!parsed || parsed.qrm !== qrPartMarker) return null
+            // extract binary chunk following the header + separator
+            const remainder = raw.slice(end + 1)
+            // Convert remainder to bytes (assumes 1:1 mapping)
+            const bytes = new Uint8Array(remainder.length)
+            for (let i = 0; i < remainder.length; i++) bytes[i] = remainder.charCodeAt(i) & 0xFF
+            return { ...parsed, __binary: true, __chunkBytes: bytes }
+          } catch (_e2) {
+            return null
+          }
+        }
+        return null
+      }
     } catch (e) {
       return null
     }
@@ -355,7 +411,11 @@ function createWebrtcQrService() {
     }
 
     if (!scannedParts.value[index]) {
-      scannedParts.value[index] = part.data
+      if (part.__binary) {
+        scannedParts.value[index] = { __binary: true, bytes: part.__chunkBytes }
+      } else {
+        scannedParts.value[index] = part.data
+      }
     }
 
     scannedPartsCount.value = scannedParts.value.filter(Boolean).length
@@ -365,6 +425,28 @@ function createWebrtcQrService() {
         ready: false,
         payload: '',
         status: `Scanned parts: ${scannedPartsCount.value}/${scannedPartsExpected.value}`
+      }
+    }
+
+    // Reconstruct payload: support binary parts (concatenate bytes and gunzip) or
+    // legacy text parts (join strings)
+    const first = scannedParts.value[0]
+    if (first && first.__binary) {
+      // concatenate bytes
+      let length = 0
+      for (const p of scannedParts.value) length += (p?.bytes?.length || 0)
+      const combined = new Uint8Array(length)
+      let offset = 0
+      for (const p of scannedParts.value) {
+        const b = p.bytes || new Uint8Array(0)
+        combined.set(b, offset)
+        offset += b.length
+      }
+      try {
+        const decompressed = ungzip(combined, { to: 'string' })
+        return { ready: true, payload: String(decompressed || ''), status: `Scanned parts: ${scannedPartsCount.value}/${scannedPartsExpected.value}` }
+      } catch (e) {
+        return { ready: false, payload: '', status: 'Failed to decompress scanned binary parts.' }
       }
     }
 
@@ -505,9 +587,12 @@ function createWebrtcQrService() {
 
     const signalling = { type: 'offer', sdp: pc.localDescription.sdp, candidates }
     const text = JSON.stringify(signalling)
-    const qrPayload = gzipToToken(text)
-    const qrPayloadParts = buildQrPartPayloads(qrPayload, 'offer')
-    const qrImages = await Promise.all(qrPayloadParts.map((partPayload) => QRCode.toDataURL(partPayload)))
+    // Build binary QR payloads from raw gzipped bytes for better packing
+    const qrPayloadBuffers = buildQrPartBinaryPayloads(text, 'offer')
+    const qrImages = await Promise.all(qrPayloadBuffers.map((partBuf) => {
+      const input = (typeof Buffer !== 'undefined' && Buffer.from) ? Buffer.from(partBuf) : partBuf
+      return QRCode.toDataURL(input)
+    }))
     consoleLogger.value.push('createOffer: ' + text)
     offerJson.value = text
     offerQrParts.value = qrImages
@@ -814,9 +899,11 @@ function createWebrtcQrService() {
     const signalling = { type: 'answer', sdp: pc.localDescription.sdp, candidates }
     const text = JSON.stringify(signalling)
     consoleLogger.value.push('acceptOffer: ' + text)
-    const qrPayload = gzipToToken(text)
-    const qrPayloadParts = buildQrPartPayloads(qrPayload, 'answer')
-    const qrImages = await Promise.all(qrPayloadParts.map((partPayload) => QRCode.toDataURL(partPayload)))
+    const qrPayloadBuffers = buildQrPartBinaryPayloads(text, 'answer')
+    const qrImages = await Promise.all(qrPayloadBuffers.map((partBuf) => {
+      const input = (typeof Buffer !== 'undefined' && Buffer.from) ? Buffer.from(partBuf) : partBuf
+      return QRCode.toDataURL(input)
+    }))
     answerJson.value = text
     answerQrParts.value = qrImages
     answerQrPartIndex.value = 0
