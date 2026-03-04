@@ -14,9 +14,10 @@
         <ion-icon slot="start" :icon="handLeftOutline"></ion-icon>
         Hand
       </ion-button>
-      <ion-button size="small" :fill="isActive('/board') ? 'solid' : 'outline'" @click="go('/board')">
-        <ion-icon slot="start" :icon="gridOutline"></ion-icon>
-        Board
+      <!-- Board removed; link to Map instead -->
+      <ion-button size="small" :fill="isActive('/map') ? 'solid' : 'outline'" @click="go('/map')">
+        <ion-icon slot="start" :icon="mapOutline"></ion-icon>
+        Map
       </ion-button>
       <ion-button size="small" :fill="isActive('/map') ? 'solid' : 'outline'" @click="go('/map')">
         <ion-icon slot="start" :icon="mapOutline"></ion-icon>

@@ -105,8 +105,8 @@ export default {
     }
 
     function goTable() {
-      // Table view removed; redirect to board instead
-      router.push('/board')
+      // Board and Table views have been removed; redirect to Map as the closest view
+      router.push('/map')
     }
 
     function goHand() {
