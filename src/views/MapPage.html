@@ -1,19 +1,20 @@
-<div v-if="selectedEntry" class="map-card-overlay-root" @click.self="closeDialog">
+<ion-popover :is-open="popoverOpen"  @did-dismiss="onPopoverDismiss">
   <div class="map-card-overlay-wrap">
-    <CardItem :card="selectedCard" :showExport="false" />
-    <div class="map-card-overlay-actions">
+    
+    <CardItem v-if="selectedCard" :card="selectedCard" :showExport="false" />
+    
+  </div>
+  <div class="map-card-overlay-actions">
       <template v-if="selectedCanAct && isLocalPlayersTurn">
         <ion-button size="small" @click="moveSelectedCard">Move</ion-button>
         <ion-button size="small" @click="attackWithSelectedCard">Attack</ion-button>
         <ion-button size="small" v-if="selectedCard && selectedCard.category === 'priest' && canConvert(selectedEntry)" @click="convertWithSelectedCard">Convert</ion-button>
         <ion-button size="small" @click="useSelectedAbility">Use</ion-button>
       </template>
-    </div>
   </div>
-</div>
+</ion-popover>
 
 <ion-page>
-  <ion-content class="ion-padding">
     <div class="maps-row">
       <div class="map-surface">
         <div class="map-image-strip">
@@ -41,8 +42,6 @@
     </div>
 
     <div v-if="cardsInPlayCount === 0" style="margin-top:8px;color:#666">No played cards yet. Play from hand first.</div>
-
-  </ion-content>
 </ion-page>
 
 <ConfirmActionModal :visible="confirmVisible" :title="confirmTitle" :message="confirmMessage" @confirm="onConfirm" @cancel="onCancel" />

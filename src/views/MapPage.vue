@@ -107,6 +107,9 @@
   flex-direction: column;
   align-items: center;
   gap: 10px;
+  background: transparent !important;
+  box-shadow: none !important;
+  border: none !important;
 }
 
 .map-card-overlay-root {
@@ -119,33 +122,7 @@
   background: rgba(0, 0, 0, 0.55);
 }
 
-.map-card-dialog {
-  max-height: 90vh;
-  overflow: auto;
-  display: flex;
-  flex-direction: column;
-}
 
-.map-card-dialog-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.map-card-dialog-meta {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  color: #334;
-  font-size: 13px;
-}
-
-.map-card-dialog-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  justify-content: flex-end;
-}
 
 .map-card-overlay-actions {
   display: flex;
@@ -156,8 +133,8 @@
   max-width: 96vw;
 }
 
-.map-card-dialog-note {
-  color: #666;
-  font-size: 13px;
+@keyframes mapPopoverScaleIn {
+  from { opacity: 0; transform: scale(0.9); }
+  to { opacity: 1; transform: scale(1); }
 }
 </style>

@@ -1,5 +1,5 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { IonPage, IonContent, IonButton } from '@ionic/vue'
+import { IonPage, IonContent, IonButton, IonPopover } from '@ionic/vue'
 import engine from '../game/engineInstance'
 import { ZONES, ZONE_ELEMENTS } from '../game/GameEngine'
 import CardItem from '../components/CardItem.vue'
@@ -30,7 +30,7 @@ const mapStripImages = [
 
 export default {
   name: 'MapPage',
-  components: { IonPage, IonContent, IonButton, CardItem, MiniCardItem, ConfirmActionModal },
+  components: { IonPage, IonContent, IonButton, IonPopover, CardItem, MiniCardItem, ConfirmActionModal },
   setup() {
     // Use engine state directly; `tick` forces recompute in computed getters.
     const tick = ref(0)
@@ -72,8 +72,16 @@ export default {
     function onConfirm() { if (confirmResolver) confirmResolver(true) }
     function onCancel() { if (confirmResolver) confirmResolver(false) }
 
+    const popoverOpen = ref(false)
+
     function selectCard(entry: any) {
       selectedEntry.value = entry || null
+      if (entry) popoverOpen.value = true
+    }
+
+    function onPopoverDismiss() {
+      popoverOpen.value = false
+      selectedEntry.value = null
     }
 
     const selectedCard = computed(() => selectedEntry.value?.card || null)
@@ -279,6 +287,8 @@ export default {
       convertWithSelectedCard,
       useSelectedAbility,
       closeDialog,
+      popoverOpen,
+      onPopoverDismiss,
       zoneStyle,
       refreshState,
       selectCard
