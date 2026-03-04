@@ -50,6 +50,8 @@ export default class GameEngine {
   // Persistence: deck, players, cardsInPlay and hands are persisted in `gameContext`.
   gameContext: GameContext = new GameContext()
   gameWorkflow: GameWorkflowState = new GameWorkflowState()
+  // Map of card UUID -> Card instance. Hands are persisted as UUID arrays in gameContext and resolved via this map.
+  cardsById: Record<string, Card> = {}
   // Internal flag to skip automatic enemy attacks for the next phase
   private _skipEnemyAttacks = false
 
@@ -85,8 +87,7 @@ export default class GameEngine {
     const players = this.gameContext.getPlayersList ? this.gameContext.getPlayersList() : (this.gameContext.playersList || [])
     for (const p of (players || [])) {
       const id = Number(p.id || 0)
-      const raw = (this.gameContext.getPlayerCards ? this.gameContext.getPlayerCards(id) : []) || []
-      out[id] = (raw || []).map((c: any) => Card.fromJSON(c))
+      out[id] = this.getPlayerCards(id)
     }
     return out
   }
@@ -94,10 +95,61 @@ export default class GameEngine {
     try {
       const payload: Record<string, any[]> = {}
       for (const k of Object.keys(map || {})) {
-        payload[k] = (map[Number(k)] || []).map((c: any) => (c && typeof c.toJSON === 'function') ? c.toJSON() : c)
+        const arr = (map[Number(k)] || [])
+        const ids: string[] = []
+        for (const c of arr) {
+          if (!c) continue
+          // ensure card is registered and get its uuid
+          const cid = this.registerCard(c)
+          ids.push(cid)
+        }
+        payload[k] = ids
       }
       this.gameContext.setAllPlayerCards(payload)
     } catch (e) {}
+  }
+
+  // Register a card in the local map and return its uuid. If card is already registered by reference, we still create a new id.
+  registerCard(card: Card): string {
+    const id = uuid()
+    try { this.cardsById[id] = card } catch (e) {}
+    return id
+  }
+
+  // Resolve persisted player hand (UUIDs or legacy objects) into Card[]; register legacy objects into cardsById and persist uuids back into context.
+  getPlayerCards(playerId: number): Card[] {
+    const raw = (this.gameContext.getPlayerCards ? this.gameContext.getPlayerCards(playerId) : []) || []
+    const out: Card[] = []
+    let converted = false
+    const idsForPersist: string[] = []
+    for (const item of raw) {
+      if (typeof item === 'string') {
+        const c = this.cardsById[item]
+        if (c) {
+          out.push(c)
+          idsForPersist.push(item)
+        } else {
+          // unknown uuid: ignore (could be from another machine) but keep uuid so persisted state remains consistent
+          idsForPersist.push(item)
+        }
+      } else if (item && typeof item === 'object') {
+        // legacy card JSON -> convert and register
+        try {
+          const card = Card.fromJSON(item)
+          const id = this.registerCard(card)
+          out.push(card)
+          idsForPersist.push(id)
+          converted = true
+        } catch (e) {
+          // ignore invalid entries
+        }
+      }
+    }
+    // If we converted legacy objects into uuids, persist the normalized uuid list into gameContext
+    if (converted) {
+      try { this.gameContext.setPlayerCards(playerId, idsForPersist) } catch (e) {}
+    }
+    return out
   }
 
   // Public ability: use a card's special ability (invoked via views)
@@ -143,6 +195,7 @@ export default class GameEngine {
       const restored = this.loadState()
       if (!restored) {
         // persist initial deck so randomized HP is kept
+        this.createGameState()
         this.saveState('init')
       }
       this.syncGameStateService()
@@ -150,6 +203,17 @@ export default class GameEngine {
       // ignore storage errors
       this.syncGameStateService()
     }
+  }
+
+
+  createGameState() {
+    const wf = new GameWorkflowState()
+    wf.appendHistory({ action: 'createGameState', activePlayerId: 0, round: 0, gameOver: false, deckCount: (this.deck || []).length, cardsInPlayCount: (this.cardsInPlay || []).length, castleHpByPlayer: this.gameContext.castleHpByPlayer || {} })
+    this.gameWorkflow = wf
+
+    this.startGame(['Server', 'Client'])
+    this.saveState('createGameState')
+    return wf
   }
 
   // revive top of deck into owner's castle
@@ -243,8 +307,7 @@ export default class GameEngine {
     // reset players and create a fresh deck from the sample deck
     this.players = playerNames.map((n, i) => ({ id: i, name: n }))
     // create a fresh randomized deck
-    const deckArr = deckService.createDeck()
-    this.deck = deckArr
+    this.deck = deckService.createDeck()
     // shuffle the deck so order is randomized at game start
     this.shuffleDeck()
     // use the (possibly shuffled) deck from the accessor
@@ -256,7 +319,9 @@ export default class GameEngine {
     for (let p = 0; p < this.players.length; p++) {
       for (let k = 0; k < 5 && remainingDeck.length; k++) {
         const card = remainingDeck.shift()!
-        handsLocal[String(p)].push(card.toJSON())
+        // register the card and persist its uuid in the player's hand
+        const cid = this.registerCard(card)
+        handsLocal[String(p)].push(cid)
       }
     }
     // Ensure both player slots exist (0 = server, 1 = client)
@@ -266,21 +331,7 @@ export default class GameEngine {
     this.gameContext.setAllPlayerCards(handsLocal)
     this.deck = remainingDeck
     // market phase removed
-    this.gameWorkflow.started = true
-    this.gameWorkflow.activePlayerId = 0
-    // set initial playerId into gameContext and initialize workflow counters
-    this.gameContext.playerId = this.gameWorkflow.activePlayerId
-    this.gameWorkflow.round = 0
-    this.gameWorkflow.actionByPlayer = {}
-    this.gameContext.castleMaxHp = {}
-    for (let i = 0; i < this.players.length; i++) this.gameContext.castleMaxHp[i] = 20
-    this.gameContext.castleHpByPlayer = {}
-    for (let i = 0; i < this.players.length; i++) this.gameContext.castleHpByPlayer[i] = this.gameContext.castleMaxHp[i]
-    this.gameWorkflow.gameOver = false
-    this.gameWorkflow.loserPlayerId = null
-    this.gameWorkflow.winnerPlayerId = null
-    // Create workflow object and set playerId
-    const workflow = { playerId: this.gameContext.playerId };
+    this.gameWorkflow = new GameWorkflowState()
     this.saveState('startGame')
   }
 
@@ -509,24 +560,38 @@ export default class GameEngine {
   // Persist internal state to localStorage (browser). Silent on failure.
   saveState(action = 'stateUpdate') {
     this.syncGameStateService()
-    
-      try {
-        // TODO: create a history entry and persist it to workflow
-        const historyEntry = {
-          action: String(action || 'stateUpdate'),
-          activePlayerId: Number(this.gameWorkflow.activePlayerId || 0),
-          round: Number(this.gameWorkflow.round || 0),
-          gameOver: Boolean(this.gameWorkflow.gameOver),
-          deckCount: Math.max(0, Number(this.deck?.length || 0)),
-        }
+    try {
+      // build hands payload (playerId -> array of card JSONs)
+      const handsPayload: Record<string, any[]> = {}
+      for (const playerId of Object.keys(this.hands || {})) {
+        handsPayload[playerId] = (this.hands[Number(playerId)] || []).map(c => c ? c.toJSON() : null).filter(Boolean)
+      }
+      // build cards map (uuid -> card JSON) for persisted resolution
+      const cardsMap: Record<string, any> = {}
+      for (const id of Object.keys(this.cardsById || {})) {
+        const c = this.cardsById[id]
+        if (c && typeof c.toJSON === 'function') cardsMap[id] = c.toJSON()
+      }
 
-   
-        gameStateService.saveWorkflowState(this.gameWorkflow)
-        gameStateService.saveGameState(this.gameContext)
+      const gameToSave: any = {
+        deck: (this.deck || []).map(c => c ? c.toJSON() : null).filter(Boolean),
+        players: this.players || [],
+        cardsInPlay: (this.cardsInPlay || []).map(g => ({ id: g.id, ownerId: g.ownerId, position: g.position, hidden: !!g.hidden, card: g.card ? g.card.toJSON() : null })).filter(Boolean),
+        hands: handsPayload,
+        cardsById: cardsMap,
+        playerId: this.gameContext.playerId,
+        round: this.gameWorkflow.round,
+        actionByPlayer: this.gameWorkflow.actionByPlayer || {},
+        castleHpByPlayer: this.gameContext.castleHpByPlayer || {},
+        castleMaxHp: this.gameContext.castleMaxHp || {}
+      }
 
-        return true
-      } catch (e) {
-        return false
+      gameStateService.saveWorkflowState(this.gameWorkflow)
+      gameStateService.saveGameState(gameToSave)
+
+      return true
+    } catch (e) {
+      return false
     }
   }
 
@@ -565,11 +630,54 @@ export default class GameEngine {
       this.players = obj.players || []
       this.cardsInPlay = (obj.cardsInPlay || []).map((g: any) => ({ id: g.id, ownerId: g.ownerId, position: g.position, hidden: !!g.hidden, card: Card.fromJSON(g.card) }))
 
-      // restore hands into hands map and persist via setter
+      // rebuild cardsById map if provided (new persisted shape)
+      if (obj.cardsById && typeof obj.cardsById === 'object') {
+        try {
+          for (const id of Object.keys(obj.cardsById)) {
+            const json = obj.cardsById[id]
+            if (json) this.cardsById[id] = Card.fromJSON(json)
+          }
+        } catch (e) {}
+      }
+
+      // restore hands: support both legacy (arrays of card JSON) and new (arrays of uuid strings)
       const rawHands = obj.hands || {}
-      const handsMap: { [p: number]: Card[] } = {}
-      for (const k of Object.keys(rawHands)) handsMap[Number(k)] = (rawHands[k] || []).map((c: any) => Card.fromJSON(c))
-      this.hands = handsMap
+      // if entries are objects (legacy), convert and register them; if strings, assume uuids and persist directly
+      const idsPayload: Record<string, string[]> = {}
+      const handsMapRuntime: { [p: number]: Card[] } = {}
+      for (const k of Object.keys(rawHands)) {
+        const arr = rawHands[k] || []
+        if (!arr.length) {
+          idsPayload[k] = []
+          handsMapRuntime[Number(k)] = []
+          continue
+        }
+        if (typeof arr[0] === 'string') {
+          // array of uuids
+          idsPayload[k] = arr.map(String)
+          handsMapRuntime[Number(k)] = (arr as string[]).map(id => this.cardsById[id]).filter(Boolean)
+        } else {
+          // legacy: array of card JSON
+          const ids: string[] = []
+          const cardsRuntime: Card[] = []
+          for (const item of arr) {
+            try {
+              const card = Card.fromJSON(item)
+              const id = this.registerCard(card)
+              ids.push(id)
+              cardsRuntime.push(card)
+            } catch (e) {
+              // ignore invalid
+            }
+          }
+          idsPayload[k] = ids
+          handsMapRuntime[Number(k)] = cardsRuntime
+        }
+      }
+      // persist normalized uuid lists into gameContext so subsequent consumers read uuids
+      try { this.gameContext.setAllPlayerCards(idsPayload) } catch (e) {}
+      // set runtime hands from resolved cards
+      this.hands = handsMapRuntime
 
       // workflow & gameplay metadata
       this.gameContext.playerId = Number(obj.playerId ?? this.gameContext.playerId)
@@ -615,17 +723,49 @@ export default class GameEngine {
       this.deck = (obj.deck || []).map((c: any) => Card.fromJSON(c))
       this.players = obj.players || []
       this.cardsInPlay = (obj.cardsInPlay || []).map((g: any) => ({ id: g.id, ownerId: g.ownerId, position: g.position, hidden: !!g.hidden, card: Card.fromJSON(g.card) }))
-      const rawHands = obj.hands || {}
-      const handsMap: { [p: number]: Card[] } = {}
-      for (const k of Object.keys(rawHands)) {
-        handsMap[Number(k)] = (rawHands[k] || []).map((c: any) => Card.fromJSON(c))
+      // rebuild cardsById map if present on imported object
+      if (obj.cardsById && typeof obj.cardsById === 'object') {
+        try {
+          for (const id of Object.keys(obj.cardsById)) {
+            const json = obj.cardsById[id]
+            if (json) this.cardsById[id] = Card.fromJSON(json)
+          }
+        } catch (e) {}
       }
-      this.hands = handsMap
+      const rawHands = obj.hands || {}
+      const idsPayload2: Record<string, string[]> = {}
+      const handsMap2: { [p: number]: Card[] } = {}
+      for (const k of Object.keys(rawHands)) {
+        const arr = rawHands[k] || []
+        if (!arr.length) {
+          idsPayload2[k] = []
+          handsMap2[Number(k)] = []
+          continue
+        }
+        if (typeof arr[0] === 'string') {
+          idsPayload2[k] = arr.map(String)
+          handsMap2[Number(k)] = (arr as string[]).map(id => this.cardsById[id]).filter(Boolean)
+        } else {
+          const ids: string[] = []
+          const cardsRuntime: Card[] = []
+          for (const item of arr) {
+            try {
+              const card = Card.fromJSON(item)
+              const id = this.registerCard(card)
+              ids.push(id)
+              cardsRuntime.push(card)
+            } catch (e) {}
+          }
+          idsPayload2[k] = ids
+          handsMap2[Number(k)] = cardsRuntime
+        }
+      }
+      this.hands = handsMap2
       this.gameContext = new GameContext(obj.castleHpByPlayer || this.gameContext.castleHpByPlayer)
-      // ensure persisted hands exist
-      const handsPayload2: Record<string, any[]> = {}
-      for (const k of Object.keys(handsMap)) {
-        handsPayload2[k] = (handsMap[Number(k)] || []).map(c => c.toJSON())
+      // ensure persisted hands exist (store uuid arrays)
+      const handsPayload2: Record<string, string[]> = {}
+      for (const k of Object.keys(handsMap2)) {
+        handsPayload2[k] = (handsMap2[Number(k)] || []).map(c => this.registerCard(c))
       }
       if (!Object.prototype.hasOwnProperty.call(handsPayload2, '0')) handsPayload2['0'] = []
       if (!Object.prototype.hasOwnProperty.call(handsPayload2, '1')) handsPayload2['1'] = []
