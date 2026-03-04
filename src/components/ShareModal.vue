@@ -1,5 +1,5 @@
 <template>
-  <ion-modal :is-open="isOpen" :cssClass="'share-modal'" @did-dismiss="onDismiss">
+  <ion-popover :is-open="isOpen" :cssClass="'share-popover'" @did-dismiss="onDismiss">
     <div style="padding:16px;display:flex;flex-direction:column;gap:10px;align-items:center">
       <div style="font-weight:700;text-align:center">Share this QR with other players</div>
       <img v-if="qrDataUrl" :src="qrDataUrl" alt="share-qr" style="width:320px;max-width:100%;display:block" />
@@ -15,12 +15,12 @@
 
 <script lang="ts">
 import { ref, onMounted, watch } from 'vue'
-import { IonModal, IonButton } from '@ionic/vue'
+import { IonPopover, IonButton } from '@ionic/vue'
 import QRCode from 'qrcode'
 
 export default {
   name: 'ShareModal',
-  components: { IonModal, IonButton },
+  components: { IonPopover, IonButton },
   props: {
     isOpen: { type: Boolean, default: false }
   },
@@ -82,36 +82,20 @@ export default {
 </script>
 
 <style scoped>
-/* Constrain modal size so it adapts to content rather than fullscreen */
-:deep(.share-modal) {
+/* Use popover styling to keep content sized to bounds */
+:deep(.share-popover) {
   --width: 420px;
   --max-width: 420px;
-  --height: auto;
-  --min-height: auto;
-  --max-height: 80vh;
 }
 
-:deep(.share-modal .modal-wrapper) {
-  display: flex !important;
-  align-items: flex-start !important;
-  justify-content: center !important;
-  padding: 0 !important;
-  height: auto !important;
-}
-
-:deep(.share-modal .modal-content) {
-  display: inline-block !important;
-  width: auto !important;
+:deep(.share-popover .popover-content) {
   max-width: 420px !important;
-  margin: 0 auto !important;
+  width: auto !important;
+  padding: 0 !important;
   border-radius: 12px !important;
-  overflow: visible !important;
-  height: auto !important;
-  max-height: 80vh !important;
-  top: 10vh !important;
 }
 
-:deep(.share-modal .modal-shadow) {
-  display: none !important;
+:deep(.share-popover .popover-wrapper) {
+  align-items: flex-start !important;
 }
 </style>
