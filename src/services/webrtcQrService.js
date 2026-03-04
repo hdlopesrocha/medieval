@@ -187,6 +187,17 @@ function createWebrtcQrService() {
     return true
   }
 
+  // Send the current normalized state to the host/server, remapping `playerId`
+  // to the server's perspective (server = player 0). This is useful when the
+  // client needs to push a local view back to the authoritative host.
+  function syncGameStateToServer(reason = 'sync') {
+    if (!clientDc || clientDc.readyState !== 'open') return false
+    const snapshot = buildNormalizedState(0)
+    clientDc.send(JSON.stringify({ type: 'game-state', reason, state: snapshot }))
+    consoleLogger.value.push(`client: synced game state (${reason})`)
+    return true
+  }
+
   function executeServerGameAction(action, payload = {}) {
     const safeAction = String(action || '')
     if (safeAction === 'startGame') {
@@ -879,6 +890,7 @@ function createWebrtcQrService() {
 
   async function startScanner(mode = 'answer') {
     await stopScanner()
+      syncGameStateToServer,
     scanning.value = true
     scanMode.value = mode
     scanStatus.value = 'Opening camera...'
