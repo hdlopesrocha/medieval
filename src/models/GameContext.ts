@@ -1,5 +1,4 @@
 import { GameWorkflowState } from './GameWorkflowState'
-import { GameHistoryEntry } from './GameHistoryEntry'
 import { Player } from './Player'
 
 // Removed: use GameWorkflowState and GameHistoryEntry classes instead.
@@ -8,11 +7,11 @@ import { Player } from './Player'
 export class GameContext {
   deck: any[] = [];
   // persisted list of players (id/name) - hands are stored on each entry as `hand` when present
+  // NOTE: `hand` contains an array of card UUID strings (persisted). Card objects are resolved by the GameEngine.
   playersList: Player[] = [];
   // persisted cards in play (serialized)
   cardsInPlay: any[] = [];
   playerId: number = 0;
-  ownerRole: string = '';
   actionByPlayer: Record<string, string> = {};
   castleHpByPlayer: Record<string, number> = { '0': 20, '1': 20 };
   castleMaxHp: Record<string, number> = { '0': 20, '1': 20 };
@@ -22,7 +21,6 @@ export class GameContext {
       this.deck = [...init.deck];
       this.playersList = init.playersList;
       this.playerId = init.playerId;
-      this.ownerRole = init.ownerRole;
       this.actionByPlayer = { ...init.actionByPlayer };
       this.castleHpByPlayer = { ...init.castleHpByPlayer };
       this.castleMaxHp = { ...init.castleMaxHp };
@@ -50,7 +48,8 @@ export class GameContext {
   setPlayerCards(playerId: string | number, cards: any[]) {
     const id = Number(playerId)
     const idx = (this.playersList || []).findIndex(p => Number(p.id) === id)
-    const hand = this.cloneCards(cards)
+    // cards expected to be an array of UUID strings; clone the array to avoid mutations
+    const hand = Array.isArray(cards) ? [...cards] : []
     if (idx === -1) {
       this.playersList = [...(this.playersList || []), { id, hand }]
     } else {
@@ -63,15 +62,16 @@ export class GameContext {
   getPlayerCards(playerId: string | number) {
     const id = Number(playerId)
     const entry = (this.playersList || []).find(p => Number(p.id) === id)
-    return this.cloneCards((entry && Array.isArray(entry.hand)) ? entry.hand : [])
+    // returns persisted array (UUID strings) or empty array
+    return Array.isArray(entry?.hand) ? [...entry.hand] : []
   }
 
   setAllPlayerCards(players: Record<string, any[]>) {
-    // Merge provided hands into playersList entries (create entries when missing)
+    // Merge provided hands (arrays of UUID strings) into playersList entries (create entries when missing)
     const copy = Array.isArray(this.playersList) ? [...this.playersList] : []
     for (const playerKey of Object.keys(players || {})) {
       const id = Number(playerKey)
-      const hand = this.cloneCards(players[playerKey] || [])
+      const hand = Array.isArray(players[playerKey]) ? [...players[playerKey]] : []
       const idx = copy.findIndex(p => Number(p.id) === id)
       if (idx === -1) {
         copy.push({ id, hand })
@@ -83,7 +83,8 @@ export class GameContext {
   }
 
   setPlayersList(players: Player[]) {
-    this.playersList = Array.isArray(players) ? players.map((p: any) => ({ id: Number(p.id || 0), name: typeof p.name === 'string' ? p.name : undefined, hand: Array.isArray(p.hand) ? this.cloneCards(p.hand) : undefined })) : []
+    // Accept `players` where `hand` may be an array of UUIDs or absent
+    this.playersList = Array.isArray(players) ? players.map((p: any) => ({ id: Number(p.id || 0), name: typeof p.name === 'string' ? p.name : undefined, hand: Array.isArray(p.hand) ? [...p.hand] : undefined })) : []
   }
 
   getPlayersList() {
@@ -106,7 +107,6 @@ export class GameContext {
     Object.assign(workflow, {
       started: false,
       playerId: 0,
-      ownerRole: '',
       round: 0,
       actionByPlayer: {},
       castleHpByPlayer: { '0': 20, '1': 20 },
