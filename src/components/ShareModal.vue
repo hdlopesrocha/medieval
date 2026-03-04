@@ -1,5 +1,5 @@
 <template>
-  <ion-popover :is-open="isOpen" :cssClass="'share-popover'" @did-dismiss="onDismiss">
+  <ion-popover :is-open="isOpen" :cssClass="'share-popover'" @did-dismiss="onDismiss" style="--width:75vw; --height:75vh;">
     <div style="padding:16px;display:flex;flex-direction:column;gap:10px;align-items:center">
       <div style="font-weight:700;text-align:center">Share this QR with other players</div>
       <img v-if="qrDataUrl" :src="qrDataUrl" alt="share-qr" style="width:320px;max-width:100%;display:block" />
@@ -91,10 +91,10 @@ export default {
 }
 
 :deep(.share-popover .popover-content) {
+  width: 100% !important;
+  height: 100% !important;
   max-width: 75vw !important;
-  width: 75vw !important;
   max-height: 75vh !important;
-  height: 75vh !important;
   padding: 0 !important;
   border-radius: 12px !important;
   overflow: auto !important;
