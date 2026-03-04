@@ -62,6 +62,7 @@
 
 .settings-menu-wrap {
   position: relative;
+  margin-left: auto;
 }
 
 .settings-menu {
