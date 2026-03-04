@@ -1,5 +1,4 @@
 <ion-page>
-  <ion-content class="ion-padding">
     <div class="cards-list">
       <div class="card-slot" v-for="(c, i) in cardsToShow" :key="i">
         <CardItem
@@ -12,6 +11,4 @@
       </div>
     </div>
     
-    <HorizontalScrollSlider target-selector=".deck-grid" />
-  </ion-content>
 </ion-page>

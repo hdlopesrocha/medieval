@@ -10,8 +10,6 @@
 	gap: 6px;
 	flex: 0 0 auto;
 	display: inline-flex;
-	padding: 16px;
-	height: 100%;
 }
 
 .cards-list {
@@ -23,8 +21,7 @@
 	overflow-x: auto;
 	height: 100%;
 	width: auto;
-		padding-bottom: 128px;
-
+	padding-bottom: 100px;
 }
 
 .card-item {
@@ -43,26 +40,10 @@
 }
 
 
-.card-wrapper {
-	height: 100%;
-	display: inline-flex;
-	flex: 0 0 auto;
-	flex-direction: row;
-
-	width: auto;
-	align-items: stretch;
-	aspect-ratio: 2 / 3; /* width will be computed from height (2:3 => width:height*2/3) */
-}
-
 ion-button,
 .card-action-btn {
-	height: 64px !important;
-	min-height: 64px !important;
-	max-height: 64px !important;
-	width: 100%;
-	align-self: flex-end;
-	flex: 0 0 auto !important;
-	visibility: visible !important;
-	display: flex !important;
+	height: 64px;
+	align-self: flex-start;
+	display: inline-flex;
 }
 </style>

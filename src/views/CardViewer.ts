@@ -81,9 +81,9 @@ export default {
       if (props.mode === 'hand') {
         const playerCards = engine.getPlayerCards(handPlayerId.value)
         if (playerCards.length) return playerCards.map(cloneCard).filter(Boolean)
-        return engine.gameContext.getDeck().slice(0, 5).map(cloneCard).filter(Boolean)
+        return engine.deck.slice(0, 5).map(cloneCard).filter(Boolean)
       }
-      return engine.gameContext.getDeck().map(cloneCard).filter(Boolean)
+      return engine.deck.map(cloneCard).filter(Boolean)
     })
 
     function playFromHand(index: number) {
