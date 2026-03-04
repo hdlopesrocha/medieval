@@ -1,4 +1,4 @@
-import { IonCard, IonCardHeader, IonCardTitle, IonCardContent, IonImg, IonChip, IonIcon } from '@ionic/vue'
+import { IonCard, IonCardHeader, IonCardTitle, IonCardContent, IonImg, IonChip, IonIcon, IonButton } from '@ionic/vue'
 import {
   shieldHalfOutline,
   flashOutline,
@@ -22,7 +22,7 @@ export default {
     hidden: { type: Boolean, default: false },
     showExport: { type: Boolean, default: null }
   },
-  components: { IonCard, IonCardHeader, IonCardTitle, IonCardContent, IonImg, IonChip, IonIcon },
+  components: { IonCard, IonCardHeader, IonCardTitle, IonCardContent, IonImg, IonChip, IonIcon, IonButton },
   computed: {
     effectDescriptionText() {
       return String(this.card?.effectDescription || '').trim()
