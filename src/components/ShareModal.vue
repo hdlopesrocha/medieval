@@ -94,12 +94,14 @@ export default {
   max-width: 75vw !important;
   width: 75vw !important;
   max-height: 75vh !important;
-  height: auto !important;
+  height: 75vh !important;
   padding: 0 !important;
   border-radius: 12px !important;
+  overflow: auto !important;
 }
 
 :deep(.share-popover .popover-wrapper) {
-  align-items: flex-start !important;
+  align-items: center !important;
+  justify-content: center !important;
 }
 </style>
