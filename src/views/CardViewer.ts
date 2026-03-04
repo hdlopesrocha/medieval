@@ -46,10 +46,6 @@ export default {
     })
     let timer: ReturnType<typeof setInterval> | null = null
     engine.gameContext.ensureDeck()
-    const currentDeck = engine.gameContext.getDeck()
-    if (!currentDeck.length) {
-      engine.gameContext.setDeck(deckService.createDeck())
-    }
 
     const titleText = computed(() => (props.mode === 'hand' ? 'Hand' : 'Deck'))
     const handPlayerId = computed(() => viewerState.value.activePlayerId)
@@ -83,7 +79,7 @@ export default {
         return props.cards.map(cloneCard).filter(Boolean)
       }
       if (props.mode === 'hand') {
-        const playerCards = engine.gameContext.getPlayerCards(handPlayerId.value)
+        const playerCards = engine.getPlayerCards(handPlayerId.value)
         if (playerCards.length) return playerCards.map(cloneCard).filter(Boolean)
         return engine.gameContext.getDeck().slice(0, 5).map(cloneCard).filter(Boolean)
       }

@@ -7,6 +7,7 @@ import { ZONES, ZONE_ELEMENTS } from '../game/GameEngine'
 // import GameContext from '../models/GameContext' if needed
 import { useRouter } from 'vue-router'
 import { useWebrtcQrService } from '../services/webrtcQrService'
+import gameStateService from '../services/gameStateService'
 import { sortCardsInPlayBySlot } from '../utils/sortCardsInPlay'
 import type { GameContext } from '../models/GameContext'
 import type { GameWorkflowState } from '../models/GameWorkflowState'
@@ -40,20 +41,18 @@ export default {
     const realtime = webrtcQr as unknown as RealtimeBridge
     let timer: ReturnType<typeof setInterval> | null = null
 
-    function currentRole() {
-      return String(unref(realtime.activeRole) || '')
-    }
+
 
     const deckCards = computed(() => engine.deck)
     const localPlayerId = computed(() => {
       // Always use playerId from workflow if available
-      return Number(state.value.playerId ?? (currentRole() === 'client' ? 1 : 0))
+      return Number(state.value.playerId)
     })
-    const activeHandCards = computed(() => engine.gameContext.getPlayerCards(state.value.activePlayerId || 0))
-    const localHandCards = computed(() => engine.gameContext.getPlayerCards(localPlayerId.value || 0))
+    const activeHandCards = computed(() => engine.getPlayerCards(state.value.activePlayerId || 0))
+    const localHandCards = computed(() => engine.getPlayerCards(localPlayerId.value || 0))
     const multiplayerMode = computed(() => Boolean(unref(realtime.isRealtimeGameActive)))
-    const isServerAuthority = computed(() => multiplayerMode.value && currentRole() === 'server')
-    const isClientProxy = computed(() => multiplayerMode.value && currentRole() === 'client')
+    const isServerAuthority = computed(() => multiplayerMode.value && state.value.playerId === 0)
+    const isClientProxy = computed(() => multiplayerMode.value && state.value.playerId === 1)
     // Only allow play if localPlayerId === activePlayerId
     const tableCardsInPlay = computed(() => sortCardsInPlayBySlot(state.value.cardsInPlay, state.value.activePlayerId))
     const currentPlayingUserLabel = computed(() => {
@@ -127,7 +126,7 @@ export default {
     }
 
     function playerHandCards(playerId: number) {
-      return engine.gameContext.getPlayerCards(playerId)
+      return engine.getPlayerCards(playerId)
     }
 
     function handCountByPlayer(playerId: number) {
@@ -141,9 +140,18 @@ export default {
       return enemies.some((target) => Math.abs(target.position - attacker.position) <= range)
     }
 
+
     function start() {
       const res = runGameAction('startGame', {}, () => {
-        engine.startGame(['Server', 'Client'])
+          try {
+            if (engine && typeof (engine as any).createGameState === 'function') {
+              (engine as any).createGameState()
+            } else {
+              engine.startGame(['Server', 'Client'])
+            }
+          } catch (e) {
+            try { engine.startGame(['Server', 'Client']) } catch (_e) {}
+          }
         return { ok: true }
       })
       if (!res.ok) return alert('Start failed: ' + (res.reason || 'invalid action'))

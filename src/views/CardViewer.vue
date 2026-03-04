@@ -5,16 +5,13 @@
 <style scoped>
 
 
-.deck-card-slot {
-	display: flex;
+.card-slot {
 	flex-direction: column;
 	gap: 6px;
 	flex: 0 0 auto;
-	/* Make each slot use half of the grid height so there are 2 rows */
-	height: calc((100% - 8px) / 2);
-	width: auto;
-	align-items: stretch;
-	aspect-ratio: 2 / 3; /* width will be computed from height (2:3 => width:height*2/3) */
+	display: inline-flex;
+	padding: 16px;
+	height: 100%;
 }
 
 .cards-list {
@@ -29,18 +26,32 @@
 		padding-bottom: 128px;
 
 }
-.card-item-wrapper {
-	display: inline-flex;
-	padding: 16px;
-}
 
 .card-item {
-	display: flex;
-	/* keep each card at its intrinsic width (from aspect-ratio/height) */
+
+	height: 100%;
+  	align-items: stretch;
+  	justify-content: stretch;
+
+	display: inline-flex;
 	flex: 0 0 auto;
 	flex-direction: column;
-	aspect-ratio: 2 / 3;
 	padding: 0px;
+
+
+
+}
+
+
+.card-wrapper {
+	height: 100%;
+	display: inline-flex;
+	flex: 0 0 auto;
+	flex-direction: row;
+
+	width: auto;
+	align-items: stretch;
+	aspect-ratio: 2 / 3; /* width will be computed from height (2:3 => width:height*2/3) */
 }
 
 ion-button,
