@@ -3,21 +3,7 @@
 <script lang="ts" src="./CurrentPlayerBoard.ts"></script>
 
 <style scoped>
-.current-player-board {
-  position: relative;
-  z-index: 100;
-  overflow: visible;
-  padding: 10px 12px;
-  border-radius: 8px;
-  background: linear-gradient(180deg, #0d1b2f 0%, #0a1626 100%);
-  border: 1px solid rgba(132, 168, 214, 0.28);
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.32);
-  color: #e9f3ff;
-  font-weight: 700;
-  display: flex;
-  gap: 10px;
-  flex-direction: column;
-}
+
 
 .current-player-board-row {
   display: flex;
