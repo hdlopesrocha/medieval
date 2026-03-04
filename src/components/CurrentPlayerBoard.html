@@ -4,9 +4,7 @@
       <ion-button size="big" :fill="isActive('/') ? 'solid' : 'outline'" @click="go('/')">
         <ion-icon slot="start" :icon="homeOutline"></ion-icon>
       </ion-button>
-      <ion-button size="big" :fill="isActive('/deck') ? 'solid' : 'outline'" @click="go('/deck')">
-        <ion-icon slot="start" :icon="albumsOutline"></ion-icon>
-      </ion-button>
+      
       <ion-button size="big" :fill="isActive('/hand') ? 'solid' : 'outline'" @click="go('/hand')">
         <ion-icon slot="start" :icon="handLeftOutline"></ion-icon>
       </ion-button>
@@ -15,6 +13,7 @@
         <ion-icon slot="start" :icon="mapOutline"></ion-icon>
       </ion-button>
     </div>
+    
     <div class="settings-menu-wrap">
       <ion-button :id="settingsTriggerId" size="big" fill="outline">
         <ion-icon slot="start" :icon="settingsOutline"></ion-icon>
@@ -36,6 +35,10 @@
           <ion-icon slot="start" :icon="timeOutline"></ion-icon>
           History
         </ion-button>
+        <ion-button size="small" fill="clear" @click="goFromSettings('/deck')">
+          <ion-icon slot="start" :icon="albumsOutline"></ion-icon>
+          Deck
+        </ion-button>
         <ion-button size="small" fill="clear" @click="goFromSettings('/share')">
           <ion-icon slot="start" :icon="shareSocialOutline"></ion-icon>
           Share
@@ -48,10 +51,6 @@
           <ion-icon slot="start" :icon="contractOutline"></ion-icon>
           Hide Player Board
         </ion-button>
-        <ion-button v-if="!boardVisible" size="small" fill="dark" style="margin-top: 8px;" @click="toggleBoardVisible">
-          <ion-icon slot="start" :icon="expandOutline"></ion-icon>
-          Show Player Board
-        </ion-button>
         <ion-button size="small" color="danger" fill="clear" style="margin-top: 8px;" @click="clearLocalStorage">
           <ion-icon slot="start" :icon="trashOutline"></ion-icon>
           Erase local storage
@@ -60,12 +59,23 @@
       </ion-popover>
     </div>
   </nav>
-
-  <div class="current-player-board-row minimal">
-    <span class="cpb-item"><ion-icon name="person-outline" style="vertical-align: middle; margin-right: 6px;"></ion-icon> {{ currentPlayerLabel }}</span>
-    <span class="cpb-item"><ion-icon name="shield-half-outline" style="vertical-align: middle; margin-right: 6px;"></ion-icon> {{ playerCastleHp }}</span>
-    <span class="cpb-item"><ion-icon name="shield-outline" style="vertical-align: middle; margin-right: 6px;"></ion-icon> {{ enemyCastleHp }}</span>
-    <span class="cpb-item"><ion-icon name="time-outline" style="vertical-align: middle; margin-right: 6px;"></ion-icon> {{ turnLabel }}</span>
-  </div>
+  <nav class="current-player-navbar" aria-label="Secondary">
+      <span class="cpb-item">
+        <ion-icon :icon="personOutline"></ion-icon>
+        {{ currentPlayerLabel }}
+      </span>
+      <span class="cpb-item">
+        <ion-icon :icon="shieldHalfOutline"></ion-icon>
+        {{ playerCastleHp }}
+      </span>
+      <span class="cpb-item">
+        <ion-icon :icon="shieldOutline"></ion-icon>
+        {{ enemyCastleHp }}
+      </span>
+      <span class="cpb-item">
+        <ion-icon :icon="timeOutline"></ion-icon>
+        {{ turnLabel }}
+      </span>
+  </nav>
 </div>
 

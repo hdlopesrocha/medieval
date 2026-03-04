@@ -1,6 +1,6 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { IonButton, IonIcon, IonPopover } from '@ionic/vue'
-import { albumsOutline, handLeftOutline, gridOutline, mapOutline, shareSocialOutline, timeOutline, addCircleOutline, settingsOutline, homeOutline, expandOutline, contractOutline, trashOutline } from 'ionicons/icons'
+import { albumsOutline, handLeftOutline, gridOutline, mapOutline, shareSocialOutline, timeOutline, addCircleOutline, settingsOutline, homeOutline, expandOutline, contractOutline, trashOutline, personOutline, shieldHalfOutline, shieldOutline } from 'ionicons/icons'
 import { useRoute, useRouter } from 'vue-router'
 import engine from '../game/engineInstance'
 import { useWebrtcQrService } from '../services/webrtcQrService'
@@ -74,13 +74,7 @@ export default {
     function createGameState() {
       if (!isLocalPlayersTurn.value) return
       try {
-        engine.startGame(['Server', 'Client'])
-        const ownerRole = role.value === 'server' ? 'server' : (role.value === 'client' ? 'client' : 'local')
-        const createPlayerId = ownerRole === 'client' ? 1 : 0
-        // Persist create action into workflow/history
-        try {
-          engine.saveState('createGameState')
-        } catch (e) {}
+        const wf = (engine as any).createGameState()
         ;(webrtcQr as any).syncGameStateToClient?.('createGame')
         refresh()
       } catch (e) {
@@ -160,6 +154,9 @@ export default {
       contractOutline,
       shareSocialOutline,
       timeOutline,
+      personOutline,
+      shieldHalfOutline,
+      shieldOutline,
       addCircleOutline,
       trashOutline,
       settingsOpen,
