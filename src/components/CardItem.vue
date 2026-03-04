@@ -5,20 +5,12 @@
 <style scoped>
 
 
-
-.export-btn {
-  position: absolute;
-  right: -8px;
-  top: -8px;
-  background: #0a74ff;
-  color: #fff;
-  border: none;
-  padding: 6px 10px;
-  border-radius: 6px;
-  cursor: pointer;
-  font-weight: 700;
+.card-actions-row {
+  display: inline-flex;
+  flex-direction: row;
+  gap: 8px;
+  justify-content: flex-start;
 }
-.export-btn:hover { opacity: 0.95 }
 
 .card-image {
   position: relative;
