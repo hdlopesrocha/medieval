@@ -10,7 +10,7 @@ import gameStateService from '../services/gameStateService'
 
 export default {
   name: 'CurrentPlayerBoard',
-  components: { IonButton, IonIcon, IonPopover },
+  components: { IonButton, IonIcon, IonPopover, ShareModal },
   setup() {
     const webrtcQr = useWebrtcQrService()
     // Replace with GameContext instance usage
