@@ -57,10 +57,42 @@ export default class GameEngine {
 
   // Deck accessors backed by gameContext (serialize/deserialize)
   get deck(): Card[] {
-    return (this.gameContext.getDeck() || []).map((c: any) => Card.fromJSON(c))
+    const raw = (this.gameContext.getDeck ? this.gameContext.getDeck() : (this.gameContext.deck || [])) || []
+    // If persisted as uuids (string array), resolve via cardsById
+    if (raw.length && typeof raw[0] === 'string') {
+      return (raw as string[]).map(id => this.cardsById[id]).filter(Boolean)
+    }
+    // legacy: array of card JSON objects -> convert, register and persist uuids
+    const out: Card[] = []
+    const idsForPersist: string[] = []
+    let converted = false
+    for (const item of raw) {
+      if (!item) continue
+      try {
+        const c = Card.fromJSON(item)
+        const id = this.registerCard(c)
+        out.push(c)
+        idsForPersist.push(id)
+        converted = true
+      } catch (e) {
+        // ignore
+      }
+    }
+    if (converted) {
+      try { this.gameContext.setDeck(idsForPersist as any) } catch (e) {}
+    }
+    return out
   }
   set deck(cards: Card[]) {
-    try { this.gameContext.setDeck((cards || []).map(c => (c && typeof (c as any).toJSON === 'function') ? (c as any).toJSON() : c)) } catch (e) {}
+    try {
+      const ids: string[] = []
+      for (const c of (cards || [])) {
+        if (!c) continue
+        const id = this.registerCard(c)
+        ids.push(id)
+      }
+      this.gameContext.setDeck(ids as any)
+    } catch (e) {}
   }
 
   // Players list persisted in gameContext.playersList
@@ -211,7 +243,16 @@ export default class GameEngine {
     wf.appendHistory({ action: 'createGameState', activePlayerId: 0, round: 0, gameOver: false, deckCount: (this.deck || []).length, cardsInPlayCount: (this.cardsInPlay || []).length, castleHpByPlayer: this.gameContext.castleHpByPlayer || {} })
     this.gameWorkflow = wf
 
-    this.startGame(['Server', 'Client'])
+    // Determine local player name from available localStorage keys when running in browser.
+    let localName = 'Player 0'
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        localName = window.localStorage.getItem('localName') || window.localStorage.getItem('playerName') || window.localStorage.getItem('name') || localName
+      }
+    } catch (e) {
+      // ignore
+    }
+    this.startGame([String(localName || 'Player 0'), 'Client'])
     this.saveState('createGameState')
     return wf
   }
@@ -561,10 +602,27 @@ export default class GameEngine {
   saveState(action = 'stateUpdate') {
     this.syncGameStateService()
     try {
-      // build hands payload (playerId -> array of card JSONs)
-      const handsPayload: Record<string, any[]> = {}
-      for (const playerId of Object.keys(this.hands || {})) {
-        handsPayload[playerId] = (this.hands[Number(playerId)] || []).map(c => c ? c.toJSON() : null).filter(Boolean)
+      // build hands payload (playerId -> array of uuid strings) using persisted player hands in gameContext
+      const handsPayload: Record<string, string[]> = {}
+      try {
+        const playersList = this.gameContext.getPlayersList ? this.gameContext.getPlayersList() : (this.gameContext.playersList || [])
+        for (const p of (playersList || [])) {
+          const pid = Number(p.id || 0)
+          try {
+            const uuids = this.gameContext.getPlayerCards ? this.gameContext.getPlayerCards(pid) : (p.hand || [])
+            handsPayload[String(pid)] = Array.isArray(uuids) ? uuids.map(String) : []
+          } catch (e) {
+            handsPayload[String(pid)] = []
+          }
+        }
+      } catch (e) {
+        // fallback: derive from runtime hands by registering cards
+        for (const playerId of Object.keys(this.hands || {})) {
+          const arr = (this.hands[Number(playerId)] || [])
+          const ids: string[] = []
+          for (const c of arr) if (c) ids.push(this.registerCard(c))
+          handsPayload[playerId] = ids
+        }
       }
       // build cards map (uuid -> card JSON) for persisted resolution
       const cardsMap: Record<string, any> = {}
@@ -573,8 +631,24 @@ export default class GameEngine {
         if (c && typeof c.toJSON === 'function') cardsMap[id] = c.toJSON()
       }
 
+      // Persist deck as array of uuids; ensure cardsById contains all referenced cards
+      let deckIds: any[] = (this.gameContext.getDeck ? this.gameContext.getDeck() : this.gameContext.deck) || []
+      if (deckIds.length && typeof deckIds[0] !== 'string') {
+        // legacy deck objects -> register and normalize
+        const ids: string[] = []
+        for (const item of deckIds) {
+          try {
+            const c = Card.fromJSON(item)
+            const id = this.registerCard(c)
+            ids.push(id)
+          } catch (e) {}
+        }
+        try { this.gameContext.setDeck(ids as any) } catch (e) {}
+        deckIds = ids
+      }
+
       const gameToSave: any = {
-        deck: (this.deck || []).map(c => c ? c.toJSON() : null).filter(Boolean),
+        deck: (deckIds || []).map((d: any) => String(d)).filter(Boolean),
         players: this.players || [],
         cardsInPlay: (this.cardsInPlay || []).map(g => ({ id: g.id, ownerId: g.ownerId, position: g.position, hidden: !!g.hidden, card: g.card ? g.card.toJSON() : null })).filter(Boolean),
         hands: handsPayload,
@@ -626,11 +700,7 @@ export default class GameEngine {
       const obj: any = storedGame
 
       // reconstruct basic game structures
-      this.deck = (obj.deck || []).map((c: any) => Card.fromJSON(c))
-      this.players = obj.players || []
-      this.cardsInPlay = (obj.cardsInPlay || []).map((g: any) => ({ id: g.id, ownerId: g.ownerId, position: g.position, hidden: !!g.hidden, card: Card.fromJSON(g.card) }))
-
-      // rebuild cardsById map if provided (new persisted shape)
+      // Deck may be persisted as uuids (new shape) or as legacy card JSONs
       if (obj.cardsById && typeof obj.cardsById === 'object') {
         try {
           for (const id of Object.keys(obj.cardsById)) {
@@ -639,6 +709,29 @@ export default class GameEngine {
           }
         } catch (e) {}
       }
+
+      if (Array.isArray(obj.deck) && obj.deck.length && typeof obj.deck[0] === 'string') {
+        // deck is array of uuids
+        this.deck = (obj.deck as string[]).map(id => this.cardsById[id]).filter(Boolean)
+      } else {
+        // legacy: deck contains card JSON objects
+        const converted: Card[] = []
+        const idsForPersist: string[] = []
+        for (const item of (obj.deck || [])) {
+          try {
+            const c = Card.fromJSON(item)
+            const id = this.registerCard(c)
+            converted.push(c)
+            idsForPersist.push(id)
+          } catch (e) {}
+        }
+        if (idsForPersist.length) {
+          try { this.gameContext.setDeck(idsForPersist as any) } catch (e) {}
+        }
+        this.deck = converted
+      }
+      this.players = obj.players || []
+      this.cardsInPlay = (obj.cardsInPlay || []).map((g: any) => ({ id: g.id, ownerId: g.ownerId, position: g.position, hidden: !!g.hidden, card: Card.fromJSON(g.card) }))
 
       // restore hands: support both legacy (arrays of card JSON) and new (arrays of uuid strings)
       const rawHands = obj.hands || {}
@@ -720,9 +813,6 @@ export default class GameEngine {
   importState(obj: any) {
     if (!obj) return { ok: false, reason: 'invalid object' }
     try {
-      this.deck = (obj.deck || []).map((c: any) => Card.fromJSON(c))
-      this.players = obj.players || []
-      this.cardsInPlay = (obj.cardsInPlay || []).map((g: any) => ({ id: g.id, ownerId: g.ownerId, position: g.position, hidden: !!g.hidden, card: Card.fromJSON(g.card) }))
       // rebuild cardsById map if present on imported object
       if (obj.cardsById && typeof obj.cardsById === 'object') {
         try {
@@ -732,6 +822,28 @@ export default class GameEngine {
           }
         } catch (e) {}
       }
+
+      // Deck may be array of uuids or legacy card JSONs
+      if (Array.isArray(obj.deck) && obj.deck.length && typeof obj.deck[0] === 'string') {
+        this.deck = (obj.deck as string[]).map(id => this.cardsById[id]).filter(Boolean)
+      } else {
+        const converted: Card[] = []
+        const idsForPersist: string[] = []
+        for (const item of (obj.deck || [])) {
+          try {
+            const c = Card.fromJSON(item)
+            const id = this.registerCard(c)
+            converted.push(c)
+            idsForPersist.push(id)
+          } catch (e) {}
+        }
+        if (idsForPersist.length) {
+          try { this.gameContext.setDeck(idsForPersist as any) } catch (e) {}
+        }
+        this.deck = converted
+      }
+      this.players = obj.players || []
+      this.cardsInPlay = (obj.cardsInPlay || []).map((g: any) => ({ id: g.id, ownerId: g.ownerId, position: g.position, hidden: !!g.hidden, card: Card.fromJSON(g.card) }))
       const rawHands = obj.hands || {}
       const idsPayload2: Record<string, string[]> = {}
       const handsMap2: { [p: number]: Card[] } = {}
