@@ -1,5 +1,5 @@
 <template>
-  <ion-modal :is-open="isOpen" @did-dismiss="onDismiss">
+  <ion-modal :is-open="isOpen" css-class="share-modal" @did-dismiss="onDismiss">
     <div style="padding:16px;display:flex;flex-direction:column;gap:10px;align-items:center">
       <div style="font-weight:700;text-align:center">Share this QR with other players</div>
       <img v-if="qrDataUrl" :src="qrDataUrl" alt="share-qr" style="width:320px;max-width:100%;display:block" />
@@ -82,5 +82,23 @@ export default {
 </script>
 
 <style scoped>
-/* minimal modal styling to align with existing page */
+/* ensure the modal wrapper sizes to content and is centered (not fullscreen) */
+.share-modal {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.share-modal .modal-wrapper {
+  width: auto !important;
+  max-width: 420px !important;
+  min-width: 260px;
+  height: auto !important;
+  max-height: 90vh !important;
+  border-radius: 12px !important;
+  overflow: visible !important;
+  padding: 0 !important;
+}
+.share-modal .modal-content {
+  overflow: visible !important;
+}
 </style>
