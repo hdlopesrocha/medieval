@@ -587,12 +587,21 @@ function createWebrtcQrService() {
 
     const signalling = { type: 'offer', sdp: pc.localDescription.sdp, candidates }
     const text = JSON.stringify(signalling)
-    // Build binary QR payloads from raw gzipped bytes for better packing
-    const qrPayloadBuffers = buildQrPartBinaryPayloads(text, 'offer')
-    const qrImages = await Promise.all(qrPayloadBuffers.map((partBuf) => {
-      const input = (typeof Buffer !== 'undefined' && Buffer.from) ? Buffer.from(partBuf) : partBuf
-      return QRCode.toDataURL(input)
-    }))
+    // Attempt binary QR generation (more compact). If the QR library rejects
+    // the binary input in this environment, fall back to text-mode gz tokens.
+    let qrImages
+    try {
+      const qrPayloadBuffers = buildQrPartBinaryPayloads(text, 'offer')
+      qrImages = await Promise.all(qrPayloadBuffers.map(async (partBuf) => {
+        const input = (typeof Buffer !== 'undefined' && Buffer.from) ? Buffer.from(partBuf) : partBuf
+        return await QRCode.toDataURL(input)
+      }))
+    } catch (err) {
+      // fallback to the legacy text-token parts
+      const qrPayload = gzipToToken(text)
+      const qrPayloadParts = buildQrPartPayloads(qrPayload, 'offer')
+      qrImages = await Promise.all(qrPayloadParts.map((partPayload) => QRCode.toDataURL(partPayload)))
+    }
     consoleLogger.value.push('createOffer: ' + text)
     offerJson.value = text
     offerQrParts.value = qrImages
@@ -899,11 +908,18 @@ function createWebrtcQrService() {
     const signalling = { type: 'answer', sdp: pc.localDescription.sdp, candidates }
     const text = JSON.stringify(signalling)
     consoleLogger.value.push('acceptOffer: ' + text)
-    const qrPayloadBuffers = buildQrPartBinaryPayloads(text, 'answer')
-    const qrImages = await Promise.all(qrPayloadBuffers.map((partBuf) => {
-      const input = (typeof Buffer !== 'undefined' && Buffer.from) ? Buffer.from(partBuf) : partBuf
-      return QRCode.toDataURL(input)
-    }))
+    let qrImages
+    try {
+      const qrPayloadBuffers = buildQrPartBinaryPayloads(text, 'answer')
+      qrImages = await Promise.all(qrPayloadBuffers.map(async (partBuf) => {
+        const input = (typeof Buffer !== 'undefined' && Buffer.from) ? Buffer.from(partBuf) : partBuf
+        return await QRCode.toDataURL(input)
+      }))
+    } catch (err) {
+      const qrPayload = gzipToToken(text)
+      const qrPayloadParts = buildQrPartPayloads(qrPayload, 'answer')
+      qrImages = await Promise.all(qrPayloadParts.map((partPayload) => QRCode.toDataURL(partPayload)))
+    }
     answerJson.value = text
     answerQrParts.value = qrImages
     answerQrPartIndex.value = 0
