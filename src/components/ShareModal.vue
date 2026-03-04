@@ -84,7 +84,11 @@ export default {
 <style scoped>
 /* Constrain modal size so it adapts to content rather than fullscreen */
 :deep(.share-modal) {
+  --width: 420px;
   --max-width: 420px;
+  --height: auto;
+  --min-height: auto;
+  --max-height: 80vh;
 }
 
 :deep(.share-modal .modal-wrapper) {
@@ -95,10 +99,12 @@ export default {
 }
 
 :deep(.share-modal .modal-content) {
-  width: 100%;
+  width: auto;
   max-width: 420px;
   margin: 0 auto;
   border-radius: 12px;
   overflow: visible;
+  height: auto !important;
+  max-height: 80vh !important;
 }
 </style>
