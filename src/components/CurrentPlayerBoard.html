@@ -1,11 +1,10 @@
-<ion-button v-if="!boardVisible" size="small" fill="dark" style="margin-bottom: 8px; background: #222; color: #fff;" @click="toggleBoardVisible">
-  <ion-icon slot="start" :icon="expandOutline"></ion-icon>
-  Show Player Board
-</ion-button>
-
-<div v-if="boardVisible" class="current-player-board">
+<div class="current-player-board">
   <nav class="current-player-navbar" aria-label="Primary">
     <div class="current-player-navbar-links">
+      <ion-button size="small" :fill="isActive('/') ? 'solid' : 'outline'" @click="go('/')">
+        <ion-icon slot="start" :icon="homeOutline"></ion-icon>
+        Home
+      </ion-button>
       <ion-button size="small" :fill="isActive('/deck') ? 'solid' : 'outline'" @click="go('/deck')">
         <ion-icon slot="start" :icon="albumsOutline"></ion-icon>
         Deck
@@ -15,10 +14,6 @@
         Hand
       </ion-button>
       <!-- Board removed; link to Map instead -->
-      <ion-button size="small" :fill="isActive('/map') ? 'solid' : 'outline'" @click="go('/map')">
-        <ion-icon slot="start" :icon="mapOutline"></ion-icon>
-        Map
-      </ion-button>
       <ion-button size="small" :fill="isActive('/map') ? 'solid' : 'outline'" @click="go('/map')">
         <ion-icon slot="start" :icon="mapOutline"></ion-icon>
         Map
@@ -41,10 +36,7 @@
           <ion-icon slot="start" :icon="addCircleOutline"></ion-icon>
           Create
         </ion-button>
-        <ion-button size="small" fill="clear" @click="goFromSettings('/')">
-          <ion-icon slot="start" :icon="homeOutline"></ion-icon>
-          Home
-        </ion-button>
+        <!-- Home moved to the main navbar links -->
         <ion-button size="small" fill="clear" @click="goFromSettings('/history')">
           <ion-icon slot="start" :icon="timeOutline"></ion-icon>
           History

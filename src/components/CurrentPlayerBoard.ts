@@ -19,7 +19,6 @@ export default {
     const settingsOpen = ref(false)
     const isFullscreen = ref(false)
     const settingsTriggerId = 'current-player-board-settings-trigger'
-    const boardVisible = ref(true)
     let timer: ReturnType<typeof setInterval> | null = null
 
     function refreshFullscreenState() {
@@ -97,9 +96,7 @@ export default {
       settingsOpen.value = !settingsOpen.value
     }
 
-    function toggleBoardVisible() {
-      boardVisible.value = !boardVisible.value
-    }
+    // Board is always visible; hide/show toggle removed.
 
     function clearLocalStorage() {
       try {
@@ -176,8 +173,6 @@ export default {
       goFromSettings,
       toggleFullscreen,
       toggleSettings,
-      boardVisible,
-      toggleBoardVisible,
       clearLocalStorage,
       isLocalPlayersTurn,
       
