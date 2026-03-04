@@ -10,7 +10,7 @@
         <ion-button size="small" fill="clear" @click="close">Close</ion-button>
       </div>
     </div>
-  </ion-modal>
+  </ion-popover>
 </template>
 
 <script lang="ts">
