@@ -1,5 +1,5 @@
-<div>
-<ion-card>
+<div class="card-item">
+  <ion-card class="card-wrapper">
     <div v-if="hidden" class="card-back">
       <div class="card-back-text">Card Back</div>
     </div>
@@ -24,13 +24,8 @@
             :aria-label="item.label"
           >
             <ion-icon :icon="item.icon" class="subcat-icon" />
-          </span>
-        </div>
 
-        <div class="card-text-block">
-          <p class="description">{{ card.description }}</p>
-          <p v-if="hasEffectDescription" class="effect-description"><strong>Effect:</strong> {{ effectDescriptionText }}</p>
-        </div>
+          </span>
         <div class="attributes">
           <div class="attr"><span class="attr-icon">⚔️</span><span class="attr-label">ATK</span><span class="attr-value">{{ card.attackPoints }}</span></div>
           <div class="attr"><span class="attr-icon">🛡️</span><span class="attr-label">DEF</span><span class="attr-value">{{ card.defensePoints }}</span></div>
@@ -42,6 +37,13 @@
           <div class="attr"><span class="attr-icon">💨</span><span class="attr-label">VEL</span><span class="attr-value">{{ card.velocity }}</span></div>
           <div class="attr"><span class="attr-icon">🎯</span><span class="attr-label">RNG</span><span class="attr-value">{{ card.range }}</span></div>
         </div>
+        </div>
+
+        <div class="card-text-block">
+          <p class="description">{{ card.description }}</p>
+          <p v-if="hasEffectDescription" class="effect-description"><strong>Effect:</strong> {{ effectDescriptionText }}</p>
+        </div>
+
 
 
       </ion-card-content>

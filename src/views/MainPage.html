@@ -22,17 +22,6 @@
           CLIENT
           <ion-icon :icon="phonePortraitOutline" style="font-size:64px;display:block;margin:0 auto"></ion-icon>
         </ion-button>
-        <ion-button
-          class="role-switch-button"
-          :color="activeRole === 'local' ? 'primary' : 'medium'"
-          :fill="activeRole === 'local' ? 'solid' : 'outline'"
-          @click="goHandPage"
-          style="flex:1"
-        >
-        LOCAL
-          <ion-icon :icon="cubeOutline" style="font-size:64px;display:block;margin:0 auto"></ion-icon>
-         
-        </ion-button>
       </div>
     </template>
     <p v-if="!activeRole" style="margin:0 0 12px 0">Choose a role to continue.</p>

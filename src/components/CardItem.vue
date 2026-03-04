@@ -5,6 +5,7 @@
 <style scoped>
 
 
+
 .export-btn {
   position: absolute;
   right: -8px;
@@ -133,4 +134,18 @@ ion-button.card-action-btn {
 .subcat-icon {
   font-size: 32px;
 }
+
+
+.card-wrapper {
+	height: 100%;
+	display: inline-flex;
+	flex: 0 0 auto;
+	flex-direction: column;
+
+	width: auto;
+	align-items: stretch;
+	aspect-ratio: 2 / 3; /* width will be computed from height (2:3 => width:height*2/3) */
+}
+
+
 </style>
