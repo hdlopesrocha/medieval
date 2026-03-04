@@ -4,6 +4,7 @@ import { GameWorkflowState } from '../models/GameWorkflowState'
 
 const GAME_STORAGE_KEY = 'tocabola:game'
 const WORKFLOW_STORAGE_KEY = 'tocabola:workflow'
+const NAMESPACE_SEPARATOR = ':'
 
 function hasLocalStorage() {
   try {
@@ -83,6 +84,79 @@ export function clearWorkflowState() {
   }
 }
 
+function storageKeyFor(context: string, key: string) {
+  const ctx = String(context || 'game')
+  return `${GAME_STORAGE_KEY}${NAMESPACE_SEPARATOR}${ctx}${NAMESPACE_SEPARATOR}${key}`
+}
+
+export function ensureDeck(context = 'game') {
+  // no-op for compatibility; callers will create deck when missing
+  return true
+}
+
+export function getDeck(context = 'game') {
+  if (!hasLocalStorage()) return []
+  try {
+    const raw = window.localStorage.getItem(storageKeyFor(context, 'deck'))
+    if (!raw) return []
+    return JSON.parse(raw)
+  } catch (e) {
+    return []
+  }
+}
+
+export function setDeck(deck: any[], context = 'game') {
+  if (!hasLocalStorage()) return false
+  try {
+    window.localStorage.setItem(storageKeyFor(context, 'deck'), JSON.stringify(deck || []))
+    return true
+  } catch (e) {
+    return false
+  }
+}
+
+export function setPlayerCards(key: string, cards: any[], context = 'game') {
+  if (!hasLocalStorage()) return false
+  try {
+    window.localStorage.setItem(storageKeyFor(context, `player:${key}`), JSON.stringify(cards || []))
+    return true
+  } catch (e) {
+    return false
+  }
+}
+
+export function getPlayerCards(key: string, context = 'game') {
+  if (!hasLocalStorage()) return []
+  try {
+    const raw = window.localStorage.getItem(storageKeyFor(context, `player:${key}`))
+    if (!raw) return []
+    return JSON.parse(raw)
+  } catch (e) {
+    return []
+  }
+}
+
+export function getHistory(context = 'game') {
+  if (!hasLocalStorage()) return []
+  try {
+    const raw = window.localStorage.getItem(storageKeyFor(context, 'history'))
+    if (!raw) return []
+    return JSON.parse(raw)
+  } catch (e) {
+    return []
+  }
+}
+
+export function setHistory(history: any[], context = 'game') {
+  if (!hasLocalStorage()) return false
+  try {
+    window.localStorage.setItem(storageKeyFor(context, 'history'), JSON.stringify(history || []))
+    return true
+  } catch (e) {
+    return false
+  }
+}
+
 export default {
   saveGameState,
   loadGameState,
@@ -91,3 +165,20 @@ export default {
   loadWorkflowState,
   clearWorkflowState
 }
+// Include compatibility helpers on the default export as well
+export default Object.assign({}, {
+  saveGameState,
+  loadGameState,
+  clearGameState,
+  saveWorkflowState,
+  loadWorkflowState,
+  clearWorkflowState
+}, {
+  ensureDeck,
+  getDeck,
+  setDeck,
+  setPlayerCards,
+  getPlayerCards,
+  getHistory,
+  setHistory
+})
