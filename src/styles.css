@@ -22,7 +22,6 @@ ion-page {
 ion-content {
   --background: transparent;
   background: transparent;
-  min-height: 100vh;
   box-sizing: border-box;
 }
 
@@ -52,3 +51,8 @@ ion-app, .ion-page, #app {
   padding: 16px;
 }
 
+.ion-page {
+  overflow: auto;
+  height: 100%;
+  min-height: 100%;
+}
