@@ -1,17 +1,19 @@
 <template src="./CurrentPlayerBoard.html"></template>
 
 <script lang="ts" src="./CurrentPlayerBoard.ts"></script>
-
 <style scoped>
-
-
 .current-player-board-row {
   display: flex;
   gap: 16px;
-<style scoped>
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-start;
+}
+
 .current-player-board {
   color: #e9f3ff;
 }
+
 .current-player-navbar[aria-label="Secondary"] {
   display: flex;
   gap: 12px;
@@ -28,7 +30,7 @@
   color: inherit;
   font-size: 1.1em;
 }
-</style>
+
 .current-player-navbar {
   position: relative;
   z-index: 110;
