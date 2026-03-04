@@ -61,13 +61,11 @@
     </div>
   </nav>
 
-  <nav class="current-player-navbar"">
-    <div class="current-player-board-row">
-      <div><ion-icon name="person-outline" style="vertical-align: middle; margin-right: 6px;"></ion-icon> {{ currentPlayerLabel }}</div>
-      <div><strong>Player Castle HP:</strong> {{ playerCastleHp }}</div>
-      <div><strong>Enemy Castle HP:</strong> {{ enemyCastleHp }}</div>
-      <div><strong>{{ turnIcon }}</strong> {{ turnLabel }}</div>
-    </div>
-  </nav>
+  <div class="current-player-board-row minimal">
+    <span class="cpb-item"><ion-icon name="person-outline" style="vertical-align: middle; margin-right: 6px;"></ion-icon> {{ currentPlayerLabel }}</span>
+    <span class="cpb-item"><ion-icon name="shield-half-outline" style="vertical-align: middle; margin-right: 6px;"></ion-icon> {{ playerCastleHp }}</span>
+    <span class="cpb-item"><ion-icon name="shield-outline" style="vertical-align: middle; margin-right: 6px;"></ion-icon> {{ enemyCastleHp }}</span>
+    <span class="cpb-item"><ion-icon name="time-outline" style="vertical-align: middle; margin-right: 6px;"></ion-icon> {{ turnLabel }}</span>
+  </div>
 </div>
 
