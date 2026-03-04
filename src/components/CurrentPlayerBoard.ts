@@ -1,5 +1,6 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { IonButton, IonIcon, IonPopover } from '@ionic/vue'
+import ShareModal from './ShareModal.vue'
 import { albumsOutline, handLeftOutline, gridOutline, mapOutline, shareSocialOutline, timeOutline, addCircleOutline, settingsOutline, homeOutline, expandOutline, contractOutline, trashOutline, personOutline, shieldHalfOutline, shieldOutline } from 'ionicons/icons'
 import { useRoute, useRouter } from 'vue-router'
 import engine from '../game/engineInstance'
@@ -17,6 +18,7 @@ export default {
     const route = useRoute()
     const tick = ref(0)
     const settingsOpen = ref(false)
+    const shareOpen = ref(false)
     const isFullscreen = ref(false)
     const settingsTriggerId = 'current-player-board-settings-trigger'
     let timer: ReturnType<typeof setInterval> | null = null
@@ -83,6 +85,11 @@ export default {
     }
 
     function goFromSettings(path: string) {
+      // if share requested, open modal; otherwise navigate
+      if (path === '/share') {
+        shareOpen.value = true
+        return
+      }
       go(path)
     }
 
@@ -172,6 +179,8 @@ export default {
       toggleSettings,
       clearLocalStorage,
       isLocalPlayersTurn,
+      shareOpen,
+      ShareModal,
       
     }
   }

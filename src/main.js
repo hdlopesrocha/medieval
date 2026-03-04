@@ -7,7 +7,7 @@ import CardViewer from './views/CardViewer.vue'
 /* Board view removed */
 import HistoryPage from './views/HistoryPage.vue'
 import MapPage from './views/MapPage.vue'
-import SharePage from './views/SharePage.vue'
+// Share page removed; using ShareModal component triggered from settings
 
 /* Core CSS required for Ionic components to work properly */
 import '@ionic/vue/css/core.css'
@@ -29,7 +29,7 @@ const routes = [
 	,{ path: '/local', redirect: '/hand' }
 	,{ path: '/history', component: HistoryPage }
 	,{ path: '/map', component: MapPage }
-	,{ path: '/share', component: SharePage }
+	// share route removed: share is now a modal triggered from settings
 	,{ path: '/main', component: MainPage }
 ]
 

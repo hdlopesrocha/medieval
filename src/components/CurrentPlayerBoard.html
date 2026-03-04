@@ -58,6 +58,7 @@
       </div>
       </ion-popover>
     </div>
+          <ShareModal :is-open="shareOpen" @update:is-open="(v)=>shareOpen = v" />
   </nav>
   <nav class="current-player-navbar" aria-label="Secondary">
       <span class="cpb-item">
