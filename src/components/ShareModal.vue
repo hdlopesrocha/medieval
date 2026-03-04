@@ -84,13 +84,17 @@ export default {
 <style scoped>
 /* Use popover styling to keep content sized to bounds */
 :deep(.share-popover) {
-  --width: 420px;
-  --max-width: 420px;
+  --width: 75vw;
+  --max-width: 75vw;
+  --height: 75vh;
+  --max-height: 75vh;
 }
 
 :deep(.share-popover .popover-content) {
-  max-width: 420px !important;
-  width: auto !important;
+  max-width: 75vw !important;
+  width: 75vw !important;
+  max-height: 75vh !important;
+  height: auto !important;
   padding: 0 !important;
   border-radius: 12px !important;
 }
