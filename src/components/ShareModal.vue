@@ -92,19 +92,26 @@ export default {
 }
 
 :deep(.share-modal .modal-wrapper) {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
+  display: flex !important;
+  align-items: flex-start !important;
+  justify-content: center !important;
+  padding: 0 !important;
+  height: auto !important;
 }
 
 :deep(.share-modal .modal-content) {
-  width: auto;
-  max-width: 420px;
-  margin: 0 auto;
-  border-radius: 12px;
-  overflow: visible;
+  display: inline-block !important;
+  width: auto !important;
+  max-width: 420px !important;
+  margin: 0 auto !important;
+  border-radius: 12px !important;
+  overflow: visible !important;
   height: auto !important;
   max-height: 80vh !important;
+  top: 10vh !important;
+}
+
+:deep(.share-modal .modal-shadow) {
+  display: none !important;
 }
 </style>
