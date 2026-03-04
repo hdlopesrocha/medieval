@@ -104,4 +104,21 @@ export default {
   align-items: center !important;
   justify-content: center !important;
 }
+
+/* Appear from center animation */
+:deep(.share-popover .popover-content) {
+  transform-origin: center center !important;
+  animation: sharePopoverScaleIn 220ms cubic-bezier(.2,.9,.2,1) both !important;
+}
+
+@keyframes sharePopoverScaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
 </style>
