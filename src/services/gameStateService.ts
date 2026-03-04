@@ -157,23 +157,13 @@ export function setHistory(history: any[], context = 'game') {
   }
 }
 
-export default {
+const defaultExport = {
   saveGameState,
   loadGameState,
   clearGameState,
   saveWorkflowState,
   loadWorkflowState,
-  clearWorkflowState
-}
-// Include compatibility helpers on the default export as well
-export default Object.assign({}, {
-  saveGameState,
-  loadGameState,
-  clearGameState,
-  saveWorkflowState,
-  loadWorkflowState,
-  clearWorkflowState
-}, {
+  clearWorkflowState,
   ensureDeck,
   getDeck,
   setDeck,
@@ -181,4 +171,6 @@ export default Object.assign({}, {
   getPlayerCards,
   getHistory,
   setHistory
-})
+}
+
+export default defaultExport
