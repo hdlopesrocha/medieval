@@ -125,7 +125,7 @@ function createWebrtcQrService() {
     // persist a workflow history entry for this webrtc context
     try {
       const wf = gameStateService.loadWorkflowState() || new GameWorkflowState()
-      Object.assign(wf, { ownerRole: 'server', playerId: 0 })
+      Object.assign(wf, { playerId: 0 })
       if (typeof wf.appendHistory === 'function') {
         wf.appendHistory({ action: 'sendInitialDeck', activePlayerId: 0, round: 0, gameOver: false, deckCount: shuffledDeck.length, cardsInPlayCount: 0, castleHpByPlayer: wf.castleHpByPlayer || {} })
       }
@@ -202,6 +202,12 @@ function createWebrtcQrService() {
     const safeAction = String(action || '')
     if (safeAction === 'startGame') {
       engine.startGame(['Server', 'Client'])
+      try {
+        if (engine && typeof (engine).createGameState === 'function') {
+          const wf = engine.createGameState('server')
+          try { gameStateService.saveWorkflowState(webrtcContext, wf) } catch (e) {}
+        }
+      } catch (e) {}
       return { ok: true }
     }
     if (safeAction === 'playCard') {
@@ -334,9 +340,18 @@ function createWebrtcQrService() {
   // gzipped bytes into parts. Each part is a Buffer containing a JSON header
   // followed by a 0x1E separator and the raw bytes. This enables QR binary
   // encoding which is more compact than text-mode encodings.
-  function buildQrPartBinaryPayloads(text, kind) {
+  function buildPartBinaryPayloads(text, kind) {
     const sequenceId = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
-    const encoded = new TextEncoder().encode(String(text || ''))
+    let encoded
+    if (text instanceof Uint8Array) {
+      encoded = text
+    } else if (typeof Buffer !== 'undefined' && Buffer.isBuffer(text)) {
+      encoded = new Uint8Array(text)
+    } else if (text instanceof ArrayBuffer) {
+      encoded = new Uint8Array(text)
+    } else {
+      encoded = new TextEncoder().encode(String(text || ''))
+    }
     const compressed = gzip(encoded)
     const parts = splitBytesIntoParts(compressed, qrPartsTotal)
     return parts.map((chunk, index) => {
@@ -480,7 +495,7 @@ function createWebrtcQrService() {
     gameStateService.setDeck([], webrtcContext)
     try {
       const wf = gameStateService.loadWorkflowState() || new GameWorkflowState()
-      Object.assign(wf, { ownerRole: 'server', playerId: 0 })
+      Object.assign(wf, { playerId: 0 })
       if (typeof wf.appendHistory === 'function') {
         wf.appendHistory({ action: 'resetServerState', activePlayerId: 0, round: 0, gameOver: false, deckCount: 0, cardsInPlayCount: 0, castleHpByPlayer: wf.castleHpByPlayer || {} })
       }
@@ -504,7 +519,7 @@ function createWebrtcQrService() {
     gameStateService.setDeck([], webrtcContext)
     try {
       const wf = gameStateService.loadWorkflowState() || new GameWorkflowState()
-      Object.assign(wf, { ownerRole: 'client', playerId: 1 })
+      Object.assign(wf, { playerId: 1 })
       if (typeof wf.appendHistory === 'function') {
         wf.appendHistory({ action: 'resetClientState', activePlayerId: 1, round: 0, gameOver: false, deckCount: 0, cardsInPlayCount: 0, castleHpByPlayer: wf.castleHpByPlayer || {} })
       }
@@ -522,6 +537,8 @@ function createWebrtcQrService() {
       resetServerState()
     } else if (activeRole.value === 'client') {
       resetClientState()
+    } else {
+      resetServerState()
     }
     activeRole.value = role
     scanError.value = ''
@@ -553,6 +570,12 @@ function createWebrtcQrService() {
       } else if (!Array.isArray(engine.players) || !engine.players.length) {
         engine.startGame(['Server', 'Client'])
       }
+          try {
+            if (engine && typeof engine.createGameState === 'function') {
+              const wf = engine.createGameState('server')
+              try { gameStateService.saveWorkflowState(webrtcContext, wf) } catch (e) {}
+            }
+          } catch (e) {}
       sendInitialDeckToClient()
       syncGameStateToClient('connected')
     }
@@ -590,15 +613,16 @@ function createWebrtcQrService() {
     // Attempt binary QR generation (more compact). If the QR library rejects
     // the binary input in this environment, fall back to text-mode gz tokens.
     let qrImages
+      let qrPayload
     try {
-      const qrPayloadBuffers = buildQrPartBinaryPayloads(text, 'offer')
-      qrImages = await Promise.all(qrPayloadBuffers.map(async (partBuf) => {
+      const payloadBuffers = buildPartBinaryPayloads(text, 'offer')
+      qrImages = await Promise.all(payloadBuffers.map(async (partBuf) => {
         const input = (typeof Buffer !== 'undefined' && Buffer.from) ? Buffer.from(partBuf) : partBuf
         return await QRCode.toDataURL(input)
       }))
     } catch (err) {
       // fallback to the legacy text-token parts
-      const qrPayload = gzipToToken(text)
+        qrPayload = gzipToToken(text)
       const qrPayloadParts = buildQrPartPayloads(qrPayload, 'offer')
       qrImages = await Promise.all(qrPayloadParts.map((partPayload) => QRCode.toDataURL(partPayload)))
     }
@@ -608,7 +632,7 @@ function createWebrtcQrService() {
     offerQrPartIndex.value = 0
     offerQr.value = offerQrParts.value[0] || ''
     startOfferQrRotation()
-    offerUrl.value = buildOfferUrl(qrPayload)
+      offerUrl.value = buildOfferUrl(qrPayload || text)
     offerUrlQr.value = await QRCode.toDataURL(offerUrl.value)
   }
 
@@ -910,7 +934,7 @@ function createWebrtcQrService() {
     consoleLogger.value.push('acceptOffer: ' + text)
     let qrImages
     try {
-      const qrPayloadBuffers = buildQrPartBinaryPayloads(text, 'answer')
+      const qrPayloadBuffers = buildPartBinaryPayloads(text, 'answer')
       qrImages = await Promise.all(qrPayloadBuffers.map(async (partBuf) => {
         const input = (typeof Buffer !== 'undefined' && Buffer.from) ? Buffer.from(partBuf) : partBuf
         return await QRCode.toDataURL(input)
