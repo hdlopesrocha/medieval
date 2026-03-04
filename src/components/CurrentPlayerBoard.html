@@ -1,28 +1,23 @@
 <div class="current-player-board">
   <nav class="current-player-navbar" aria-label="Primary">
     <div class="current-player-navbar-links">
-      <ion-button size="small" :fill="isActive('/') ? 'solid' : 'outline'" @click="go('/')">
+      <ion-button size="big" :fill="isActive('/') ? 'solid' : 'outline'" @click="go('/')">
         <ion-icon slot="start" :icon="homeOutline"></ion-icon>
-        Home
       </ion-button>
-      <ion-button size="small" :fill="isActive('/deck') ? 'solid' : 'outline'" @click="go('/deck')">
+      <ion-button size="big" :fill="isActive('/deck') ? 'solid' : 'outline'" @click="go('/deck')">
         <ion-icon slot="start" :icon="albumsOutline"></ion-icon>
-        Deck
       </ion-button>
-      <ion-button size="small" :fill="isActive('/hand') ? 'solid' : 'outline'" @click="go('/hand')">
+      <ion-button size="big" :fill="isActive('/hand') ? 'solid' : 'outline'" @click="go('/hand')">
         <ion-icon slot="start" :icon="handLeftOutline"></ion-icon>
-        Hand
       </ion-button>
       <!-- Board removed; link to Map instead -->
-      <ion-button size="small" :fill="isActive('/map') ? 'solid' : 'outline'" @click="go('/map')">
+      <ion-button size="big" :fill="isActive('/map') ? 'solid' : 'outline'" @click="go('/map')">
         <ion-icon slot="start" :icon="mapOutline"></ion-icon>
-        Map
       </ion-button>
     </div>
     <div class="settings-menu-wrap">
-      <ion-button :id="settingsTriggerId" size="small" fill="outline">
+      <ion-button :id="settingsTriggerId" size="big" fill="outline">
         <ion-icon slot="start" :icon="settingsOutline"></ion-icon>
-        Settings
       </ion-button>
       <ion-popover
         :trigger="settingsTriggerId"
@@ -67,9 +62,7 @@
   </nav>
 
   <div class="current-player-board-row">
-    <div><strong>Player:</strong> {{ playerId }}</div>
-    <div><strong>Active Player:</strong> {{ activePlayerId }}</div>
-    <div><strong>Round:</strong> {{ roundNumber }}</div>
+    <div><strong>Player:</strong> {{ currentPlayerLabel }}</div>
     <div><strong>Player Castle HP:</strong> {{ playerCastleHp }}</div>
     <div><strong>Enemy Castle HP:</strong> {{ enemyCastleHp }}</div>
     <div><strong>{{ turnIcon }}</strong> {{ turnLabel }}</div>
