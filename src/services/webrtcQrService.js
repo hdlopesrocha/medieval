@@ -155,9 +155,34 @@ function createWebrtcQrService() {
     }
   }
 
+  // Build a normalized state object for sending over the data channel.
+  // `targetPlayerId` should be the id the receiver expects (e.g. 1 for client, 0 for server).
+  function buildNormalizedState(targetPlayerId) {
+    const rawPlayers = Array.isArray(engine.players) ? engine.players : []
+    const rawCardsInPlay = Array.isArray(engine.gameContext?.cardsInPlay) ? engine.gameContext.cardsInPlay : []
+    const wf = engine.gameWorkflow || {}
+    const ctx = engine.gameContext || {}
+    return {
+      activePlayerId: Number(wf.activePlayerId ?? 0),
+      playerId: Number(targetPlayerId ?? (ctx.playerId ?? wf.activePlayerId ?? 0)),
+      round: Number(wf.round ?? 0),
+      gameOver: Boolean(wf.gameOver),
+      loserPlayerId: wf.loserPlayerId == null ? null : Number(wf.loserPlayerId),
+      winnerPlayerId: wf.winnerPlayerId == null ? null : Number(wf.winnerPlayerId),
+      playedThisRound: Object.fromEntries(Object.entries(engine.gameWorkflow.actionByPlayer || {}).map(([k, v]) => [k, v === 'action-taken'])),
+      castleHpByPlayer: (ctx.castleHpByPlayer || {}),
+      players: rawPlayers.map((player) => ({ id: Number(player?.id || 0), name: player?.name })),
+      cardsInPlay: rawCardsInPlay.map((entry) => ({ id: String(entry?.id || ''), ownerId: Number(entry?.ownerId || 0), position: Number(entry?.position || 0), hidden: Boolean(entry?.hidden), card: entry?.card }))
+    }
+  }
+
   function syncGameStateToClient(reason = 'sync') {
     if (!hostDc || hostDc.readyState !== 'open') return false
-    hostDc.send(JSON.stringify({ type: 'game-state', reason, state }))
+    // When sending to the client, present the snapshot with playerId remapped
+    // to the client's view (client = player 1). This ensures the receiver
+    // maps `playerId` to their own local id.
+    const snapshot = buildNormalizedState(1)
+    hostDc.send(JSON.stringify({ type: 'game-state', reason, state: snapshot }))
     consoleLogger.value.push(`server: synced game state (${reason})`)
     return true
   }
