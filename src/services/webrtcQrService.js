@@ -103,6 +103,7 @@ function createWebrtcQrService() {
     }
 
     if (parsed?.type === 'game-state') {
+      console.log('Received game state update from peer:', parsed)
       engine.importState(parsed.state)
       return
     }
@@ -128,9 +129,9 @@ function createWebrtcQrService() {
     }
   }
 
-  function syncGameStateToClient(reason = 'sync') {
+  function syncGameState(reason = 'sync', playerId) {
     if (!dataChannel || dataChannel.readyState !== 'open') return false
-    const snapshot = buildNormalizedState(1)
+    const snapshot = buildNormalizedState(playerId)
     dataChannel.send(JSON.stringify({ 
       type: 'game-state', 
       reason, 
@@ -140,40 +141,7 @@ function createWebrtcQrService() {
     return true
   }
 
-  // Send the current normalized state to the host/server, remapping `playerId`
-  // to the server's perspective (server = player 0). This is useful when the
-  // client needs to push a local view back to the authoritative host.
-  function syncGameStateToServer(reason = 'sync') {
-    if (!dataChannel || dataChannel.readyState !== 'open') return false
-    const snapshot = buildNormalizedState(0)
-    dataChannel.send(JSON.stringify({ 
-      type: 'game-state', 
-      reason, state: 
-      snapshot 
-    }))
-    consoleLogger.value.push(`client: synced game state (${reason})`)
-    return true
-  }
-
-  function executeServerGameAction(action, payload = {}) {
-    const safeAction = String(action || '')
-    if (safeAction === 'startGame') {
-      return { ok: true }
-    }
-    if (safeAction === 'playCard') {
-      return { ok: true }
-    }
-    if (safeAction === 'moveCard') {
-      return { ok: true }
-    }
-    if (safeAction === 'attackCard') {
-      return { ok: true }
-    }
-    if (safeAction === 'endTurn') {
-      return { ok: true }
-    }
-    return { ok: false, reason: `unsupported action: ${safeAction}` }
-  }
+  
 
   function requestGameAction(action, payload = {}) {
     if (!dataChannel || dataChannel.readyState !== 'open') {
@@ -493,7 +461,7 @@ function createWebrtcQrService() {
     dataChannel.onopen = () => {
       connectedHost.value = true
       if(activeRole.value === 'server'){  
-          syncGameStateToClient('connected')
+        syncGameState('connected', 1)
       }
     }
     dataChannel.onmessage = handleDataChannelMessage
@@ -871,7 +839,7 @@ function createWebrtcQrService() {
 
   async function startScanner(mode = 'answer') {
     await stopScanner()
-      syncGameStateToServer,
+      
     scanning.value = true
     scanMode.value = mode
     scanStatus.value = 'Opening camera...'
@@ -1036,7 +1004,6 @@ function createWebrtcQrService() {
     autoAcceptOffers,
     isRealtimeGameActive,
     lastGameError,
-    syncGameStateToClient,
     requestGameAction,
     requestStartGame,
     requestHistoryFromServer,

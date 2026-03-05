@@ -23,7 +23,7 @@ type GameActionResult = {
 type RealtimeBridge = {
   activeRole?: string
   isRealtimeGameActive?: boolean
-  syncGameStateToClient?: (action: string) => void
+  syncGameState?: (action: string, playerId: number) => void
   requestGameAction?: (action: string, payload: Record<string, unknown>) => boolean
   lastGameError?: string
 }
@@ -125,24 +125,6 @@ export default {
       return Number(state.value.playerId || 0) === Number(state.value.activePlayerId || 0)
     })
 
-    function runGameAction(action: string, payload: Record<string, unknown>, localExec: () => GameActionResult): GameActionResult {
-      if (!multiplayerMode.value) {
-        return localExec()
-      }
-      if (isServerAuthority.value) {
-        const result = localExec()
-        if (result?.ok !== false) {
-          realtime.syncGameStateToClient?.(action)
-        }
-        return result
-      }
-      if (isClientProxy.value) {
-        const sent = realtime.requestGameAction?.(action, payload)
-        if (!sent) return { ok: false, reason: realtime.lastGameError || 'client channel not open' }
-        return { ok: true, pending: true }
-      }
-      return localExec()
-    }
 
     function playerHandCards(playerId: number) {
       return engine.getPlayerCards(playerId)
@@ -153,18 +135,11 @@ export default {
     }
 
     function canConvert(attacker: any | undefined | null) {
-      if (!attacker || !attacker.card) return false
-      const range = Number(attacker.card.range || 0)
-      const enemies = (state.value.cardsInPlay || []).filter((card) => card.ownerId !== state.value.activePlayerId)
-      return enemies.some((target) => Math.abs(target.position - attacker.position) <= range)
+         return true
     }
 
 
     function start() {
-      const res = runGameAction('startGame', {}, () => {
-        return { ok: true }
-      })
-      if (!res.ok) return alert('Start failed: ' + (((res as any).reason) || 'invalid action'))
       refreshState()
     }
 

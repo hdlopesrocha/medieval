@@ -24,6 +24,9 @@ export class GameContext {
     }
   }
 
+  getEnemyId() {
+    return this.playersList.find(player => player.id !== this.playerId)?.id ?? 0
+  }
 
   clearContext(workflow: GameWorkflowState) {
     this.deck = []

@@ -98,7 +98,7 @@ export default {
       if (!isLocalPlayersTurn.value) return
      
         engine.reset()
-        webrtcQr.syncGameStateToClient?.('createGame')
+        webrtcQr.syncGameState('createGame', engine.gameContext.getEnemyId())
      
         refresh()
      
