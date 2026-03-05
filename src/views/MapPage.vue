@@ -62,14 +62,13 @@
 
 .zone-overflow-badge {
   position: absolute;
-  top: 4px;
-  right: 4px;
+
   background: rgba(0, 0, 0, 0.75);
   color: #fff;
   font-size: 11px;
   font-weight: 700;
   line-height: 1;
-  border-radius: 10px;
+  border-radius: 4px;
   z-index: 3;
 }
 
@@ -97,6 +96,8 @@
   display: flex;
   justify-content: stretch;
   pointer-events: auto;
+  border: 4px solid #fff;
+  border-radius: 8px;
 }
 
 .map-card-overlay-wrap {
