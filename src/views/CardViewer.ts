@@ -5,6 +5,7 @@ import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { IonPage, IonContent, IonButton, IonButtons } from '@ionic/vue'
 import { useRouter } from 'vue-router'
 import engine from '../game/engineInstance'
+import eventService from '../services/eventService'
 import HorizontalScrollSlider from '../components/HorizontalScrollSlider.vue'
 import Card from 'src/models/Card'
 
@@ -63,39 +64,35 @@ export default {
       return Number(localPlayerId.value) === Number(engine.gameWorkflow?.activePlayerId ?? 0)
     })
 
-    const cardsToShow = computed(() => {
+    const cardsToShow = computed((): Card[] => {
+        console.debug('[CardViewer] computing cardsToShow, props.cards present?', Array.isArray(props.cards) && props.cards.length)
       // If explicit cards were passed as a prop, show them
       if (Array.isArray(props.cards) && props.cards.length) return props.cards
 
       const mode = String(props.mode || 'deck')
+      var hand = [];
+      
       if (mode === 'hand') {
-        const playerId = Number(localPlayerId.value || 0)
-        return engine.getPlayerCards(playerId)
+        return engine.getPlayerCards(engine.gameContext.playerId)
       }
-
-      // deck mode: resolve deck entries (may be ids or card objects)
-      const deckArr = Array.isArray(engine.deck) ? engine.deck : []
-      const out: Card[] = []
-      for (const item of deckArr) {
+      else {
+        hand = engine.gameContext.deck || []
+      }
+      const result = hand.map(entry => {
         try {
-          if (!item) continue
-          if (typeof item === 'object') {
-            // already a card instance
-            out.push(item as Card)
-          } else {
-            const resolved = (engine as any).cardsById?.[String(item)] || null
-            if (resolved) out.push(resolved as Card)
-          }
-        } catch (_) {}
-      }
-      return out
+          return (engine.allCards as any).cardsById?.[String(entry)] || (engine.allCards as any).cards?.[String(entry)] || null
+        } catch (_) { return null }
+      }).filter(Boolean) as Card[]
+      console.log('Cards to show:', { mode, hand, result })
+      return result // resolve ids to card objects; if already objects, pass through
+      
     })
 
     function playFromHand(index: number) {
       if (!canPlayFromHand.value) return
       const playerId = Number(localPlayerId.value)
       const result: any = engine.playCard(playerId, Number(index || 0))
-      if (!result?.ok) {
+      if (!result) {
         alert('Play failed: ' + String(result?.reason || 'invalid action'))
       }
       tick.value++
@@ -120,7 +117,23 @@ export default {
 
     onMounted(() => {
       tick.value++
+      // Force an initial evaluation of computed values so we see logs
+      try { console.log('[CardViewer] initial cardsToShow =>', cardsToShow.value) } catch (e) { console.log('[CardViewer] cardsToShow access failed', e) }
+      // Subscribe to engine state change events for instant updates (via EventService)
+      const unsub = (eventService && typeof eventService.on === 'function')
+        ? eventService.on('engine:stateChange', () => { tick.value++; console.log('[CardViewer] engine emitted update') })
+        : null
+      try {
+        console.log('[CardViewer] engine.gameContext:', engine.gameContext)
+        console.log('[CardViewer] engine.allCards.cardsById keys:', Object.keys((engine.allCards && (engine.allCards as any).cardsById) || {}).slice(0,50))
+        console.log('[CardViewer] engine.allCards:', engine.allCards, 'length=', Array.isArray(engine.allCards) ? engine.allCards.length : 'n/a')
+        console.log('[CardViewer] props.mode:', props.mode, 'engine.gameContext.playerId:', engine.gameContext?.playerId)
+      } catch (e) {
+        console.log('[CardViewer] engine introspect failed', e)
+      }
       timer = setInterval(() => { tick.value++ }, 500)
+      // cleanup subscription on unmount
+      onUnmounted(() => { try { if (unsub) unsub() } catch (_) {} })
     })
 
     onUnmounted(() => {

@@ -14,11 +14,12 @@ import {
   helpCircleOutline
 } from 'ionicons/icons'
 import html2canvas from 'html2canvas'
+import Card from '../models/Card'
 
 export default {
   name: 'CardItem',
   props: {
-    card: { type: Object, required: true },
+    card: { type: Card, required: true },
     hidden: { type: Boolean, default: false },
     showExport: { type: Boolean, default: null }
   },

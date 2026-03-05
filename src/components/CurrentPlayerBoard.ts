@@ -4,6 +4,7 @@ import ShareModal from './ShareModal.vue'
 import { albumsOutline, handLeftOutline, gridOutline, mapOutline, shareSocialOutline, timeOutline, addCircleOutline, settingsOutline, homeOutline, expandOutline, contractOutline, trashOutline, personOutline, shieldHalfOutline, shieldOutline } from 'ionicons/icons'
 import { useRoute, useRouter } from 'vue-router'
 import engine from '../game/engineInstance'
+import eventService from '../services/eventService'
 import { useWebrtcQrService } from '../services/webrtcQrService'
 // import GameContext from '../models/GameContext' if needed
 
@@ -20,7 +21,7 @@ export default {
     const shareOpen = ref(false)
     const isFullscreen = ref(false)
     const settingsTriggerId = 'current-player-board-settings-trigger'
-    let timer: ReturnType<typeof setInterval> | null = null
+    let unsub: (() => void) | null = null
 
     function refreshFullscreenState() {
       isFullscreen.value = Boolean(document.fullscreenElement)
@@ -104,10 +105,8 @@ export default {
 
     function clearLocalStorage() {
       try {
-        // delegate clear to engine (centralized persistence)
-        try { engine.clearStoredState() } catch (e) {}
-        // reload to reset any UI state
-        try { window.location.reload() } catch (e) {}
+        engine.clearStoredState()
+        window.location.reload() 
       } catch (e) {
         alert('Failed to clear local storage: ' + String(e))
       }
@@ -132,13 +131,13 @@ export default {
 
     onMounted(() => {
       refresh()
-      timer = setInterval(refresh, 500)
+      try { unsub = eventService.on('engine:stateChange', () => { refresh(); console.log('[CurrentPlayerBoard] engine emitted update') }) } catch (e) { unsub = null }
       refreshFullscreenState()
       document.addEventListener('fullscreenchange', refreshFullscreenState)
     })
 
     onUnmounted(() => {
-      if (timer) clearInterval(timer)
+      try { if (unsub) unsub() } catch (_) {}
       document.removeEventListener('fullscreenchange', refreshFullscreenState)
     })
 

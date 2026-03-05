@@ -69,3 +69,50 @@ export class GameWorkflowState {
     this.history = []
   }
 }
+
+// Local storage helpers for workflow state
+const WORKFLOW_STORAGE_KEY = 'tocabola:workflow'
+function hasLocalStorage() {
+  try {
+    return typeof window !== 'undefined' && !!window.localStorage
+  } catch (e) {
+    return false
+  }
+}
+
+export namespace GameWorkflowStateStorage {
+  export function load(): GameWorkflowState | null {
+    if (!hasLocalStorage()) return null
+    try {
+      const raw = window.localStorage.getItem(WORKFLOW_STORAGE_KEY)
+      if (!raw) return null
+      const parsed = JSON.parse(raw)
+      return new GameWorkflowState(parsed)
+    } catch (e) {
+      console.warn('GameWorkflowState.load failed', e)
+      return null
+    }
+  }
+
+  export function save(workflow: Partial<GameWorkflowState>) {
+    if (!hasLocalStorage()) return false
+    try {
+      window.localStorage.setItem(WORKFLOW_STORAGE_KEY, JSON.stringify(workflow))
+      return true
+    } catch (e) {
+      console.warn('GameWorkflowState.save failed', e)
+      return false
+    }
+  }
+
+  export function clear() {
+    if (!hasLocalStorage()) return false
+    try {
+      window.localStorage.removeItem(WORKFLOW_STORAGE_KEY)
+      return true
+    } catch (e) {
+      console.warn('GameWorkflowState.clear failed', e)
+      return false
+    }
+  }
+}

@@ -112,7 +112,7 @@ function createWebrtcQrService() {
         const cid = Number((entry && entry.cardId) ?? (entry && entry.id) ?? NaN)
         if (!Number.isFinite(cid)) continue
         const pos = Number((entry && entry.position) ?? 0)
-        const cardInst = (engine.cardsById && engine.cardsById[String(cid)]) || null
+        const cardInst = (engine.allCards && engine.allCards[String(cid)]) || null
         acc.push({ id: String(cid), ownerId: Number(ownerId), position: Number(pos ?? (cardInst?.position ?? 0)), hidden: Boolean((entry && entry.hidden) ?? Boolean(cardInst && cardInst.hidden)), card: cardInst })
       }
       return acc
@@ -192,7 +192,6 @@ function createWebrtcQrService() {
 
   function sendHistoryToClient() {
     if (!hostDc || hostDc.readyState !== 'open') return
-    try { engine.loadState() } catch (e) {}
     const history = (engine.gameWorkflow && Array.isArray(engine.gameWorkflow.history)) ? engine.gameWorkflow.history : []
     hostDc.send(JSON.stringify({ type: 'history-response', history }))
     consoleLogger.value.push(`server: sent history (${history.length})`)
@@ -395,7 +394,6 @@ function createWebrtcQrService() {
     }
 
     // Reconstruct payload: support binary parts (concatenate bytes and gunzip) or
-    // legacy text parts (join strings)
     const first = scannedParts.value[0]
     if (first && first.__binary) {
       // concatenate bytes
@@ -437,27 +435,8 @@ function createWebrtcQrService() {
     outgoingText.value = ''
     sdpText.value = ''
     stopOfferQrRotation()
-    offerQr.value = ''
-    offerQrParts.value = []
-    offerQrPartIndex.value = 0
-    offerJson.value = ''
-    offerUrl.value = ''
-    offerUrlQr.value = ''
-      try { engine.saveState() } catch (e) {}
-    try { engine.loadState() } catch (e) {}
-    try {
-      const wf = engine.gameWorkflow || new GameWorkflowState()
-      Object.assign(wf, { playerId: 0 })
-      if (typeof wf.appendHistory === 'function') {
-        const castleMap = (Array.isArray(engine.players) ? engine.players : []).reduce((m, p) => { try { m[String(p.id)] = Number(p.castleHp ?? 0) } catch (_) {} return m }, {})
-        wf.appendHistory({ action: 'resetServerState', activePlayerId: 0, round: 0, gameOver: false, deckCount: 0, cardsInPlayCount: 0, castleHpByPlayer: castleMap })
-      }
-      try { engine.saveState() } catch (e) {}
-    } catch (e) {}
-    try { engine.saveState() } catch (e) {}
-    try { engine.saveState() } catch (e) {}
-    try { engine.saveState() } catch (e) {}
-    try { engine.saveState() } catch (e) {}
+    engine.clearStoredState()
+
   }
 
   function resetClientState() {
@@ -565,7 +544,6 @@ function createWebrtcQrService() {
         return await QRCode.toDataURL(input)
       }))
     } catch (err) {
-      // fallback to the legacy text-token parts
         qrPayload = gzipToToken(text)
       const qrPayloadParts = buildQrPartPayloads(qrPayload, 'offer')
       qrImages = await Promise.all(qrPayloadParts.map((partPayload) => QRCode.toDataURL(partPayload)))

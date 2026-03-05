@@ -23,6 +23,10 @@ export class DefaultCardHandler implements CardHandler {
     // the card's owner should be set to the gameContext.playerID
     // the player removes another card from deck to hand, if any
     // the turn ends
+
+
+    console.log(`[CardHandler] onPlayed: cardId=${cardId}, ownerId=${ownerId}, position=${position}`)
+
   }
 
   onKilled(cardId: string, _ownerId?: number, engine?: any): void {

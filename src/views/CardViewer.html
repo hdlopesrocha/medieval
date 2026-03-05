@@ -1,7 +1,7 @@
 <ion-page>
     <div class="cards-list">
       <div class="card-slot" v-for="(c, i) in cardsToShow" :key="i">
-        <CardItem
+        <CardItem v-if="c"
           :card="c"
         :show-export="true">
           <template #actions>

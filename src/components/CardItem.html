@@ -2,7 +2,7 @@
     <div v-if="hidden" class="card-back">
       <div class="card-back-text">Card Back</div>
     </div>
-    <template v-else>
+    <template v-else-if="card">
       <ion-card-header>
         <div class="card-header-row">
           <ion-card-title class="card-title">{{ card.title }}</ion-card-title>
@@ -48,6 +48,7 @@
       </ion-card-content>
       
     </template>
+    <div v-else class="card-missing"></div>
     <div class="card-actions-row">
       <ion-button v-if="showExportButton" class="card-action-btn" @click="exportCardToPng">Export PNG</ion-button>
       <slot name="actions">

@@ -1,6 +1,7 @@
 import { ref, computed, onMounted, onUnmounted, unref } from 'vue'
 import { IonPage, IonContent, IonButton } from '@ionic/vue'
 import engine from '../game/engineInstance'
+import eventService from '../services/eventService'
 import CardItem from '../components/CardItem.vue'
 import ModalCard from '../components/ModalCard.vue'
 import { ZONES, ZONE_ELEMENTS } from '../game/GameEngine'
@@ -39,7 +40,7 @@ export default {
     // Replace with GameContext instance usage
     const webrtcQr = useWebrtcQrService()
     const realtime = webrtcQr as unknown as RealtimeBridge
-    let timer: ReturnType<typeof setInterval> | null = null
+    let unsub: (() => void) | null = null
 
 
 
@@ -83,7 +84,7 @@ export default {
           const cid = Number((entry as any)?.cardId ?? (entry as any)?.id ?? NaN)
           if (!Number.isFinite(cid)) continue
           const pos = Number((entry as any)?.position ?? 0)
-          const cardInst = engine.cardsById[String(cid)] || null
+          const cardInst = engine.allCards[String(cid)] || null
           acc.push({ id: String(cid), ownerId, position: Number(pos ?? (cardInst as any)?.position ?? 0), hidden: Boolean((entry as any)?.hidden ?? (cardInst as any)?.hidden), card: cardInst })
         }
         return acc
@@ -169,7 +170,6 @@ export default {
 
     function next() {
       if (multiplayerMode.value) return alert('Next phase is disabled in realtime multiplayer mode')
-      engine.nextPhase()
       refreshState()
     }
 
@@ -250,126 +250,6 @@ export default {
       pendingConfirmation.value.steps = next
     }
 
-    function attackCardUI(attackerId: string) {
-      const attacker = state.value.cardsInPlay.find((x) => x.id === attackerId)
-      if (!attacker) return alert('attacker not found')
-      const targets = state.value.cardsInPlay.filter((x) => x.ownerId !== state.value.activePlayerId)
-      if (!targets.length) return alert('no targets')
-      selection.value.mode = 'attack'
-      selection.value.sourceId = attackerId
-      selection.value.candidates = targets
-    }
-
-    function convertCardUI(attackerId: string) {
-      const attacker = state.value.cardsInPlay.find((x) => x.id === attackerId)
-      if (!attacker) return alert('attacker not found')
-      const targets = state.value.cardsInPlay.filter((x) => x.ownerId !== state.value.activePlayerId)
-      if (!targets.length) return alert('no targets')
-      selection.value.mode = 'convert'
-      selection.value.sourceId = attackerId
-      selection.value.candidates = targets
-    }
-
-    const selection = ref<{ mode: string | null, sourceId: string | null, candidates: any[] }>({ mode: null, sourceId: null, candidates: [] })
-
-    function cancelSelection() {
-      selection.value.mode = null
-      selection.value.sourceId = null
-      selection.value.candidates = []
-    }
-
-    async function selectTarget(targetId: string) {
-      const playerId = state.value.activePlayerId || 0
-      const sourceId = String(selection.value.sourceId || '')
-      if (!sourceId) return
-      const sourceCard = state.value.cardsInPlay.find((x) => x.id === sourceId)
-      const targetCard = state.value.cardsInPlay.find((x) => x.id === targetId)
-
-      if (selection.value.mode === 'attack') {
-        closeOpenModals()
-        pendingConfirmation.value = {
-          kind: 'attack-card',
-          playerId,
-          actionLabel: 'Attack',
-          sourceId,
-          targetId,
-          summaryLines: [
-            `Attacker: ${String(sourceCard?.card?.title || 'unknown')}`,
-            `Target: ${String(targetCard?.card?.title || 'unknown')}`
-          ]
-        }
-      } else if (selection.value.mode === 'convert') {
-        const res = engine.convertCard(sourceId, targetId, playerId)
-        if (!res.ok) return alert('Convert failed: ' + (res as any).reason)
-        refreshState()
-      } else if (selection.value.mode === 'ability') {
-        closeOpenModals()
-        pendingConfirmation.value = {
-          kind: 'use-ability',
-          playerId,
-          actionLabel: 'Use Ability',
-          sourceId,
-          targetId,
-          summaryLines: [
-            `Source: ${String(sourceCard?.card?.title || 'unknown')}`,
-            `Target: ${String(targetCard?.card?.title || 'none')}`
-          ]
-        }
-      }
-
-      cancelSelection()
-    }
-
-    function openAbilitySelector(cardId: string) {
-      selection.value.mode = 'ability'
-      selection.value.sourceId = cardId
-      selection.value.candidates = state.value.cardsInPlay || []
-    }
-
-    function useAbilityNoTarget(cardId: string) {
-      const playerId = state.value.activePlayerId || 0
-      const sourceCard = state.value.cardsInPlay.find((x) => x.id === cardId)
-      closeOpenModals()
-      pendingConfirmation.value = {
-        kind: 'use-ability',
-        playerId,
-        actionLabel: 'Use Ability',
-        sourceId: cardId,
-        summaryLines: [
-          `Source: ${String(sourceCard?.card?.title || 'unknown')}`,
-          'Target: none'
-        ]
-      }
-    }
-
-    function endTurn() {
-      const res = runGameAction('endTurn', {}, () => engine.endTurn())
-      if (!res.ok) return alert('End turn failed: ' + (res as any).reason)
-      refreshState()
-    }
-
-    function playFromHand(idx: number) {
-      const playerId = multiplayerMode.value
-        ? Number(localPlayerId.value || 0)
-        : Number(state.value.activePlayerId || 0)
-      const card = localHandCards.value[idx]
-      if (!card) return alert('Card not found in hand')
-      // close any open card modal (if Play was clicked from inside a modal)
-      try {
-        const modals = Array.from(document.querySelectorAll('ion-modal'))
-        for (const m of modals) {
-          try { (m as any).dismiss && (m as any).dismiss() } catch (e) { try { m.remove() } catch (_) {} }
-        }
-      } catch (e) {}
-
-      pendingConfirmation.value = {
-        kind: 'play-card',
-        handIndex: idx,
-        playerId,
-        actionLabel: 'Play card',
-        card
-      }
-    }
 
     function closeOpenModals() {
       try {
@@ -389,68 +269,16 @@ export default {
       if (!pending) return
       pendingConfirmation.value = null
 
-      if (pending.kind === 'play-card') {
-        const playerId = multiplayerMode.value
-          ? Number(localPlayerId.value || 0)
-          : Number(state.value.activePlayerId || 0)
-        const handIndex = Number(pending.handIndex ?? -1)
-        const res = runGameAction('playCard', { playerId, handIndex }, () => engine.playCard(playerId, handIndex))
-        if (!res.ok) return alert('Play failed: ' + (((res as any).reason) || 'invalid action'))
-
-        refreshState()
-        return
-      }
-
-      if (pending.kind === 'move-card') {
-        const sourceId = String(pending.sourceId || '')
-        const playerId = Number(pending.playerId || state.value.activePlayerId || 0)
-        const maxSteps = Math.max(0, Number(pending.maxSteps || 0))
-        let steps = Number(pending.steps || 0)
-        if (!Number.isFinite(steps)) steps = 0
-        steps = Math.max(0, Math.min(maxSteps, Math.trunc(steps)))
-        const res = runGameAction('moveCard', { cardId: sourceId, playerId, steps }, () => engine.moveCard(sourceId, playerId, steps))
-        if (!res.ok) return alert('Move failed: ' + (((res as any).reason) || 'invalid action'))
-        refreshState()
-        return
-      }
-
-      if (pending.kind === 'attack-card') {
-        const attackerId = String(pending.sourceId || '')
-        const targetId = String(pending.targetId || '')
-        const playerId = Number(pending.playerId || state.value.activePlayerId || 0)
-        const res = runGameAction('attackCard', { attackerId, targetId, playerId }, () => engine.attackCard(attackerId, targetId, playerId))
-        if (!res.ok) return alert('Attack failed: ' + (((res as any).reason) || 'invalid action'))
-        refreshState()
-        return
-      }
-
-      if (pending.kind === 'use-ability') {
-        const sourceId = String(pending.sourceId || '')
-        const targetId = pending.targetId ? String(pending.targetId) : undefined
-        const playerId = Number(pending.playerId || state.value.activePlayerId || 0)
-        const res = targetId
-          ? engine.useCardAbility(sourceId, playerId, targetId)
-          : engine.useCardAbility(sourceId, playerId)
-        if (!res.ok) return alert('Ability failed: ' + (res as any).reason)
-        refreshState()
-      }
-    }
-
-    function onHandDragStart(evt: DragEvent, handIndex: number, card: Partial<Card> | undefined) {
-      if (!evt.dataTransfer) return
-      const playerId = Number(state.value.activePlayerId || 0)
-      const vel = (card && Number(card.velocity)) ? Number(card.velocity) : 0
-      evt.dataTransfer.setData('text/plain', `hand:${playerId}:${handIndex}:${vel}`)
-      evt.dataTransfer.effectAllowed = 'copy'
     }
 
     onMounted(() => {
       refreshState()
-      timer = setInterval(refreshState, 500)
+      // subscribe to engine state changes
+      try { unsub = eventService.on('engine:stateChange', () => { refreshState(); console.log('[LocalPlayerPage] engine emitted update') }) } catch (e) { unsub = null }
     })
 
     onUnmounted(() => {
-      if (timer) clearInterval(timer)
+      try { if (unsub) unsub() } catch (_) {}
     })
 
     return {

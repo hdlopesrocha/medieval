@@ -1,6 +1,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { IonPage, IonContent, IonButton, IonPopover } from '@ionic/vue'
 import engine from '../game/engineInstance'
+import eventService from '../services/eventService'
 import { ZONES, ZONE_ELEMENTS } from '../game/GameEngine'
 import CardItem from '../components/CardItem.vue'
 import MiniCardItem from '../components/MiniCardItem.vue'
@@ -46,7 +47,7 @@ export default {
           const cid = Number((entry as any)?.cardId ?? (entry as any)?.id ?? NaN)
           if (!Number.isFinite(cid)) continue
           const pos = Number((entry as any)?.position ?? 0)
-          const cardInst = engine.cardsById[String(cid)] || null
+          const cardInst = engine.allCards[String(cid)] || null
           acc.push({ id: String(cid), ownerId, position: Number(pos ?? (cardInst as any)?.position ?? 0), hidden: Boolean((entry as any)?.hidden ?? (cardInst as any)?.hidden), card: cardInst })
         }
         return acc
@@ -138,7 +139,7 @@ export default {
           if (!Number.isFinite(cid)) continue
           const pos = Number((entry as any)?.position ?? 0)
           if (!Number.isInteger(pos) || pos < 0 || pos >= ZONE_COUNT) continue
-          const cardInst = engine.cardsById[String(cid)] || null
+          const cardInst = engine.allCards[String(cid)] || null
           grouped[pos].push({ id: String(cid), ownerId, position: Number(pos), hidden: Boolean((entry as any)?.hidden ?? (cardInst as any)?.hidden), card: cardInst })
         }
       }
@@ -280,13 +281,14 @@ export default {
       refreshState()
     }
 
+    let unsub: (() => void) | null = null
     onMounted(() => {
       refreshState()
-      timer = setInterval(refreshState, 500)
+      try { unsub = eventService.on('engine:stateChange', () => { refreshState(); console.log('[MapPage] engine emitted update') }) } catch (e) { unsub = null }
     })
 
     onUnmounted(() => {
-      if (timer) clearInterval(timer)
+      try { if (unsub) unsub() } catch (_) {}
     })
 
     return {
