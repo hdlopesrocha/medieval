@@ -7,6 +7,8 @@ import deckService from './deckService'
 import engine from '../game/engineInstance'
 import gameStateService from './gameStateService'
 import { GameWorkflowState } from '../models/GameWorkflowState'
+import eventService from './eventService'
+import { GameContext } from '../models/GameContext'
 
 let serviceInstance = null
 
@@ -38,12 +40,32 @@ function createWebrtcQrService() {
     const connected = Boolean(connectedHost.value || connectedClient.value)
     return connected && (role === 'server' || role === 'client')
   })
+  
+    // Listen for engine state changes and sync game state (only gameContext and workflow)
+    try {
+      eventService.on('engine:stateChange', (eng) => {
+        // Only sync if a realtime game is active and host/client is connected
+        if (!isRealtimeGameActive.value) return
+        // Only sync if data channel is open
+        if (connectedHost.value && dataChannel && dataChannel.readyState === 'open') {
+          // Send only gameContext and workflow (not deck)
+          const wf = new GameWorkflowState(engine.gameWorkflow) || {}
+          const ctx = new GameContext(engine.gameContext) || {}
+          ctx.playerId = 1 // Remap playerId to client perspective
+          const payload = { gameContext: ctx, workflow: wf }
+          dataChannel.send(JSON.stringify({ 
+            type: 'game-state', 
+            reason: 'event', 
+            state: payload 
+          }))
+          consoleLogger.value.push('server: event-driven game state sync')
+        }
+      })
+    } catch (e) { console.warn('webrtcQrService: failed to subscribe to engine events', e) }
   const lastGameError = ref('')
 
-  let hostPc = null
-  let clientPc = null
-  let hostDc = null
-  let clientDc = null
+  let peerConnection = null
+  let dataChannel = null
 
   const stunServers = [
     { urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302', 'stun:stun.stunprotocol.org:3478'] }
@@ -70,36 +92,21 @@ function createWebrtcQrService() {
   let answerQrRotationTimer = null
   let subscribers = 0
 
-  function cardToPayload(card) {
-    if (!card) return null
-    if (typeof card.toJSON === 'function') {
-      return card.toJSON()
-    }
-    return {
-      imageUrl: card.imageUrl || '',
-      title: card.title || '',
-      description: card.description || '',
-      effectDescription: card.effectDescription || '',
-      attackPoints: Number(card.attackPoints || 0),
-      defensePoints: Number(card.defensePoints || 0),
-      hp: Number(card.hp || 0),
-      velocity: Number(card.velocity || 0),
-      range: Number(card.range || 0),
-      category: card.category || 'noble',
-      subCategory: card.subCategory || 'swordShield',
-      element: card.element === 'water' ? 'water' : 'earth'
-    }
-  }
-
-  function applyRemoteGameState(snapshot) {
-    console.log("applyRemoteGameState", snapshot)
+  function handleDataChannelMessage(e) {
+    const raw = String(e?.data ?? '')
+    let parsed = null
     try {
-      if (!snapshot) return false
-      try { if (typeof engine.importState === 'function') engine.importState(snapshot) } catch (_) {}
-      return true
-    } catch (_) {
-      return false
+      parsed = JSON.parse(raw)
+    } catch (_err) {
+      consoleLogger.value.push('data: ' + raw)
+      return
     }
+
+    if (parsed?.type === 'game-state') {
+      engine.importState(parsed.state)
+      return
+    }
+    consoleLogger.value.push('data: ' + raw)
   }
 
   // Build a minimal payload containing only the three objects we want to send
@@ -108,27 +115,27 @@ function createWebrtcQrService() {
   function buildNormalizedState(targetPlayerId) {
     const wf = engine.gameWorkflow || {}
     const ctx = engine.gameContext || {}
+    const d = engine.allCards
     ctx.playerId = targetPlayerId 
 
     // Prepare a compact deck payload. If `engine.allCards` exposes a `cards`
     // map (created by the Deck model), send that; otherwise send the whole
     // `allCards` object as a fallback.
-    const deckPayload = (engine.allCards && (engine.allCards.cards || engine.allCards)) || {}
-
     return {
       gameContext: ctx,
       workflow: wf,
-      deck: deckPayload
+      deck: d
     }
   }
 
   function syncGameStateToClient(reason = 'sync') {
-    if (!hostDc || hostDc.readyState !== 'open') return false
-    // When sending to the client, present the snapshot with playerId remapped
-    // to the client's view (client = player 1). This ensures the receiver
-    // maps `playerId` to their own local id.
+    if (!dataChannel || dataChannel.readyState !== 'open') return false
     const snapshot = buildNormalizedState(1)
-    hostDc.send(JSON.stringify({ type: 'game-state', reason, state: snapshot }))
+    dataChannel.send(JSON.stringify({ 
+      type: 'game-state', 
+      reason, 
+      state: snapshot 
+    }))
     consoleLogger.value.push(`server: synced game state (${reason})`)
     return true
   }
@@ -137,9 +144,13 @@ function createWebrtcQrService() {
   // to the server's perspective (server = player 0). This is useful when the
   // client needs to push a local view back to the authoritative host.
   function syncGameStateToServer(reason = 'sync') {
-    if (!clientDc || clientDc.readyState !== 'open') return false
+    if (!dataChannel || dataChannel.readyState !== 'open') return false
     const snapshot = buildNormalizedState(0)
-    clientDc.send(JSON.stringify({ type: 'game-state', reason, state: snapshot }))
+    dataChannel.send(JSON.stringify({ 
+      type: 'game-state', 
+      reason, state: 
+      snapshot 
+    }))
     consoleLogger.value.push(`client: synced game state (${reason})`)
     return true
   }
@@ -165,12 +176,12 @@ function createWebrtcQrService() {
   }
 
   function requestGameAction(action, payload = {}) {
-    if (!clientDc || clientDc.readyState !== 'open') {
+    if (!dataChannel || dataChannel.readyState !== 'open') {
       lastGameError.value = 'client channel not open'
       consoleLogger.value.push('client: action request failed (channel closed)')
       return false
     }
-    clientDc.send(JSON.stringify({ type: 'game-action', action: String(action || ''), payload }))
+    dataChannel.send(JSON.stringify({ type: 'game-action', action: String(action || ''), payload }))
     consoleLogger.value.push('client: requested action ' + String(action || ''))
     return true
   }
@@ -179,19 +190,12 @@ function createWebrtcQrService() {
     return requestGameAction('startGame', {})
   }
 
-  function sendHistoryToClient() {
-    if (!hostDc || hostDc.readyState !== 'open') return
-    const history = (engine.gameWorkflow && Array.isArray(engine.gameWorkflow.history)) ? engine.gameWorkflow.history : []
-    hostDc.send(JSON.stringify({ type: 'history-response', history }))
-    consoleLogger.value.push(`server: sent history (${history.length})`)
-  }
-
   function requestHistoryFromServer() {
-    if (!clientDc || clientDc.readyState !== 'open') {
+    if (!dataChannel || dataChannel.readyState !== 'open') {
       consoleLogger.value.push('client: history request skipped (data channel not open)')
       return false
     }
-    clientDc.send(JSON.stringify({ type: 'history-request' }))
+    dataChannel.send(JSON.stringify({ type: 'history-request' }))
     consoleLogger.value.push('client: requested history')
     return true
   }
@@ -409,13 +413,13 @@ function createWebrtcQrService() {
 
   function resetHostPeer() {
     try {
-      if (hostDc) hostDc.close()
+      if (dataChannel) dataChannel.close()
     } catch (e) { }
     try {
-      if (hostPc) hostPc.close()
+      if (peerConnection) peerConnection.close()
     } catch (e) { }
-    hostDc = null
-    hostPc = null
+    dataChannel = null
+    peerConnection = null
     connectedHost.value = false
   }
 
@@ -479,46 +483,20 @@ function createWebrtcQrService() {
     pc.addEventListener('icecandidate', (e) => {
       if (e.candidate) candidates.push(e.candidate)
     })
+    peerConnection = pc
     return { pc, candidates }
   }
 
   async function createOffer() {
     const { pc, candidates } = await createPeer()
-    hostPc = pc
-    hostDc = pc.createDataChannel('data')
-    hostDc.onopen = () => {
+    dataChannel = pc.createDataChannel('data')
+    dataChannel.onopen = () => {
       connectedHost.value = true
       if(activeRole.value === 'server'){  
           syncGameStateToClient('connected')
       }
     }
-    hostDc.onmessage = (e) => {
-      const parsed = JSON.parse(e.data)
-      console.log("client: received game state ", parsed)
-
-      if(parsed?.type === 'game-state') {
-        applyRemoteGameState(parsed.state)
-      
-      }
-
-      if (parsed?.type === 'history-request') {
-        sendHistoryToClient()
-        return
-      }
-      if (parsed?.type === 'game-action') {
-        const result = executeServerGameAction(parsed.action, parsed.payload || {})
-        if (!result?.ok) {
-          hostDc.send(JSON.stringify({ type: 'game-action-result', ok: false, action: String(parsed.action || ''), reason: String(result?.reason || 'invalid action') }))
-          return
-        }
-        hostDc.send(JSON.stringify({ type: 'game-action-result', ok: true, action: String(parsed.action || '') }))
-        syncGameStateToClient(String(parsed.action || 'action'))
-        return
-      }
-  
-      consoleLogger.value.push('message: ' + raw)
-    }
-
+    dataChannel.onmessage = handleDataChannelMessage
     const offer = await pc.createOffer()
     await pc.setLocalDescription(offer)
 
@@ -706,13 +684,13 @@ function createWebrtcQrService() {
 
   function resetClientPeer() {
     try {
-      if (clientDc) clientDc.close()
+      if (dataChannel) dataChannel.close()
     } catch (e) { }
     try {
-      if (clientPc) clientPc.close()
+      if (peerConnection) peerConnection.close()
     } catch (e) { }
-    clientDc = null
-    clientPc = null
+    dataChannel = null
+    peerConnection = null
     connectedClient.value = false
     connectedHost.value = false
     try { engine.saveState() } catch (e) {}
@@ -788,49 +766,10 @@ function createWebrtcQrService() {
     }
     await resetClientPeer()
     const { pc, candidates } = await createPeer()
-    clientPc = pc
-
     pc.ondatachannel = (ev) => {
-      clientDc = ev.channel
-      clientDc.onopen = () => { connectedClient.value = true }
-      clientDc.onmessage = (e) => {
-        const raw = String(e?.data ?? '')
-        try {
-          const parsed = JSON.parse(raw)
-          if (parsed?.type === 'initial-deck') {
-            const receivedDeck = Array.isArray(parsed.deck) ? parsed.deck : []
-            const receivedHand = Array.isArray(parsed.hand) ? parsed.hand : []
-            try { engine.saveState() } catch (e) {}
-            try { engine.saveState() } catch (e) {}
-            try { engine.saveState() } catch (e) {}
-            consoleLogger.value.push(`client: received initial deck (${receivedDeck.length}) and hand (${receivedHand.length})`)
-            return
-          }
-          if (parsed?.type === 'history-response') {
-            const receivedHistory = Array.isArray(parsed.history) ? parsed.history : []
-            try { engine.saveState() } catch (e) {}
-            consoleLogger.value.push(`client: received history (${receivedHistory.length})`)
-            return
-          }
-          if (parsed?.type === 'game-state') {
-            applyRemoteGameState(parsed.state)
-            consoleLogger.value.push('client: received game state sync')
-            return
-          }
-          if (parsed?.type === 'game-action-result') {
-            if (!parsed.ok) {
-              lastGameError.value = String(parsed.reason || 'action rejected')
-              consoleLogger.value.push(`client: action rejected (${lastGameError.value})`)
-            } else {
-              lastGameError.value = ''
-            }
-            return
-          }
-        } catch (_err) {
-          // non-JSON payloads are handled as plain messages
-        }
-        consoleLogger.value.push('data: ' + raw)
-      }
+      dataChannel = ev.channel
+      dataChannel.onopen = () => { connectedClient.value = true }
+      dataChannel.onmessage = handleDataChannelMessage
     }
 
     await pc.setRemoteDescription({ type: 'offer', sdp: obj.sdp })
@@ -867,7 +806,7 @@ function createWebrtcQrService() {
   }
 
   async function applyAnswer(message) {
-    if (!hostPc) throw new Error('No host peer (create offer first)')
+    if (!peerConnection) throw new Error('No peer connection (create offer first)')
     const normalizedAnswer = normalizeSignalingInput(message)
     let obj
     try {
@@ -878,10 +817,10 @@ function createWebrtcQrService() {
     if (!obj || obj.type !== 'answer' || typeof obj.sdp !== 'string' || !obj.sdp.startsWith('v=')) {
       throw new Error('Invalid answer payload structure. Expected answer SDP starting with v=.')
     }
-    await hostPc.setRemoteDescription({ type: 'answer', sdp: obj.sdp })
+    await peerConnection.setRemoteDescription({ type: 'answer', sdp: obj.sdp })
     if (Array.isArray(obj.candidates)) {
       for (const c of obj.candidates) {
-        try { await hostPc.addIceCandidate(c) } catch (e) { }
+        try { await peerConnection.addIceCandidate(c) } catch (e) { }
       }
     }
   }
@@ -893,19 +832,19 @@ function createWebrtcQrService() {
     if (!text) return alert('Type a message first')
 
     if (isHost) {
-      if (!hostDc || hostDc.readyState !== 'open') {
+      if (!dataChannel || dataChannel.readyState !== 'open') {
         return alert('Host data channel is not open yet. Complete signaling first.')
       }
-      hostDc.send(text)
+      dataChannel.send(text)
       consoleLogger.value.push('me: ' + text)
       textRef.value = ''
       return
     }
 
-    if (!clientDc || clientDc.readyState !== 'open') {
+    if (!dataChannel || dataChannel.readyState !== 'open') {
       return alert('Client data channel is not open yet. Complete signaling first.')
     }
-    clientDc.send(text)
+    dataChannel.send(text)
     consoleLogger.value.push('me: ' + text)
     textRef.value = ''
   }
