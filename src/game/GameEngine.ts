@@ -116,27 +116,24 @@ export default class GameEngine {
 
   // Import a normalized snapshot into engine (used by UI/services)
   importState(snapshot: any): boolean {
+    console.log('[GameEngine] importState called with snapshot:', snapshot)
      try {
        if (!snapshot) return false
-
        // Accept shapes produced by webrtc service: { gameContext, workflow, deck }
        const ctx = snapshot.gameContext || snapshot.gameContext || snapshot || {}
        const wf = snapshot.workflow || snapshot.workflow || {}
-       const deckPayload = snapshot.deck || snapshot.allCards || {}
-
+       const deckPayload = snapshot.deck || {}
+      
        // Recreate typed instances where applicable
-       try { this.gameContext = new GameContext(ctx) } catch (e) { this.gameContext = (ctx as any) }
-       try { this.gameWorkflow = new GameWorkflowState(wf) } catch (e) { this.gameWorkflow = (wf as any) }
+       this.gameContext = new GameContext(ctx) 
+       this.gameWorkflow = new GameWorkflowState(wf) 
 
        // Rebuild Deck instance from payload. Support both mapping objects and arrays of card payloads.
        const rebuilt = new Deck()
        try {
          if (Array.isArray(deckPayload)) {
            for (const entry of deckPayload) {
-             if (!entry) continue
-             if (typeof entry === 'object' && entry.id != null) {
-               rebuilt.cards[Number(entry.id)] = (Card as any).fromJSON ? (Card as any).fromJSON(entry) : entry
-             }
+              rebuilt.cards[entry.id] = (Card as any).fromJSON ? (Card as any).fromJSON(entry) : entry
            }
          } else if (deckPayload && typeof deckPayload === 'object') {
            for (const k of Object.keys(deckPayload || {})) {
@@ -152,21 +149,14 @@ export default class GameEngine {
          // ignore and fall back to empty deck
        }
        this.allCards = rebuilt
-
+       this.save()
        // Notify subscribers and UI
        try { this.emitStateChange() } catch (_e) {}
-       try { eventService.emit('engine:stateChange', this) } catch (_e) {}
        return true
      } catch (e) {
        console.error('[GameEngine] importState failed', e)
        return false
      }
-  }
-  
-
-  syncGameStateService() {
-
-    // Use workflow object as needed, e.g. this.gameContext.setWorkflow(workflow)
   }
 
   constructor() {
@@ -175,52 +165,45 @@ export default class GameEngine {
 
   reset() {
     // Initialize game context and cards registry, register all cards and deal hands.
-    const initialDeck: Card[] = deckService.createDeck()
-    const deck: number[] = []
     // create deck registry and collect ids
-    this.allCards = new Deck(initialDeck)
-    for (const c of initialDeck) {
-      deck.push(c.id)
+    this.allCards = new Deck( deckService.createDeck())
+    const deck: number[] = this.allCards.getIds() || []
+
+    // create new workflow and context
+    this.gameWorkflow = new GameWorkflowState()
+    
+    // Shuffle the registered ids and assign as deck
+    const deckArr: number[] = deck.slice()
+    for (let i = deckArr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1))
+      const tmp = deckArr[i]
+      deckArr[i] = deckArr[j]
+      deckArr[j] = tmp
     }
 
-    // If there is saved state, prefer loading that; otherwise create fresh context
-    if (!this.load()) {
-      // create new workflow and context
-      this.gameWorkflow = new GameWorkflowState()
-      
-      // Shuffle the registered ids and assign as deck
-      const deckArr: number[] = deck.slice()
-      for (let i = deckArr.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1))
-        const tmp = deckArr[i]
-        deckArr[i] = deckArr[j]
-        deckArr[j] = tmp
+    this.gameContext = new GameContext({
+      playerId: 0,
+      playersList: [ {id: 0, name: 'Player 1', castleHp: 20, castleMaxHp: 20}, {id: 1, name: 'Player 2', castleHp: 20, castleMaxHp: 20} ],
+      deck: deckArr,
+      actionByPlayer: {}
+    })
+
+
+    // Deal 5 cards to each player (persist as UUID arrays in gameContext)
+    const handSize = 5
+    for (let i = 0; i < this.gameContext.playersList.length; i++) {
+      const handIds: number[] = []
+      for (let k = 0; k < handSize && deckArr.length; k++) {
+        const cid = deckArr.shift() as number
+        if (cid) handIds.push(cid)
       }
-
-      this.gameContext = new GameContext({
-        playerId: 0,
-        playersList: [ {id: 0, name: 'Player 1', castleHp: 20, castleMaxHp: 20}, {id: 1, name: 'Player 2', castleHp: 20, castleMaxHp: 20} ],
-        deck: deckArr,
-        actionByPlayer: {}
-      })
-
-
-      // Deal 5 cards to each player (persist as UUID arrays in gameContext)
-      const handSize = 5
-      for (let i = 0; i < this.gameContext.playersList.length; i++) {
-        const handIds: number[] = []
-        for (let k = 0; k < handSize && deckArr.length; k++) {
-          const cid = deckArr.shift() as number
-          if (cid) handIds.push(cid)
-        }
-        this.gameContext.playersList[i].hand = handIds
-      }
-      this.gameContext.deck = deckArr
-      // save initial state and persist card registry
-      this.save()
+      this.gameContext.playersList[i].hand = handIds
     }
+    this.gameContext.deck = deckArr
+    // save initial state and persist card registry
+    this.save()
+  
 
-    this.syncGameStateService()
     console.log('GameEngine initialized with context:', this.gameContext, this.gameWorkflow, this.allCards)
   }
 
@@ -335,7 +318,6 @@ export default class GameEngine {
 
   // Persist internal state to localStorage (browser). Silent on failure.
   save() {
-    this.syncGameStateService()
    
     GameContextStorage.save(this.gameContext)
     GameWorkflowStateStorage.save(this.gameWorkflow)
