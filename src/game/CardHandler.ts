@@ -12,9 +12,9 @@ export class DefaultCardHandler implements CardHandler {
 
   }
 
-onAttack(_attackerId: string, _targetId: string, _engine?: any): void {
+    onAttack(_attackerId: string, _targetId: string, _engine?: any): void {
 
-}
+    }
 
   onPlayed(cardId: string, ownerId?: number, position?: number, engine?: any): void {
     

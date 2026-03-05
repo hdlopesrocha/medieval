@@ -38,55 +38,67 @@ export default {
   components: { CardItem, HorizontalScrollSlider, IonPage, IonContent, IonButton, IonButtons },
   setup(props: CardViewerProps) {
     const router = useRouter()
-    // Replace with GameContext instance usage
-    const viewerState = ref<{ playerId: number, activePlayerId: number, playedThisRound: Record<string, boolean>, gameOver: boolean }>({
-      playerId: 0,
-      activePlayerId: 0,
-      playedThisRound: {},
-      gameOver: false
-    })
+    // Use engine gameContext and gameWorkflow directly
+    const tick = ref(0)
     let timer: ReturnType<typeof setInterval> | null = null
 
     const titleText = computed(() => (props.mode === 'hand' ? 'Hand' : 'Deck'))
-    const handPlayerId = computed(() => viewerState.value.activePlayerId)
+    const handPlayerId = computed(() => { tick.value; return Number(engine.gameWorkflow?.activePlayerId ?? 0) })
     // localPlayerId is the id assigned to this client/instance (owner)
-    const localPlayerId = computed(() => viewerState.value.playerId)
+    const localPlayerId = computed(() => { tick.value; return Number(engine.gameContext?.playerId ?? 0) })
     const canPlayFromHand = computed(() => {
-      if (viewerState.value.gameOver) return false
+      tick.value
+      const wf: any = engine.gameWorkflow || {}
+      if (wf.gameOver) return false
       // Only allow play if it's this player's turn and they haven't played yet
-      if (viewerState.value.activePlayerId !== localPlayerId.value) return false
-      const playedMap = viewerState.value.playedThisRound
+      if (Number(wf.activePlayerId ?? 0) !== Number(localPlayerId.value)) return false
+      const playedMap = Object.fromEntries(Object.entries(wf.actionByPlayer || {}).map(([k, v]) => [k, v === 'action-taken']))
       return !playedMap[String(localPlayerId.value)]
     })
 
-    function refreshState() {
-      const wf: any = engine.gameWorkflow || {}
-      const ctx: any = engine.gameContext || {}
-      viewerState.value = {
-        activePlayerId: wf.activePlayerId,
-        playerId: ctx.playerId,
-        playedThisRound: Object.fromEntries(Object.entries(engine.gameWorkflow.actionByPlayer || {}).map(([k, v]) => [k, v === 'action-taken'])),
-        gameOver: Boolean(wf.gameOver)
-      }
-    }
+    
 
     const isLocalPlayersTurn = computed(() => {
-      return viewerState.value.playerId === viewerState.value.activePlayerId
+      tick.value
+      return Number(localPlayerId.value) === Number(engine.gameWorkflow?.activePlayerId ?? 0)
     })
 
     const cardsToShow = computed(() => {
-      console.log('Engine:', engine)
-      return engine.deck
+      // If explicit cards were passed as a prop, show them
+      if (Array.isArray(props.cards) && props.cards.length) return props.cards
+
+      const mode = String(props.mode || 'deck')
+      if (mode === 'hand') {
+        const playerId = Number(localPlayerId.value || 0)
+        return engine.getPlayerCards(playerId)
+      }
+
+      // deck mode: resolve deck entries (may be ids or card objects)
+      const deckArr = Array.isArray(engine.deck) ? engine.deck : []
+      const out: Card[] = []
+      for (const item of deckArr) {
+        try {
+          if (!item) continue
+          if (typeof item === 'object') {
+            // already a card instance
+            out.push(item as Card)
+          } else {
+            const resolved = (engine as any).cardsById?.[String(item)] || (engine.gameContext as any)?.cardsById?.[String(item)]
+            if (resolved) out.push(resolved as Card)
+          }
+        } catch (_) {}
+      }
+      return out
     })
 
     function playFromHand(index: number) {
       if (!canPlayFromHand.value) return
-      const playerId = localPlayerId.value
+      const playerId = Number(localPlayerId.value)
       const result: any = engine.playCard(playerId, Number(index || 0))
       if (!result?.ok) {
         alert('Play failed: ' + String(result?.reason || 'invalid action'))
       }
-      refreshState()
+      tick.value++
     }
 
     function goMain() {
@@ -107,14 +119,14 @@ export default {
     }
 
     onMounted(() => {
-      refreshState()
-      timer = setInterval(refreshState, 500)
+      tick.value++
+      timer = setInterval(() => { tick.value++ }, 500)
     })
 
     onUnmounted(() => {
       if (timer) clearInterval(timer)
     })
 
-    return { titleText, cardsToShow, canPlayFromHand, playFromHand, goMain, goTable, goHand, goDeck, localPlayerId: localPlayerId.value, activePlayerId: handPlayerId.value, isLocalPlayersTurn: isLocalPlayersTurn.value }
+    return { titleText, cardsToShow, canPlayFromHand, playFromHand, goMain, goTable, goHand, goDeck, localPlayerId, activePlayerId: handPlayerId, isLocalPlayersTurn }
   }
 }

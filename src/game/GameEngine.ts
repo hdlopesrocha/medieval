@@ -63,9 +63,9 @@ export default class GameEngine {
   }
 
   // Return card instances for a player's hand (resolves persisted ids)
-  getPlayerCards(playerId: number) {
+  getPlayerCards(playerId: number) : Card[] {
     const cards = this.gameContext.playersList[playerId].hand.map((id: any) => {
-      this.cardsById[id]
+      return this.cardsById[id]
     })
     return cards
   }
@@ -341,9 +341,9 @@ export default class GameEngine {
   saveState() {
     this.syncGameStateService()
     if (typeof window !== 'undefined' && window.localStorage) {
-      window.localStorage.setItem('tocabola:workflow', JSON.stringify(this.gameWorkflow || {}))
-      window.localStorage.setItem('tocabola:game', JSON.stringify(this.gameContext || {})) 
-      window.localStorage.setItem('tocabola:cardsById', JSON.stringify(this.cardsById || {})) 
+      window.localStorage.setItem('tocabola:workflow', JSON.stringify(this.gameWorkflow))
+      window.localStorage.setItem('tocabola:game', JSON.stringify(this.gameContext)) 
+      window.localStorage.setItem('tocabola:cardsById', JSON.stringify(this.cardsById)) 
     }
 
   }
@@ -373,19 +373,16 @@ export default class GameEngine {
 
   // Attempt to load state from separated storage keys. Returns true if restored.
   loadState() {
-        const storedGame = gameStateService.loadGameState()
-        const storedWorkflow = gameStateService.loadWorkflowState()
-        const storedCardsById = window.localStorage ? window.localStorage.getItem('tocabola:cardsById') : null
-        if (!storedGame && !storedWorkflow && !storedCardsById) 
-          return false
-        if (storedGame) 
-          this.gameContext = storedGame
-        if (storedWorkflow) 
-          this.gameWorkflow = storedWorkflow
-        if (storedCardsById) 
-          this.cardsById = JSON.parse(storedCardsById)
+    const storedGame = gameStateService.loadGameState()
+    const storedWorkflow = gameStateService.loadWorkflowState()
+    const storedCardsById = window.localStorage ? window.localStorage.getItem('tocabola:cardsById') : null
+    if (!storedGame || !storedWorkflow || !storedCardsById) 
+      return false
+    this.gameContext = storedGame
+    this.gameWorkflow = storedWorkflow
+    this.cardsById = JSON.parse(storedCardsById)
     
-        return true
+    return true
   }
 
 

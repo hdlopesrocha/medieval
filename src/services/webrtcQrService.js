@@ -13,9 +13,7 @@ let serviceInstance = null
 function createWebrtcQrService() {
   // Removed: useGameStateService is no longer defined or needed.
   const webrtcContext = 'webrtc'
-  const clientDeckKey = 1
   const clientHandKey = 1
-  const serverDeckKey = 0
   const serverHandKey = 0
 
   const offerQr = ref('')
@@ -31,9 +29,9 @@ function createWebrtcQrService() {
   const connectedClient = ref(false)
   const autoAcceptOffers = ref(true)
   const activeRole = ref('')
-  const clientDeckCards = computed(() => gameContext.getPlayerCards(clientDeckKey, webrtcContext))
+  const clientDeckCards = computed(() => gameContext.deck)
   const clientHandCards = computed(() => gameContext.getPlayerCards(clientHandKey, webrtcContext))
-  const serverDeckCards = computed(() => gameContext.getPlayerCards(serverDeckKey, webrtcContext))
+  const serverDeckCards = computed(() => gameContext.deck)
   const serverHandCards = computed(() => gameContext.getPlayerCards(serverHandKey, webrtcContext))
   const isRealtimeGameActive = computed(() => {
     const role = String(activeRole.value || '')
