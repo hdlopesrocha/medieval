@@ -92,6 +92,7 @@ function createWebrtcQrService() {
   }
 
   function applyRemoteGameState(snapshot) {
+    console.log("applyRemoteGameState", snapshot)
     try {
       if (!snapshot) return false
       try { if (typeof engine.importState === 'function') engine.importState(snapshot) } catch (_) {}
@@ -101,35 +102,23 @@ function createWebrtcQrService() {
     }
   }
 
-  // Build a normalized state object for sending over the data channel.
+  // Build a minimal payload containing only the three objects we want to send
+  // over the data channel: `gameContext`, `workflow` and `deck`.
   // `targetPlayerId` should be the id the receiver expects (e.g. 1 for client, 0 for server).
   function buildNormalizedState(targetPlayerId) {
-    const rawPlayers = Array.isArray(engine.players) ? engine.players : []
-    const rawCardsInPlay = (Array.isArray(engine.players) ? engine.players : []).reduce((acc, p) => {
-      const ownerId = Number(p.id)
-      const entries = Array.isArray(p.cardsInPlay) ? p.cardsInPlay : []
-      for (const entry of entries) {
-        const cid = Number((entry && entry.cardId) ?? (entry && entry.id) ?? NaN)
-        if (!Number.isFinite(cid)) continue
-        const pos = Number((entry && entry.position) ?? 0)
-        const cardInst = (engine.allCards && engine.allCards[String(cid)]) || null
-        acc.push({ id: String(cid), ownerId: Number(ownerId), position: Number(pos ?? (cardInst?.position ?? 0)), hidden: Boolean((entry && entry.hidden) ?? Boolean(cardInst && cardInst.hidden)), card: cardInst })
-      }
-      return acc
-    }, [])
     const wf = engine.gameWorkflow || {}
     const ctx = engine.gameContext || {}
+    ctx.playerId = targetPlayerId 
+
+    // Prepare a compact deck payload. If `engine.allCards` exposes a `cards`
+    // map (created by the Deck model), send that; otherwise send the whole
+    // `allCards` object as a fallback.
+    const deckPayload = (engine.allCards && (engine.allCards.cards || engine.allCards)) || {}
+
     return {
-      activePlayerId: Number(wf.activePlayerId ?? 0),
-      playerId: Number(targetPlayerId ?? (ctx.playerId ?? wf.activePlayerId ?? 0)),
-      round: Number(wf.round ?? 0),
-      gameOver: Boolean(wf.gameOver),
-      loserPlayerId: wf.loserPlayerId == null ? null : Number(wf.loserPlayerId),
-      winnerPlayerId: wf.winnerPlayerId == null ? null : Number(wf.winnerPlayerId),
-      playedThisRound: Object.fromEntries(Object.entries(engine.gameWorkflow.actionByPlayer || {}).map(([k, v]) => [k, v === 'action-taken'])),
-      castleHpByPlayer: (Array.isArray(engine.players) ? engine.players : []).reduce((m, p) => { try { m[String(p.id)] = Number(p.castleHp ?? 0) } catch (_) {} return m }, {}),
-      players: rawPlayers.map((player) => ({ id: Number(player?.id || 0), name: player?.name })),
-      cardsInPlay: rawCardsInPlay.map((entry) => ({ id: String(entry?.id || ''), ownerId: Number(entry?.ownerId || 0), position: Number(entry?.position || 0), hidden: Boolean(entry?.hidden), card: entry?.card }))
+      gameContext: ctx,
+      workflow: wf,
+      deck: deckPayload
     }
   }
 
@@ -466,7 +455,7 @@ function createWebrtcQrService() {
   }
 
   function setRole(role) {
-    if (activeRole.value === role) returnwf.cHByPlyr
+    if (activeRole.value === role) return
     if (activeRole.value === 'server') {
       resetServerState()
     } else if (activeRole.value === 'client') {
@@ -499,30 +488,34 @@ function createWebrtcQrService() {
     hostDc = pc.createDataChannel('data')
     hostDc.onopen = () => {
       connectedHost.value = true
-      sendInitialDeckToClient()
-      syncGameStateToClient('connected')
+      if(activeRole.value === 'server'){  
+          syncGameStateToClient('connected')
+      }
     }
     hostDc.onmessage = (e) => {
-      const raw = String(e?.data ?? '')
-      try {
-        const parsed = JSON.parse(raw)
-        if (parsed?.type === 'history-request') {
-          sendHistoryToClient()
-          return
-        }
-        if (parsed?.type === 'game-action') {
-          const result = executeServerGameAction(parsed.action, parsed.payload || {})
-          if (!result?.ok) {
-            hostDc.send(JSON.stringify({ type: 'game-action-result', ok: false, action: String(parsed.action || ''), reason: String(result?.reason || 'invalid action') }))
-            return
-          }
-          hostDc.send(JSON.stringify({ type: 'game-action-result', ok: true, action: String(parsed.action || '') }))
-          syncGameStateToClient(String(parsed.action || 'action'))
-          return
-        }
-      } catch (_err) {
-        // keep as plain message below
+      const parsed = JSON.parse(e.data)
+      console.log("client: received game state ", parsed)
+
+      if(parsed?.type === 'game-state') {
+        applyRemoteGameState(parsed.state)
+      
       }
+
+      if (parsed?.type === 'history-request') {
+        sendHistoryToClient()
+        return
+      }
+      if (parsed?.type === 'game-action') {
+        const result = executeServerGameAction(parsed.action, parsed.payload || {})
+        if (!result?.ok) {
+          hostDc.send(JSON.stringify({ type: 'game-action-result', ok: false, action: String(parsed.action || ''), reason: String(result?.reason || 'invalid action') }))
+          return
+        }
+        hostDc.send(JSON.stringify({ type: 'game-action-result', ok: true, action: String(parsed.action || '') }))
+        syncGameStateToClient(String(parsed.action || 'action'))
+        return
+      }
+  
       consoleLogger.value.push('message: ' + raw)
     }
 

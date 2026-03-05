@@ -9,11 +9,18 @@ export default defineComponent({
   emits: ['select'],
   setup(props, { emit }) {
     const imageSrc = computed<string>(() => {
-      const path = props.card?.imageUrl || ''
-      if (!path) return ''
-      if (/^https?:\/\//.test(path)) return path
-      if (path.startsWith('/')) return path
-      return path.replace(/^\/?(?:src|public)\//, '')
+      const p = props.card?.imageUrl || ''
+      if (!p) return ''
+      if (/^https?:\/\//.test(p)) return p
+      const base = import.meta.env.BASE_URL || '/'
+      const isProd = Boolean(import.meta.env.PROD)
+
+      if (p.startsWith('/')) {
+        return isProd ? (base.replace(/\/$/, '') || '') + p : p
+      }
+
+      const normalized = p.replace(/^\/?(?:src|public)\//, '')
+      return isProd ? base + normalized : (normalized || p)
     })
 
     const imageAlt = computed<string>(() => props.card?.title || 'card')

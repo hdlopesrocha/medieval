@@ -30,7 +30,8 @@
           <div v-for="zoneIdx in 8" :key="`zone-${zoneIdx}`" class="zone-cell" :style="zoneStyle(zoneIdx - 1)">
             <div class="zone-stack" :style="zoneStackStyle(zoneIdx - 1)">
               <div v-for="entry in cardsForZone(zoneIdx - 1)" :key="`zone-${zoneIdx}-card-${entry.id}`" class="played-card">
-                <MiniCardItem :card="entry.card" @select="selectCard(entry)" />
+                <MiniCardItem v-if="entry.card" :card="entry.card" @select="selectCard(entry)" />
+                <div v-else class="mini-card-fallback"></div>
               </div>
             </div>
             <div v-if="hiddenCountForZone(zoneIdx - 1) > 0" class="zone-overflow-badge">

@@ -21,4 +21,15 @@
   justify-content: center;
   font-weight: 700;
 }
+/* Ensure the root button fills the played-card container so the image can size correctly */
+button {
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  display: block;
+}
+
+button:focus { outline: none; }
 </style>

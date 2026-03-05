@@ -115,8 +115,52 @@ export default class GameEngine {
 
 
   // Import a normalized snapshot into engine (used by UI/services)
-  importState(snapshot: any): { ok: boolean; reason?: string } {
-     return { ok: true }
+  importState(snapshot: any): boolean {
+     try {
+       if (!snapshot) return false
+
+       // Accept shapes produced by webrtc service: { gameContext, workflow, deck }
+       const ctx = snapshot.gameContext || snapshot.gameContext || snapshot || {}
+       const wf = snapshot.workflow || snapshot.workflow || {}
+       const deckPayload = snapshot.deck || snapshot.allCards || {}
+
+       // Recreate typed instances where applicable
+       try { this.gameContext = new GameContext(ctx) } catch (e) { this.gameContext = (ctx as any) }
+       try { this.gameWorkflow = new GameWorkflowState(wf) } catch (e) { this.gameWorkflow = (wf as any) }
+
+       // Rebuild Deck instance from payload. Support both mapping objects and arrays of card payloads.
+       const rebuilt = new Deck()
+       try {
+         if (Array.isArray(deckPayload)) {
+           for (const entry of deckPayload) {
+             if (!entry) continue
+             if (typeof entry === 'object' && entry.id != null) {
+               rebuilt.cards[Number(entry.id)] = (Card as any).fromJSON ? (Card as any).fromJSON(entry) : entry
+             }
+           }
+         } else if (deckPayload && typeof deckPayload === 'object') {
+           for (const k of Object.keys(deckPayload || {})) {
+             const payload = (deckPayload as any)[k]
+             try {
+               rebuilt.cards[Number(k)] = (Card as any).fromJSON ? (Card as any).fromJSON(payload) : payload
+             } catch (_e) {
+               rebuilt.cards[Number(k)] = payload
+             }
+           }
+         }
+       } catch (_e) {
+         // ignore and fall back to empty deck
+       }
+       this.allCards = rebuilt
+
+       // Notify subscribers and UI
+       try { this.emitStateChange() } catch (_e) {}
+       try { eventService.emit('engine:stateChange', this) } catch (_e) {}
+       return true
+     } catch (e) {
+       console.error('[GameEngine] importState failed', e)
+       return false
+     }
   }
   
 
