@@ -17,7 +17,12 @@ export class DefaultCardHandler implements CardHandler {
     }
 
   onPlayed(cardId: string, ownerId?: number, position?: number, engine?: any): void {
-    
+    // TODO
+    // the card should be added to cards in play for that player, and removed from the player's hand
+    // the card's position should be set to 0
+    // the card's owner should be set to the gameContext.playerID
+    // the player removes another card from deck to hand, if any
+    // the turn ends
   }
 
   onKilled(cardId: string, _ownerId?: number, engine?: any): void {

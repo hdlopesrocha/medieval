@@ -1,5 +1,4 @@
 import { IonCard, IonCardHeader, IonCardTitle, IonCardContent, IonImg, IonChip, IonIcon, IonButton } from '@ionic/vue'
-import Card from '../models/Card'
 import {
   shieldHalfOutline,
   flashOutline,
@@ -19,7 +18,7 @@ import html2canvas from 'html2canvas'
 export default {
   name: 'CardItem',
   props: {
-    card: { type: Card, required: true },
+    card: { type: Object, required: true },
     hidden: { type: Boolean, default: false },
     showExport: { type: Boolean, default: null }
   },

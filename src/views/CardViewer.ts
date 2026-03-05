@@ -83,7 +83,7 @@ export default {
             // already a card instance
             out.push(item as Card)
           } else {
-            const resolved = (engine as any).cardsById?.[String(item)] || (engine.gameContext as any)?.cardsById?.[String(item)]
+            const resolved = (engine as any).cardsById?.[String(item)] || null
             if (resolved) out.push(resolved as Card)
           }
         } catch (_) {}

@@ -106,12 +106,12 @@ export default class GameEngine {
   reset() {
     // Initialize game context and cards registry, register all cards and deal hands.
     const initialDeck: Card[] = deckService.createDeck()
-    const initialIds: number[] = []
+    const deck: number[] = []
     // register cards and collect ids
     this.cardsById = {}
     for (const c of initialDeck) {
       this.cardsById[c.id] = c 
-      initialIds.push(c.id)
+      deck.push(c.id)
     }
 
     // If there is saved state, prefer loading that; otherwise create fresh context
@@ -121,7 +121,7 @@ export default class GameEngine {
       this.gameContext = new GameContext()
 
       // Shuffle the registered ids and assign as deck
-      const deckArr: number[] = initialIds.slice()
+      const deckArr: number[] = deck.slice()
       for (let i = deckArr.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1))
         const tmp = deckArr[i]
@@ -138,8 +138,8 @@ export default class GameEngine {
           const cid = deckArr.shift() as number
           if (cid) handIds.push(cid)
         }
-        // persist as number ids to be compatible with persisted shape
-        p.hand = handIds
+        // persist as string ids to be compatible with persisted shape
+        try { p.hand = handIds.map(h => String(h)) } catch (_) { p.hand = [] }
 
       }
       this.gameContext.deck = deckArr
@@ -158,8 +158,19 @@ export default class GameEngine {
 
   // revive top of deck into owner's castle
   reviveTopToCastle(owner: number) {
-
-    return true
+    try {
+      const topId = this.deck && this.deck.length ? this.deck.shift() : null
+      if (!topId) return { ok: false, reason: 'deck empty' }
+      // place on owner's cardsInPlay at castle zone
+      const ownerEntry = (this.gameContext.playersList || []).find(p => Number(p.id) === Number(owner))
+      if (!ownerEntry) return { ok: false, reason: 'owner not found' }
+      ownerEntry.cardsInPlay = ownerEntry.cardsInPlay || []
+      ownerEntry.cardsInPlay.push({ cardId: Number(topId), position: this.getOwnCastleZone(Number(ownerEntry.id)) })
+      this.saveState()
+      return { ok: true }
+    } catch (e) {
+      return { ok: false, reason: 'error' }
+    }
   }
 
   getOwnCastleZone(playerId: number) {
@@ -202,48 +213,11 @@ export default class GameEngine {
   }
 
   applyDamageToCard(attackerAtk: number, target: any) {
-    const atk = Math.max(0, Number(attackerAtk || 0))
-    if (!target) return
-    // Resolve card instance when stored as id
-    let cardObj: any = undefined
-    try {
-      if (typeof (target.card) === 'string') {
-        cardObj = this.cardsById[target.card]
-      } else {
-        cardObj = target.card
-      }
-    } catch (_) {
-      cardObj = target.card
-    }
-    const hp = Math.max(0, Number((cardObj && cardObj.hp) || 0))
-    const def = Math.max(0, Number((cardObj && cardObj.defensePoints) || 0))
-    if (hp + def < atk) {
-      if (cardObj) cardObj.hp = 0
-      try { if (cardObj && (cardObj as any).handler && typeof (cardObj as any).handler.onKilled === 'function') { (cardObj as any).handler.onKilled(String(target.id || ''), Number(target.ownerId || 0), this) } } catch (_) {}
-      return
-    }
-    const damage = Math.max(0, atk - def)
-    if (cardObj) cardObj.hp = Math.max(0, hp - damage)
-    if ((cardObj && cardObj.hp) <= 0) {
-      try { if (cardObj && (cardObj as any).handler && typeof (cardObj as any).handler.onKilled === 'function') { (cardObj as any).handler.onKilled(String(target.id || ''), Number(target.ownerId || 0), this) } } catch (_) {}
-    }
+    
   }
 
   applyCastleDamageFromOwner(ownerId: number) {
-    const enemyCastleZone = this.getEnemyCastleZone(ownerId)
-    const attackers = (this.gameContext.cardsInPlay || []).filter((g: any) => g.ownerId === ownerId && g.position === enemyCastleZone)
-    if (!attackers.length) return
-    const enemy = this.players.find(p => p.id !== ownerId)
-    if (!enemy) return
-    const enemyId = Number(enemy.id)
-    const totalAtk = attackers.reduce((sum: number, g: any) => sum + Math.max(0, Number(((g.card && (g.card.attackPoints)) || (this.cardsById[String(g.card || '')]?.attackPoints) || 0))), 0)
-    const enemyMaxHp = Number((enemy.castleMaxHp != null) ? enemy.castleMaxHp : 20)
-    enemy.castleHp = Math.max(0, (Number(enemy.castleHp ?? enemyMaxHp)) - totalAtk)
-    if (Number(enemy.castleHp) <= 0) {
-      this.gameWorkflow.gameOver = true
-      this.gameWorkflow.loserPlayerId = enemyId
-      this.gameWorkflow.winnerPlayerId = ownerId
-    }
+
   }
 
   shuffleDeck() {
@@ -270,28 +244,74 @@ export default class GameEngine {
       return can
     }
     try {
-      const hand = this.getPlayerCards(p) || []
-      const card = hand[Number(handIndex)]
-      if (card && (card as any).handler && typeof (card as any).handler.onPlayed === 'function') {
-        const cid = this.getCardId(card)
-        try { (card as any).handler.onPlayed(cid || '', p, 0, this) } catch (_) {}
-      }
-    } catch (_) {}
-    return this.recordActionAndEndTurn(p, 'playCard')
+      const player = this.gameContext.playersList[Number(p)]
+      if (!player) return { ok: false, reason: 'player not found' }
+      const handArr = Array.isArray(player.hand) ? player.hand : []
+      const cidStr = String(handArr[Number(handIndex)] || '')
+      if (!cidStr) return { ok: false, reason: 'card not found in hand' }
+      // remove from hand
+      try { handArr.splice(Number(handIndex), 1) } catch (_) {}
+      player.hand = handArr
+      // determine spawn zone
+      const cardInst = this.cardsById[String(cidStr)]
+      const spawnPos = this.getSpawnZone(cardInst as any, Number(p))
+      player.cardsInPlay = player.cardsInPlay || []
+      player.cardsInPlay.push({ cardId: Number(cidStr), position: Number(spawnPos) })
+      // call handler
+      try { if (cardInst && (cardInst as any).handler && typeof (cardInst as any).handler.onPlayed === 'function') { (cardInst as any).handler.onPlayed(String(cidStr), Number(p), Number(spawnPos), this) } } catch (_) {}
+      this.saveState()
+      return this.recordActionAndEndTurn(p, 'playCard')
+    } catch (e) {
+      return { ok: false, reason: 'error' }
+    }
   }
 
   // Play a card from hand onto the board at a specific position (zone)
   playCardTo(p: number, handIndex: number, position: number) {
     const can = this.canAct(p)
     if (!can.ok) return can
-    return this.recordActionAndEndTurn(p, 'playCardTo')
+    try {
+      const player = this.gameContext.playersList[Number(p)]
+      if (!player) return { ok: false, reason: 'player not found' }
+      const handArr = Array.isArray(player.hand) ? player.hand : []
+      const cidStr = String(handArr[Number(handIndex)] || '')
+      if (!cidStr) return { ok: false, reason: 'card not found in hand' }
+      try { handArr.splice(Number(handIndex), 1) } catch (_) {}
+      player.hand = handArr
+      player.cardsInPlay = player.cardsInPlay || []
+      player.cardsInPlay.push({ cardId: Number(cidStr), position: Number(position) })
+      const cardInst = this.cardsById[String(cidStr)]
+      try { if (cardInst && (cardInst as any).handler && typeof (cardInst as any).handler.onPlayed === 'function') { (cardInst as any).handler.onPlayed(String(cidStr), Number(p), Number(position), this) } } catch (_) {}
+      this.saveState()
+      return this.recordActionAndEndTurn(p, 'playCardTo')
+    } catch (e) {
+      return { ok: false, reason: 'error' }
+    }
   }
 
   // Move a specific card by up to `steps` positions (must be non-negative)
   moveCard(cardId: string, p: number, steps: number) {
     const can = this.canAct(p)
     if (!can.ok) return can
-    return this.recordActionAndEndTurn(p, 'moveCard')
+    try {
+      const player = this.gameContext.playersList[Number(p)]
+      if (!player) return { ok: false, reason: 'player not found' }
+      const list = Array.isArray(player.cardsInPlay) ? player.cardsInPlay : []
+      const cid = Number(cardId)
+      const idx = list.findIndex((e: any) => Number((e as any).cardId ?? (e as any).id) === Number(cid))
+      if (idx < 0) return { ok: false, reason: 'card not in play for player' }
+      const entry = list[idx]
+      const oldPos = Number((entry as any).position ?? 0)
+      const newPos = Math.max(0, oldPos + Math.trunc(Number(steps) || 0))
+      entry.position = newPos
+      // call handler onMove
+      const cardInst = this.cardsById[String(cid)]
+      try { if (cardInst && (cardInst as any).handler && typeof (cardInst as any).handler.onMove === 'function') { (cardInst as any).handler.onMove(String(cardId), Number(p), Number(newPos), this) } } catch (_) {}
+      this.saveState()
+      return this.recordActionAndEndTurn(p, 'moveCard')
+    } catch (e) {
+      return { ok: false, reason: 'error' }
+    }
   }
 
   // Attack a target card with an attacker card (both must be in play)
@@ -341,9 +361,22 @@ export default class GameEngine {
   saveState() {
     this.syncGameStateService()
     if (typeof window !== 'undefined' && window.localStorage) {
-      window.localStorage.setItem('tocabola:workflow', JSON.stringify(this.gameWorkflow))
-      window.localStorage.setItem('tocabola:game', JSON.stringify(this.gameContext)) 
-      window.localStorage.setItem('tocabola:cardsById', JSON.stringify(this.cardsById)) 
+      try {
+        window.localStorage.setItem('tocabola:workflow', JSON.stringify(this.gameWorkflow))
+      } catch (_) {}
+      try {
+        // Serialize GameContext to plain object for storage (engine.cardsById serialized separately)
+        const ctx: any = {
+          deck: this.gameContext.deck,
+          playersList: this.gameContext.playersList,
+          playerId: this.gameContext.playerId,
+          actionByPlayer: this.gameContext.actionByPlayer
+        }
+        window.localStorage.setItem('tocabola:game', JSON.stringify(ctx))
+      } catch (_) {}
+      try {
+        window.localStorage.setItem('tocabola:cardsById', JSON.stringify(this.cardsById))
+      } catch (_) {}
     }
 
   }
@@ -376,11 +409,26 @@ export default class GameEngine {
     const storedGame = gameStateService.loadGameState()
     const storedWorkflow = gameStateService.loadWorkflowState()
     const storedCardsById = window.localStorage ? window.localStorage.getItem('tocabola:cardsById') : null
-    if (!storedGame || !storedWorkflow || !storedCardsById) 
-      return false
+    if (!storedGame || !storedWorkflow) return false
+    // `loadGameState` returns a GameContext instance (constructor handles Map conversion)
     this.gameContext = storedGame
     this.gameWorkflow = storedWorkflow
-    this.cardsById = JSON.parse(storedCardsById)
+    // Restore runtime cardsById registry from stored serialized object, converting to Card instances
+    if (storedCardsById) {
+      try {
+        const parsed = JSON.parse(storedCardsById || '{}')
+        const out: Record<string, Card> = {}
+        for (const k of Object.keys(parsed || {})) {
+          try {
+            const payload = parsed[k]
+            out[String(k)] = (Card as any).fromJSON ? (Card as any).fromJSON(payload) : payload
+          } catch (_) {}
+        }
+        this.cardsById = out
+      } catch (_) {
+        this.cardsById = {}
+      }
+    }
     
     return true
   }

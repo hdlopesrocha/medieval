@@ -56,7 +56,6 @@
   display: flex;
   align-items: flex-start;
   justify-content: center;
-  padding-top: 6px;
   overflow-y: auto;
   overflow-x: hidden;
 }
@@ -70,7 +69,6 @@
   font-size: 11px;
   font-weight: 700;
   line-height: 1;
-  padding: 3px 6px;
   border-radius: 10px;
   z-index: 3;
 }
@@ -84,7 +82,6 @@
   align-items: stretch;
   justify-content: flex-start;
   gap: 2px;
-  padding: 2px;
 }
 
 .zone-stack-rtl {

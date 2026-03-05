@@ -3,17 +3,6 @@
 <script lang="ts" src="./MiniCardItem.ts"></script>
 
 <style scoped>
-.mini-card-button {
-  height: 25%;
-  border: 1px solid rgba(0, 0, 0, 0.22);
-  border-radius: 8px;
-  padding: 0;
-  margin: 0;
-  overflow: hidden;
-  background: #f3f6fb;
-  cursor: pointer;
-  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.22);
-}
 
 .mini-card-inner {
   width: calc(100% - 8px);

@@ -37,15 +37,26 @@ export default {
     const state = computed(() => {
       tick.value
       const rawPlayers = Array.isArray(engine.players)
-      const rawCards = Array.isArray(engine.gameContext.cardsInPlay)
       const wf = engine.gameWorkflow
       const ctx = engine.gameContext
+      const aggregatedCards = (Array.isArray(engine.players) ? engine.players : []).reduce((acc: any[], p: any) => {
+        const ownerId = Number(p.id)
+        const entries = Array.isArray(p.cardsInPlay) ? p.cardsInPlay : []
+        for (const entry of entries) {
+          const cid = Number((entry as any)?.cardId ?? (entry as any)?.id ?? NaN)
+          if (!Number.isFinite(cid)) continue
+          const pos = Number((entry as any)?.position ?? 0)
+          const cardInst = engine.cardsById[String(cid)] || null
+          acc.push({ id: String(cid), ownerId, position: Number(pos ?? (cardInst as any)?.position ?? 0), hidden: Boolean((entry as any)?.hidden ?? (cardInst as any)?.hidden), card: cardInst })
+        }
+        return acc
+      }, [])
       const nextState: any = {
         activePlayerId: Number(wf.activePlayerId || 0),
         playerId: Number(ctx.playerId ?? wf.activePlayerId ?? 0),
         round: Number(wf.round ?? 0),
         players: engine.players,
-        cardsInPlay: engine.gameContext.cardsInPlay
+        cardsInPlay: aggregatedCards
       }
       return nextState
     })
@@ -107,14 +118,29 @@ export default {
       }
     }
 
-    const cardsInPlayCount = computed(() => (state.value.cardsInPlay || []).length)
+    const cardsInPlayCount = computed(() => {
+      let sum = 0
+      for (const p of (engine.players || [])) {
+        sum += Array.isArray(p.cardsInPlay) ? p.cardsInPlay.length : 0
+      }
+      return sum
+    })
 
     const cardsByZone = computed(() => {
       const grouped: Record<number, any[]> = {}
       for (let index = 0; index < ZONE_COUNT; index++) grouped[index] = []
-      for (const card of (state.value.cardsInPlay || [])) {
-        const pos = Number(card.position)
-        if (Number.isInteger(pos) && pos >= 0 && pos < ZONE_COUNT) grouped[pos].push(card)
+      const players = Array.isArray(engine.players) ? engine.players : []
+      for (const p of players) {
+        const ownerId = Number(p.id)
+        const entries = Array.isArray(p.cardsInPlay) ? p.cardsInPlay : []
+        for (const entry of entries) {
+          const cid = Number((entry as any)?.cardId ?? (entry as any)?.id ?? NaN)
+          if (!Number.isFinite(cid)) continue
+          const pos = Number((entry as any)?.position ?? 0)
+          if (!Number.isInteger(pos) || pos < 0 || pos >= ZONE_COUNT) continue
+          const cardInst = engine.cardsById[String(cid)] || null
+          grouped[pos].push({ id: String(cid), ownerId, position: Number(pos), hidden: Boolean((entry as any)?.hidden ?? (cardInst as any)?.hidden), card: cardInst })
+        }
       }
       return grouped
     })

@@ -105,7 +105,18 @@ function createWebrtcQrService() {
   // `targetPlayerId` should be the id the receiver expects (e.g. 1 for client, 0 for server).
   function buildNormalizedState(targetPlayerId) {
     const rawPlayers = Array.isArray(engine.players) ? engine.players : []
-    const rawCardsInPlay = Array.isArray(engine.gameContext?.cardsInPlay) ? engine.gameContext.cardsInPlay : []
+    const rawCardsInPlay = (Array.isArray(engine.players) ? engine.players : []).reduce((acc, p) => {
+      const ownerId = Number(p.id)
+      const entries = Array.isArray(p.cardsInPlay) ? p.cardsInPlay : []
+      for (const entry of entries) {
+        const cid = Number((entry && entry.cardId) ?? (entry && entry.id) ?? NaN)
+        if (!Number.isFinite(cid)) continue
+        const pos = Number((entry && entry.position) ?? 0)
+        const cardInst = (engine.cardsById && engine.cardsById[String(cid)]) || null
+        acc.push({ id: String(cid), ownerId: Number(ownerId), position: Number(pos ?? (cardInst?.position ?? 0)), hidden: Boolean((entry && entry.hidden) ?? Boolean(cardInst && cardInst.hidden)), card: cardInst })
+      }
+      return acc
+    }, [])
     const wf = engine.gameWorkflow || {}
     const ctx = engine.gameContext || {}
     return {
