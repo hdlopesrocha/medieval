@@ -48,11 +48,11 @@
       </ion-card-content>
       
     </template>
-
+    <div class="card-actions-row">
+      <ion-button v-if="showExportButton" class="card-action-btn" @click="exportCardToPng">Export PNG</ion-button>
+      <slot name="actions">
+      </slot>
+    </div>
   </ion-card>
-  <div class="card-actions-row">
-    <ion-button v-if="showExportButton" class="card-action-btn" @click="exportCardToPng">Export PNG</ion-button>
-    <slot name="actions">
-    </slot>
-  </div>
+
 

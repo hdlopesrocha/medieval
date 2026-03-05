@@ -26,7 +26,7 @@ const routes = [
 	{ path: '/', component: MainPage },
 	{ path: '/deck', component: CardViewer, props: { mode: 'deck' } }
 	,{ path: '/hand', component: CardViewer, props: { mode: 'hand' } }
-	,{ path: '/local', redirect: '/hand' }
+	,{ path: '/local', redirect: 'hand' }
 	,{ path: '/history', component: HistoryPage }
 	,{ path: '/map', component: MapPage }
 	// share route removed: share is now a modal triggered from settings
@@ -36,13 +36,12 @@ const routes = [
 // Compute a robust base at runtime: prefer Vite's BASE_URL, otherwise infer
 // the first path segment (useful when deployed under a repo name on GitHub Pages).
 let runtimeBase = import.meta.env.BASE_URL
-if (!runtimeBase || runtimeBase === '/') {
-	try {
-		const seg = window.location.pathname.split('/').filter(Boolean)[0]
-		if (seg) runtimeBase = `/${seg}/`
-	} catch (e) {
-		runtimeBase = '/'
-	}
+// If BASE_URL is not an absolute site base (e.g. './'), prefer an empty
+// base for the hash history. Using a non-empty absolute base like
+// '/medieval/' together with hash history can produce duplicate path
+// segments when the app is served from a subpath and lead to reload failures.
+if (!runtimeBase || runtimeBase === '/' || runtimeBase === './') {
+	runtimeBase = ''
 }
 
 const router = createRouter({

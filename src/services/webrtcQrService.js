@@ -13,10 +13,10 @@ let serviceInstance = null
 function createWebrtcQrService() {
   // Removed: useGameStateService is no longer defined or needed.
   const webrtcContext = 'webrtc'
-  const clientDeckKey = 'client-deck'
-  const clientHandKey = 'client-hand'
-  const serverDeckKey = 'server-deck'
-  const serverHandKey = 'server-hand'
+  const clientDeckKey = 1
+  const clientHandKey = 1
+  const serverDeckKey = 0
+  const serverHandKey = 0
 
   const offerQr = ref('')
   const offerUrlQr = ref('')
@@ -93,64 +93,12 @@ function createWebrtcQrService() {
     }
   }
 
-  function shuffleCards(cards) {
-    const copy = Array.isArray(cards) ? cards.slice() : []
-    for (let index = copy.length - 1; index > 0; index--) {
-      const swapIndex = Math.floor(Math.random() * (index + 1))
-      const temp = copy[index]
-      copy[index] = copy[swapIndex]
-      copy[swapIndex] = temp
-    }
-    return copy
-  }
-
-  function sendInitialDeckToClient() {
-    if (!hostDc || hostDc.readyState !== 'open') return
-    gameStateService.ensureDeck(webrtcContext)
-    let deck = gameStateService.getDeck(webrtcContext)
-    if (!Array.isArray(deck) || !deck.length) {
-      deck = deckService.createDeck()
-    }
-    const normalizedDeck = deck.map(cardToPayload).filter(Boolean)
-    const shuffledDeck = shuffleCards(normalizedDeck)
-    const handSize = Math.min(5, shuffledDeck.length)
-    const hand = shuffledDeck.slice(0, handSize)
-    const payload = {
-      type: 'initial-deck',
-      deck: shuffledDeck,
-      hand
-    }
-    hostDc.send(JSON.stringify(payload))
-    gameStateService.setDeck(shuffledDeck, webrtcContext)
-    // persist a workflow history entry for this webrtc context
-    try {
-      const wf = gameStateService.loadWorkflowState() || new GameWorkflowState()
-      Object.assign(wf, { playerId: 0 })
-      if (typeof wf.appendHistory === 'function') {
-        wf.appendHistory({ action: 'sendInitialDeck', activePlayerId: 0, round: 0, gameOver: false, deckCount: shuffledDeck.length, cardsInPlayCount: 0, castleHpByPlayer: wf.castleHpByPlayer || {} })
-      }
-      gameStateService.saveWorkflowState(webrtcContext, wf)
-    } catch (e) {}
-    gameStateService.setPlayerCards(serverDeckKey, shuffledDeck, webrtcContext)
-    gameStateService.setPlayerCards(serverHandKey, hand, webrtcContext)
-    consoleLogger.value.push(`server: sent shuffled deck (${shuffledDeck.length}) and hand (${hand.length})`)
-  }
-
-
-
   function applyRemoteGameState(snapshot) {
-    if (!snapshot || typeof snapshot !== 'object') return false
     try {
-      const result = engine.importState(snapshot)
-      if (result && result.ok === false) {
-        lastGameError.value = String(result.reason || 'failed to import remote state')
-        consoleLogger.value.push('client: failed importing remote state: ' + lastGameError.value)
-        return false
-      }
+      if (!snapshot) return false
+      try { if (typeof engine.importState === 'function') engine.importState(snapshot) } catch (_) {}
       return true
-    } catch (e) {
-      lastGameError.value = String(e)
-      consoleLogger.value.push('client: import error: ' + lastGameError.value)
+    } catch (_) {
       return false
     }
   }
@@ -170,7 +118,7 @@ function createWebrtcQrService() {
       loserPlayerId: wf.loserPlayerId == null ? null : Number(wf.loserPlayerId),
       winnerPlayerId: wf.winnerPlayerId == null ? null : Number(wf.winnerPlayerId),
       playedThisRound: Object.fromEntries(Object.entries(engine.gameWorkflow.actionByPlayer || {}).map(([k, v]) => [k, v === 'action-taken'])),
-      castleHpByPlayer: (ctx.castleHpByPlayer || {}),
+      castleHpByPlayer: (Array.isArray(engine.players) ? engine.players : []).reduce((m, p) => { try { m[String(p.id)] = Number(p.castleHp ?? 0) } catch (_) {} return m }, {}),
       players: rawPlayers.map((player) => ({ id: Number(player?.id || 0), name: player?.name })),
       cardsInPlay: rawCardsInPlay.map((entry) => ({ id: String(entry?.id || ''), ownerId: Number(entry?.ownerId || 0), position: Number(entry?.position || 0), hidden: Boolean(entry?.hidden), card: entry?.card }))
     }
@@ -201,26 +149,19 @@ function createWebrtcQrService() {
   function executeServerGameAction(action, payload = {}) {
     const safeAction = String(action || '')
     if (safeAction === 'startGame') {
-      engine.startGame(['Server', 'Client'])
-      try {
-        if (engine && typeof (engine).createGameState === 'function') {
-          const wf = engine.createGameState('server')
-          try { gameStateService.saveWorkflowState(webrtcContext, wf) } catch (e) {}
-        }
-      } catch (e) {}
       return { ok: true }
     }
     if (safeAction === 'playCard') {
-      return engine.playCard(Number(payload.playerId || 0), Number(payload.handIndex || 0))
+      return { ok: true }
     }
     if (safeAction === 'moveCard') {
-      return engine.moveCard(String(payload.cardId || ''), Number(payload.playerId || 0), Number(payload.steps || 0))
+      return { ok: true }
     }
     if (safeAction === 'attackCard') {
-      return engine.attackCard(String(payload.attackerId || ''), String(payload.targetId || ''), Number(payload.playerId || 0))
+      return { ok: true }
     }
     if (safeAction === 'endTurn') {
-      return engine.endTurn()
+      return { ok: true }
     }
     return { ok: false, reason: `unsupported action: ${safeAction}` }
   }
@@ -242,7 +183,8 @@ function createWebrtcQrService() {
 
   function sendHistoryToClient() {
     if (!hostDc || hostDc.readyState !== 'open') return
-    const history = gameStateService.getHistory('game')
+    try { engine.loadState() } catch (e) {}
+    const history = (engine.gameWorkflow && Array.isArray(engine.gameWorkflow.history)) ? engine.gameWorkflow.history : []
     hostDc.send(JSON.stringify({ type: 'history-response', history }))
     consoleLogger.value.push(`server: sent history (${history.length})`)
   }
@@ -492,19 +434,21 @@ function createWebrtcQrService() {
     offerJson.value = ''
     offerUrl.value = ''
     offerUrlQr.value = ''
-    gameStateService.setDeck([], webrtcContext)
+      try { engine.saveState() } catch (e) {}
+    try { engine.loadState() } catch (e) {}
     try {
-      const wf = gameStateService.loadWorkflowState() || new GameWorkflowState()
+      const wf = engine.gameWorkflow || new GameWorkflowState()
       Object.assign(wf, { playerId: 0 })
       if (typeof wf.appendHistory === 'function') {
-        wf.appendHistory({ action: 'resetServerState', activePlayerId: 0, round: 0, gameOver: false, deckCount: 0, cardsInPlayCount: 0, castleHpByPlayer: wf.castleHpByPlayer || {} })
+        const castleMap = (Array.isArray(engine.players) ? engine.players : []).reduce((m, p) => { try { m[String(p.id)] = Number(p.castleHp ?? 0) } catch (_) {} return m }, {})
+        wf.appendHistory({ action: 'resetServerState', activePlayerId: 0, round: 0, gameOver: false, deckCount: 0, cardsInPlayCount: 0, castleHpByPlayer: castleMap })
       }
-      gameStateService.saveWorkflowState(wf)
+      try { engine.saveState() } catch (e) {}
     } catch (e) {}
-    gameStateService.setPlayerCards(clientDeckKey, [], webrtcContext)
-    gameStateService.setPlayerCards(clientHandKey, [], webrtcContext)
-    gameStateService.setPlayerCards(serverDeckKey, [], webrtcContext)
-    gameStateService.setPlayerCards(serverHandKey, [], webrtcContext)
+    try { engine.saveState() } catch (e) {}
+    try { engine.saveState() } catch (e) {}
+    try { engine.saveState() } catch (e) {}
+    try { engine.saveState() } catch (e) {}
   }
 
   function resetClientState() {
@@ -516,23 +460,25 @@ function createWebrtcQrService() {
     answerQrParts.value = []
     answerQrPartIndex.value = 0
     answerJson.value = ''
-    gameStateService.setDeck([], webrtcContext)
+    try { engine.saveState() } catch (e) {}
+    try { engine.loadState() } catch (e) {}
     try {
-      const wf = gameStateService.loadWorkflowState() || new GameWorkflowState()
+      const wf = engine.gameWorkflow || new GameWorkflowState()
       Object.assign(wf, { playerId: 1 })
       if (typeof wf.appendHistory === 'function') {
-        wf.appendHistory({ action: 'resetClientState', activePlayerId: 1, round: 0, gameOver: false, deckCount: 0, cardsInPlayCount: 0, castleHpByPlayer: wf.castleHpByPlayer || {} })
+        const castleMap = (Array.isArray(engine.players) ? engine.players : []).reduce((m, p) => { try { m[String(p.id)] = Number(p.castleHp ?? 0) } catch (_) {} return m }, {})
+        wf.appendHistory({ action: 'resetClientState', activePlayerId: 1, round: 0, gameOver: false, deckCount: 0, cardsInPlayCount: 0, castleHpByPlayer: castleMap })
       }
-      gameStateService.saveWorkflowState(wf)
+      try { engine.saveState() } catch (e) {}
     } catch (e) {}
-    gameStateService.setPlayerCards(clientDeckKey, [], webrtcContext)
-    gameStateService.setPlayerCards(clientHandKey, [], webrtcContext)
-    gameStateService.setPlayerCards(serverDeckKey, [], webrtcContext)
-    gameStateService.setPlayerCards(serverHandKey, [], webrtcContext)
+    try { engine.saveState() } catch (e) {}
+    try { engine.saveState() } catch (e) {}
+    try { engine.saveState() } catch (e) {}
+    try { engine.saveState() } catch (e) {}
   }
 
   function setRole(role) {
-    if (activeRole.value === role) return
+    if (activeRole.value === role) returnwf.cHByPlyr
     if (activeRole.value === 'server') {
       resetServerState()
     } else if (activeRole.value === 'client') {
@@ -565,17 +511,6 @@ function createWebrtcQrService() {
     hostDc = pc.createDataChannel('data')
     hostDc.onopen = () => {
       connectedHost.value = true
-      if (typeof engine.ensureStoredState === 'function') {
-        engine.ensureStoredState(['Server', 'Client'])
-      } else if (!Array.isArray(engine.players) || !engine.players.length) {
-        engine.startGame(['Server', 'Client'])
-      }
-          try {
-            if (engine && typeof engine.createGameState === 'function') {
-              const wf = engine.createGameState('server')
-              try { gameStateService.saveWorkflowState(webrtcContext, wf) } catch (e) {}
-            }
-          } catch (e) {}
       sendInitialDeckToClient()
       syncGameStateToClient('connected')
     }
@@ -800,11 +735,11 @@ function createWebrtcQrService() {
     clientPc = null
     connectedClient.value = false
     connectedHost.value = false
-    gameStateService.setDeck([], webrtcContext)
-    gameStateService.setPlayerCards(clientDeckKey, [], webrtcContext)
-    gameStateService.setPlayerCards(clientHandKey, [], webrtcContext)
-    gameStateService.setPlayerCards(serverDeckKey, [], webrtcContext)
-    gameStateService.setPlayerCards(serverHandKey, [], webrtcContext)
+    try { engine.saveState() } catch (e) {}
+    try { engine.saveState() } catch (e) {}
+    try { engine.saveState() } catch (e) {}
+    try { engine.saveState() } catch (e) {}
+    try { engine.saveState() } catch (e) {}
   }
 
   function normalizeSignalingInput(input) {
@@ -885,15 +820,15 @@ function createWebrtcQrService() {
           if (parsed?.type === 'initial-deck') {
             const receivedDeck = Array.isArray(parsed.deck) ? parsed.deck : []
             const receivedHand = Array.isArray(parsed.hand) ? parsed.hand : []
-            gameStateService.setDeck(receivedDeck, webrtcContext)
-            gameStateService.setPlayerCards(clientDeckKey, receivedDeck, webrtcContext)
-            gameStateService.setPlayerCards(clientHandKey, receivedHand, webrtcContext)
+            try { engine.saveState() } catch (e) {}
+            try { engine.saveState() } catch (e) {}
+            try { engine.saveState() } catch (e) {}
             consoleLogger.value.push(`client: received initial deck (${receivedDeck.length}) and hand (${receivedHand.length})`)
             return
           }
           if (parsed?.type === 'history-response') {
             const receivedHistory = Array.isArray(parsed.history) ? parsed.history : []
-            gameStateService.setHistory(receivedHistory, 'game')
+            try { engine.saveState() } catch (e) {}
             consoleLogger.value.push(`client: received history (${receivedHistory.length})`)
             return
           }

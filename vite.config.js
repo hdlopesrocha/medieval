@@ -36,10 +36,11 @@ function serveAssetFile(req, res, next) {
   fs.createReadStream(target).pipe(res)
 }
 
-// When deploying to GitHub Pages under a repository subpath
-// (e.g. https://<user>.github.io/medieval/) set base to '/medieval/'.
+// Use relative base so built assets are referenced relative to the HTML file.
+// This avoids hard-coded absolute paths like '/medieval/...' which can cause
+// duplicated path segments when the site is served from a subpath.
 export default defineConfig({
-  base: '/medieval/',
+  base: './',
   plugins: [
     basicSsl(),
     vue(),

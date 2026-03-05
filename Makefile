@@ -23,9 +23,11 @@ dev:
 build:
 	$(NPM) run build
 	@if [ -d src/assets ]; then \
-		mkdir -p dist/src && cp -r src/assets dist/src/assets; \
-		cp -r src/assets dist/assets; \
-		echo "Copied src/assets -> dist/src/assets and dist/assets"; \
+		mkdir -p dist/src/assets; \
+		cp -r src/assets/* dist/src/assets/; \
+		mkdir -p dist/assets; \
+		cp -r src/assets/* dist/assets/; \
+		echo "Copied src/assets contents -> dist/src/assets and dist/assets"; \
 	fi
 
 preview:

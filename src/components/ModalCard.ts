@@ -1,11 +1,11 @@
 import { computed, defineComponent, type PropType } from 'vue'
-import type { CardJSON } from '../models/Card'
+import type Card from '../models/Card'
 
 export default defineComponent({
   name: 'ModalCard',
   props: {
     card: {
-      type: Object as PropType<Partial<CardJSON> & Record<string, unknown>>,
+      type: Object as PropType<Partial<Card> & Record<string, unknown>>,
       required: true
     }
   },

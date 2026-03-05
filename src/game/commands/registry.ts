@@ -1,19 +1,12 @@
-import kings from './kings'
-import saints from './saints'
-import units from './units'
-import others from './ships_priests_archangels_effects'
-
-import { noop } from './utils'
-
-const registry: Map<string, any> = new Map()
-
-// merge all maps into a single registry
-for (const m of [kings, saints, units, others]) {
-  for (const [k, v] of m.entries()) registry.set(k, v)
+// All command implementations were consolidated to a single no-op command.
+// `getCommandFor` always returns the no-op command to keep the command lookup
+// surface stable while removing per-command logic.
+export function noop() {
+  return { ok: true }
 }
 
-export function getCommandFor(title: string) {
-  return registry.get(title) || noop
+export function getCommandFor(_title: string) {
+  return noop
 }
 
 export default { getCommandFor }

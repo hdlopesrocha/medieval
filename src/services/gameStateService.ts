@@ -15,12 +15,12 @@ function hasLocalStorage() {
 }
 
 export function saveGameState(context: Partial<GameContext>) {
-  if (!hasLocalStorage()) return false
+  // Deprecated: writes are centralized in GameEngine.saveState(). No-op here.
   try {
-    window.localStorage.setItem(GAME_STORAGE_KEY, JSON.stringify(context || {}))
+    if (!hasLocalStorage()) return false
+    console.warn('gameStateService.saveGameState is deprecated; use GameEngine.saveState')
     return true
   } catch (e) {
-    console.warn('saveGameState failed', e)
     return false
   }
 }
@@ -31,6 +31,7 @@ export function loadGameState(): GameContext | null {
     const raw = window.localStorage.getItem(GAME_STORAGE_KEY)
     if (!raw) return null
     const parsed = JSON.parse(raw)
+    console.log('Loaded game state from storage', parsed)
     return new GameContext(parsed)
   } catch (e) {
     console.warn('loadGameState failed', e)
@@ -38,24 +39,15 @@ export function loadGameState(): GameContext | null {
   }
 }
 
-export function clearGameState() {
-  if (!hasLocalStorage()) return false
-  try {
-    window.localStorage.removeItem(GAME_STORAGE_KEY)
-    return true
-  } catch (e) {
-    console.warn('clearGameState failed', e)
-    return false
-  }
-}
+
 
 export function saveWorkflowState(workflow: Partial<GameWorkflowState>) {
-  if (!hasLocalStorage()) return false
+  // Deprecated: writes are centralized in GameEngine.saveState(). No-op here.
   try {
-    window.localStorage.setItem(WORKFLOW_STORAGE_KEY, JSON.stringify(workflow || {}))
+    if (!hasLocalStorage()) return false
+    console.warn('gameStateService.saveWorkflowState is deprecated; use GameEngine.saveState')
     return true
   } catch (e) {
-    console.warn('saveWorkflowState failed', e)
     return false
   }
 }
@@ -74,12 +66,12 @@ export function loadWorkflowState(): GameWorkflowState | null {
 }
 
 export function clearWorkflowState() {
-  if (!hasLocalStorage()) return false
+  // Deprecated: centralize clearing through GameEngine.clearStoredState(). No-op.
   try {
-    window.localStorage.removeItem(WORKFLOW_STORAGE_KEY)
+    if (!hasLocalStorage()) return false
+    console.warn('gameStateService.clearWorkflowState is deprecated; use GameEngine.clearStoredState')
     return true
   } catch (e) {
-    console.warn('clearWorkflowState failed', e)
     return false
   }
 }
@@ -106,35 +98,16 @@ export function getDeck(context = 'game') {
 }
 
 export function setDeck(deck: any[], context = 'game') {
-  if (!hasLocalStorage()) return false
+  // Deprecated: deck persistence is handled by GameEngine.saveState(). No-op here.
   try {
-    window.localStorage.setItem(storageKeyFor(context, 'deck'), JSON.stringify(deck || []))
+    if (!hasLocalStorage()) return false
+    console.warn('gameStateService.setDeck is deprecated; use GameEngine.saveState')
     return true
   } catch (e) {
     return false
   }
 }
 
-export function setPlayerCards(key: string, cards: any[], context = 'game') {
-  if (!hasLocalStorage()) return false
-  try {
-    window.localStorage.setItem(storageKeyFor(context, `player:${key}`), JSON.stringify(cards || []))
-    return true
-  } catch (e) {
-    return false
-  }
-}
-
-export function getPlayerCards(key: string, context = 'game') {
-  if (!hasLocalStorage()) return []
-  try {
-    const raw = window.localStorage.getItem(storageKeyFor(context, `player:${key}`))
-    if (!raw) return []
-    return JSON.parse(raw)
-  } catch (e) {
-    return []
-  }
-}
 
 export function getHistory(context = 'game') {
   if (!hasLocalStorage()) return []
@@ -148,9 +121,10 @@ export function getHistory(context = 'game') {
 }
 
 export function setHistory(history: any[], context = 'game') {
-  if (!hasLocalStorage()) return false
+  // Deprecated: history persistence is handled by GameEngine.saveState(). No-op here.
   try {
-    window.localStorage.setItem(storageKeyFor(context, 'history'), JSON.stringify(history || []))
+    if (!hasLocalStorage()) return false
+    console.warn('gameStateService.setHistory is deprecated; use GameEngine.saveState')
     return true
   } catch (e) {
     return false
@@ -160,15 +134,12 @@ export function setHistory(history: any[], context = 'game') {
 const defaultExport = {
   saveGameState,
   loadGameState,
-  clearGameState,
   saveWorkflowState,
   loadWorkflowState,
   clearWorkflowState,
   ensureDeck,
   getDeck,
   setDeck,
-  setPlayerCards,
-  getPlayerCards,
   getHistory,
   setHistory
 }

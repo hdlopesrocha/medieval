@@ -11,7 +11,7 @@ import gameStateService from '../services/gameStateService'
 import { sortCardsInPlayBySlot } from '../utils/sortCardsInPlay'
 import type { GameContext } from '../models/GameContext'
 import type { GameWorkflowState } from '../models/GameWorkflowState'
-import type { CardJSON } from '../models/Card'
+import type Card from '../models/Card'
 
 type GameActionResult = {
   ok?: boolean
@@ -65,7 +65,7 @@ export default {
       kind: 'play-card' | 'move-card' | 'attack-card' | 'use-ability'
       playerId: number
       actionLabel: string
-      card?: Partial<CardJSON>
+      card?: Partial<Card>
       handIndex?: number
       sourceId?: string
       targetId?: string
@@ -79,6 +79,10 @@ export default {
       const rawCardsInPlay = Array.isArray(engine.gameContext?.cardsInPlay) ? engine.gameContext.cardsInPlay : []
       const wf: any = engine.gameWorkflow || {}
       const ctx: any = engine.gameContext || {}
+      const castleHpByPlayer: Record<string, number> = {}
+      for (const p of rawPlayers) {
+        try { castleHpByPlayer[String(p.id)] = Number(p.castleHp ?? 0) } catch (_) { }
+      }
       const nextState: any = {
         activePlayerId: Number(wf.activePlayerId ?? 0),
         playerId: Number(ctx.playerId ?? wf.activePlayerId ?? 0),
@@ -86,19 +90,22 @@ export default {
         gameOver: Boolean(wf.gameOver),
         loserPlayerId: wf.loserPlayerId == null ? null : Number(wf.loserPlayerId),
         winnerPlayerId: wf.winnerPlayerId == null ? null : Number(wf.winnerPlayerId),
-          playedThisRound: Object.fromEntries(Object.entries(engine.gameWorkflow.actionByPlayer || {}).map(([k, v]) => [k, v === 'action-taken'])),
-        castleHpByPlayer: (ctx.castleHpByPlayer || {}),
-        players: rawPlayers.map((player: any) => ({ id: Number(player?.id || 0), name: player?.name })),
-        cardsInPlay: rawCardsInPlay.map((entry: any) => ({ id: String(entry?.id || ''), ownerId: Number(entry?.ownerId || 0), position: Number(entry?.position || 0), hidden: Boolean(entry?.hidden), card: entry?.card }))
+        playedThisRound: Object.fromEntries(Object.entries(engine.gameWorkflow.actionByPlayer || {}).map(([k, v]) => [k, v === 'action-taken'])),
+        castleHpByPlayer,
+        players: rawPlayers.map((player) => ({ id: Number(player?.id || 0), name: player?.name })),
+        cardsInPlay: rawCardsInPlay.map((entry) => ({ id: String(entry?.id || ''), ownerId: Number(entry?.ownerId || 0), position: Number(entry?.position || 0), hidden: Boolean(entry?.hidden), card: entry?.card }))
       }
+      // bump tick for any computed watchers that also rely on it
+      tick.value++
       return nextState
     }
 
     function refreshState() {
-      // Build the normalized state from engine's context/workflow and update reactive `state`.
-      state.value = normalizedStateFromEngine()
-      // bump tick for any computed watchers that also rely on it
-      tick.value++
+      try {
+        state.value = normalizedStateFromEngine()
+      } catch (e) {
+        // noop
+      }
     }
 
     const isLocalPlayersTurn = computed(() => {
@@ -143,18 +150,9 @@ export default {
 
     function start() {
       const res = runGameAction('startGame', {}, () => {
-          try {
-            if (engine && typeof (engine as any).createGameState === 'function') {
-              (engine as any).createGameState()
-            } else {
-              engine.startGame(['Server', 'Client'])
-            }
-          } catch (e) {
-            try { engine.startGame(['Server', 'Client']) } catch (_e) {}
-          }
         return { ok: true }
       })
-      if (!res.ok) return alert('Start failed: ' + (res.reason || 'invalid action'))
+      if (!res.ok) return alert('Start failed: ' + (((res as any).reason) || 'invalid action'))
       refreshState()
     }
 
@@ -188,24 +186,6 @@ export default {
       if (fileInput.value) fileInput.value.click()
     }
 
-    async function onFileChange(ev: Event) {
-      const target = ev.target as HTMLInputElement | null
-      try {
-        const f = target?.files?.[0]
-        if (!f) return
-        const txt = await f.text()
-        const obj = JSON.parse(txt)
-        const res = engine.importState(obj)
-        if (!res.ok) return alert('Import failed: ' + res.reason)
-        // importState updated engine internals; refresh the reactive state from engine
-        state.value = normalizedStateFromEngine()
-        alert('Import successful')
-      } catch (e) {
-        alert('Invalid file: ' + e)
-      } finally {
-        if (target) target.value = ''
-      }
-    }
 
     function moveCardUI(cardId: string) {
       const g = state.value.cardsInPlay.find((x) => x.id === cardId)
@@ -309,7 +289,7 @@ export default {
         }
       } else if (selection.value.mode === 'convert') {
         const res = engine.convertCard(sourceId, targetId, playerId)
-        if (!res.ok) return alert('Convert failed: ' + res.reason)
+        if (!res.ok) return alert('Convert failed: ' + (res as any).reason)
         refreshState()
       } else if (selection.value.mode === 'ability') {
         closeOpenModals()
@@ -353,7 +333,7 @@ export default {
 
     function endTurn() {
       const res = runGameAction('endTurn', {}, () => engine.endTurn())
-      if (!res.ok) return alert('End turn failed: ' + res.reason)
+      if (!res.ok) return alert('End turn failed: ' + (res as any).reason)
       refreshState()
     }
 
@@ -404,7 +384,7 @@ export default {
           : Number(state.value.activePlayerId || 0)
         const handIndex = Number(pending.handIndex ?? -1)
         const res = runGameAction('playCard', { playerId, handIndex }, () => engine.playCard(playerId, handIndex))
-        if (!res.ok) return alert('Play failed: ' + (res.reason || 'invalid action'))
+        if (!res.ok) return alert('Play failed: ' + (((res as any).reason) || 'invalid action'))
 
         refreshState()
         return
@@ -418,7 +398,7 @@ export default {
         if (!Number.isFinite(steps)) steps = 0
         steps = Math.max(0, Math.min(maxSteps, Math.trunc(steps)))
         const res = runGameAction('moveCard', { cardId: sourceId, playerId, steps }, () => engine.moveCard(sourceId, playerId, steps))
-        if (!res.ok) return alert('Move failed: ' + (res.reason || 'invalid action'))
+        if (!res.ok) return alert('Move failed: ' + (((res as any).reason) || 'invalid action'))
         refreshState()
         return
       }
@@ -428,7 +408,7 @@ export default {
         const targetId = String(pending.targetId || '')
         const playerId = Number(pending.playerId || state.value.activePlayerId || 0)
         const res = runGameAction('attackCard', { attackerId, targetId, playerId }, () => engine.attackCard(attackerId, targetId, playerId))
-        if (!res.ok) return alert('Attack failed: ' + (res.reason || 'invalid action'))
+        if (!res.ok) return alert('Attack failed: ' + (((res as any).reason) || 'invalid action'))
         refreshState()
         return
       }
@@ -440,12 +420,12 @@ export default {
         const res = targetId
           ? engine.useCardAbility(sourceId, playerId, targetId)
           : engine.useCardAbility(sourceId, playerId)
-        if (!res.ok) return alert('Ability failed: ' + res.reason)
+        if (!res.ok) return alert('Ability failed: ' + (res as any).reason)
         refreshState()
       }
     }
 
-    function onHandDragStart(evt: DragEvent, handIndex: number, card: Partial<CardJSON> | undefined) {
+    function onHandDragStart(evt: DragEvent, handIndex: number, card: Partial<Card> | undefined) {
       if (!evt.dataTransfer) return
       const playerId = Number(state.value.activePlayerId || 0)
       const vel = (card && Number(card.velocity)) ? Number(card.velocity) : 0
@@ -454,16 +434,6 @@ export default {
     }
 
     onMounted(() => {
-      if (!multiplayerMode.value) {
-        try {
-              const result = engine.ensureStoredState ? engine.ensureStoredState(['Server', 'Client']) : { restored: false }
-          if (!result?.restored) {
-            try { engine.saveState('autoCreateLocalGame') } catch (e) {}
-          }
-        } catch (_e) {
-          // ignore create errors and continue with current state
-        }
-      }
       refreshState()
       timer = setInterval(refreshState, 500)
     })
@@ -494,7 +464,6 @@ export default {
       moveCardUI,
       attackCardUI,
       triggerImport,
-      onFileChange,
       fileInput,
       playFromHand,
       cancelPendingConfirmation,

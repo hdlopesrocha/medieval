@@ -4,7 +4,7 @@ html, body, #app, ion-app {
 
 body {
   margin: 0;
-  background-image: url('/medieval/assets/background.png');
+  background-image: url('./assets/background.png');
   background-size: cover;
   background-position: center center;
   background-repeat: no-repeat;

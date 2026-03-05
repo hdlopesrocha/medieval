@@ -5,7 +5,6 @@ import { albumsOutline, handLeftOutline, gridOutline, mapOutline, shareSocialOut
 import { useRoute, useRouter } from 'vue-router'
 import engine from '../game/engineInstance'
 import { useWebrtcQrService } from '../services/webrtcQrService'
-import gameStateService from '../services/gameStateService'
 // import GameContext from '../models/GameContext' if needed
 
 export default {
@@ -31,32 +30,37 @@ export default {
       tick.value = (tick.value || 0) + 1
     }
 
-    const activePlayerId = computed(() => Number(engine.gameWorkflow?.activePlayerId ?? 0))
-    const roundNumber = computed(() => Number(engine.gameWorkflow?.round ?? 0))
+    const activePlayerId = computed(() => engine.gameWorkflow.activePlayerId)
+    const roundNumber = computed(() => engine.gameWorkflow.round)
     const multiplayerMode = computed(() => Boolean((webrtcQr as any).isRealtimeGameActive?.value))
     const role = computed(() => String((webrtcQr as any).activeRole?.value || ''))
     const connected = computed(() => Boolean((webrtcQr as any).connectedHost?.value || (webrtcQr as any).connectedClient?.value))
+    // Determine the local player's id from role and multiplayer state.
+    // Singleplayer/local: local player is always 0.
+    // Multiplayer: server (host) is player 0, client is player 1.
     const playerId = computed(() => {
-      if (!multiplayerMode.value) return activePlayerId.value
-      return role.value === 'client' ? 1 : 0
+      if (multiplayerMode.value) {
+        return role.value === 'client' ? 1 : 0
+      }
+      return 0
     })
-    const isLocalPlayersTurn = computed(() => engine.gameContext.playerId === engine.gameWorkflow.activePlayerId)
+
+    // Local player's turn when the engine's activePlayerId matches our local player id.
+    const isLocalPlayersTurn = computed(() => Number(engine.gameWorkflow.activePlayerId) === Number(playerId.value))
     const playerCastleHp = computed(() => {
-      const ctx: any = engine.gameContext || {}
-      const hpByPlayer = ctx.castleHpByPlayer || {}
-      return hpByPlayer[String(playerId.value)]
+      const players = Array.isArray(engine.players) ? engine.players : []
+      const p = players.find((entry: any) => Number(entry.id) === Number(playerId.value))
+      return Number(p?.castleHp ?? 0)
     })
     const enemyCastleHp = computed(() => {
-      const ctx: any = engine.gameContext || {}
-      const hpByPlayer = ctx.castleHpByPlayer || {}
-      const enemyId = playerId.value === 0 ? 1 : 0
-      return hpByPlayer[String(enemyId)]
+      const players = Array.isArray(engine.players) ? engine.players : []
+      const enemy = players.find((entry: any) => Number(entry.id) !== Number(playerId.value))
+      return Number(enemy?.castleHp ?? 0)
     })
     const currentPlayerLabel = computed(() => {
-      const players = Array.isArray(engine.players) ? engine.players.map((p: any) => ({ ...p, id: Number(p.id) })) : []
-      const player = (players || []).find((entry: any) => Number(entry.id) === playerId.value)
-      if (player?.name) return `${player.name} (Player ${playerId.value})`
-      return `Player ${playerId.value}`
+      const players = engine.players;
+      const player = players.find((entry: any) => Number(entry.id) === playerId.value)
+      return `${player.name}`
     })
     const turnIcon = computed(() => (isLocalPlayersTurn.value ? '▶️' : '⏳'))
     const turnLabel = computed(() => {
@@ -75,14 +79,13 @@ export default {
 
     function createGameState() {
       if (!isLocalPlayersTurn.value) return
-      try {
-        const wf = (engine as any).createGameState()
-        ;(webrtcQr as any).syncGameStateToClient?.('createGame')
+     
+        engine.reset()
+        webrtcQr.syncGameStateToClient?.('createGame')
+     
         refresh()
-      } catch (e) {
-        alert('Create failed: ' + e)
+     
       }
-    }
 
     function goFromSettings(path: string) {
       // if share requested, open modal; otherwise navigate
@@ -101,12 +104,9 @@ export default {
 
     function clearLocalStorage() {
       try {
-        // clear persisted keys via service
-        try { gameStateService.clearGameState() } catch (e) {}
-        try { gameStateService.clearWorkflowState() } catch (e) {}
-        // best-effort full localStorage clear
-        try { if (typeof window !== 'undefined' && window.localStorage) window.localStorage.clear() } catch (e) {}
-        // reload to reset in-memory engine state
+        // delegate clear to engine (centralized persistence)
+        try { engine.clearStoredState() } catch (e) {}
+        // reload to reset any UI state
         try { window.location.reload() } catch (e) {}
       } catch (e) {
         alert('Failed to clear local storage: ' + String(e))

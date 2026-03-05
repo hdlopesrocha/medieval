@@ -6,15 +6,16 @@ import { IonPage, IonContent, IonButton, IonButtons } from '@ionic/vue'
 import { useRouter } from 'vue-router'
 import engine from '../game/engineInstance'
 import HorizontalScrollSlider from '../components/HorizontalScrollSlider.vue'
+import Card from 'src/models/Card'
 
 type JsonLike = Record<string, unknown>
 
 type CardViewerProps = {
-  cards?: unknown[] | null
+  cards?: Card[] | null
   mode?: string
 }
 
-function cloneCard(card: unknown): JsonLike | null {
+function cloneCard(card: Card): JsonLike | null {
   if (!card) return null
   if (typeof card === 'object' && card !== null && 'toJSON' in card && typeof (card as { toJSON?: () => unknown }).toJSON === 'function') {
     return JSON.parse(JSON.stringify((card as { toJSON: () => unknown }).toJSON())) as JsonLike
@@ -45,11 +46,10 @@ export default {
       gameOver: false
     })
     let timer: ReturnType<typeof setInterval> | null = null
-    engine.gameContext.ensureDeck()
 
     const titleText = computed(() => (props.mode === 'hand' ? 'Hand' : 'Deck'))
     const handPlayerId = computed(() => viewerState.value.activePlayerId)
-    // Assume localPlayerId is passed in or available in context
+    // localPlayerId is the id assigned to this client/instance (owner)
     const localPlayerId = computed(() => viewerState.value.playerId)
     const canPlayFromHand = computed(() => {
       if (viewerState.value.gameOver) return false
@@ -63,27 +63,20 @@ export default {
       const wf: any = engine.gameWorkflow || {}
       const ctx: any = engine.gameContext || {}
       viewerState.value = {
-        activePlayerId: Number(wf.activePlayerId ?? 0),
-        playerId: Number(ctx.playerId ?? 0),
+        activePlayerId: wf.activePlayerId,
+        playerId: ctx.playerId,
         playedThisRound: Object.fromEntries(Object.entries(engine.gameWorkflow.actionByPlayer || {}).map(([k, v]) => [k, v === 'action-taken'])),
         gameOver: Boolean(wf.gameOver)
       }
     }
 
     const isLocalPlayersTurn = computed(() => {
-      return Number(viewerState.value.playerId || 0) === Number(viewerState.value.activePlayerId || 0)
+      return viewerState.value.playerId === viewerState.value.activePlayerId
     })
 
     const cardsToShow = computed(() => {
-      if (Array.isArray(props.cards) && props.cards.length) {
-        return props.cards.map(cloneCard).filter(Boolean)
-      }
-      if (props.mode === 'hand') {
-        const playerCards = engine.getPlayerCards(handPlayerId.value)
-        if (playerCards.length) return playerCards.map(cloneCard).filter(Boolean)
-        return engine.deck.slice(0, 5).map(cloneCard).filter(Boolean)
-      }
-      return engine.deck.map(cloneCard).filter(Boolean)
+      console.log('Engine:', engine)
+      return engine.deck
     })
 
     function playFromHand(index: number) {

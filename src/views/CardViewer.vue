@@ -24,20 +24,6 @@
 	padding-bottom: 100px;
 }
 
-.card-item {
-
-	height: 100%;
-  	align-items: stretch;
-  	justify-content: stretch;
-
-	display: inline-flex;
-	flex: 0 0 auto;
-	flex-direction: column;
-	padding: 0px;
-
-
-
-}
 
 
 ion-button,
