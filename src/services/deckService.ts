@@ -2,8 +2,9 @@ import Card from '../models/Card'
 import { createInitialDeck } from '../data/sampleDeck'
 
 class DeckService {
-  createDeck(imageFor?: (title: string) => string): Card[] {
-    return createInitialDeck(imageFor)
+  createDeck(): Card[] {
+    const initialDeck = createInitialDeck()
+    return initialDeck
   }
 }
 

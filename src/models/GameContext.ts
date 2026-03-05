@@ -11,6 +11,8 @@ export class GameContext {
   playersList: Player[] =  [ {id: 0, name: 'Player 1', hand:[], castleHp: 20, castleMaxHp: 20}, {id: 1, name: 'Player 2', hand:[], castleHp: 20, castleMaxHp: 20} ];
   // persisted cards in play (serialized)
   cardsInPlay: any[] = [];
+  // persisted registry of card payloads (id -> serialized card)
+  cardsById: Record<string, any> = {};
   playerId: number = 0;
   actionByPlayer: Record<string, string> = {};
 
