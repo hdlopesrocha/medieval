@@ -43,6 +43,10 @@
           <ion-icon slot="start" :icon="shareSocialOutline"></ion-icon>
           Share
         </ion-button>
+        <ion-button size="small" fill="clear" @click="setLocalPlayerToActive">
+          <ion-icon slot="start" :icon="personOutline"></ion-icon>
+          Use active player as local
+        </ion-button>
         <ion-button size="small" fill="clear" @click="toggleFullscreen">
           <ion-icon slot="start" :icon="fullscreenIcon"></ion-icon>
           {{ fullscreenLabel }}

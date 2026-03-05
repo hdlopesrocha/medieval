@@ -6,6 +6,7 @@ import { useRoute, useRouter } from 'vue-router'
 import engine from '../game/engineInstance'
 import eventService from '../services/eventService'
 import { useWebrtcQrService } from '../services/webrtcQrService'
+import { Player } from 'src/models/Player'
 // import GameContext from '../models/GameContext' if needed
 
 export default {
@@ -30,43 +31,58 @@ export default {
     function refresh() {
       tick.value = (tick.value || 0) + 1
     }
+    const activePlayerName = computed(() => { 
+      tick.value; 
+      return engine.players[engine.gameWorkflow.activePlayerId]?.name || '' 
+    })
 
-    const activePlayerId = computed(() => engine.gameWorkflow.activePlayerId)
-    const roundNumber = computed(() => engine.gameWorkflow.round)
-    const multiplayerMode = computed(() => Boolean((webrtcQr as any).isRealtimeGameActive?.value))
-    const role = computed(() => String((webrtcQr as any).activeRole?.value || ''))
-    const connected = computed(() => Boolean((webrtcQr as any).connectedHost?.value || (webrtcQr as any).connectedClient?.value))
+    const activePlayerId = computed(() => { 
+      tick.value; 
+      return engine.gameWorkflow.activePlayerId 
+    })
+    const roundNumber = computed(() => { 
+      tick.value; 
+      return engine.gameWorkflow.round 
+    })
     // Determine the local player's id from role and multiplayer state.
     // Singleplayer/local: local player is always 0.
     // Multiplayer: server (host) is player 0, client is player 1.
     const playerId = computed(() => {
-      if (multiplayerMode.value) {
-        return role.value === 'client' ? 1 : 0
-      }
-      return 0
+      tick.value; 
+      return engine.gameContext.playerId
     })
 
     // Local player's turn when the engine's activePlayerId matches our local player id.
-    const isLocalPlayersTurn = computed(() => Number(engine.gameWorkflow.activePlayerId) === Number(playerId.value))
+    const isLocalPlayersTurn = computed(() => { 
+      tick.value; 
+      return engine.gameWorkflow.activePlayerId === playerId.value 
+    })
     const playerCastleHp = computed(() => {
+      tick.value
       const players = Array.isArray(engine.players) ? engine.players : []
       const p = players.find((entry: any) => Number(entry.id) === Number(playerId.value))
       return Number(p?.castleHp ?? 0)
     })
     const enemyCastleHp = computed(() => {
+      tick.value
       const players = Array.isArray(engine.players) ? engine.players : []
       const enemy = players.find((entry: any) => Number(entry.id) !== Number(playerId.value))
       return Number(enemy?.castleHp ?? 0)
     })
     const currentPlayerLabel = computed(() => {
-      const players = engine.players;
-      const player = players.find((entry: any) => Number(entry.id) === playerId.value)
-      return `${player.name}`
+      tick.value
+      const player : Player = engine.players[engine.gameContext.playerId]
+      return `${player?.name || ''}`
     })
-    const turnIcon = computed(() => (isLocalPlayersTurn.value ? '▶️' : '⏳'))
+    const turnIcon = computed(() => { 
+      tick.value; 
+      return (isLocalPlayersTurn.value ? '▶️' : '⏳') 
+    })
     const turnLabel = computed(() => {
-      if (isLocalPlayersTurn.value) return 'Your turn'
-      return `Waiting for your turn (Player ${activePlayerId.value} is playing)`
+      tick.value
+      if (isLocalPlayersTurn.value) 
+        return 'Your turn'
+      return `Waiting for your turn (${activePlayerName.value} is playing)`
     })
 
     function go(path: string) {
@@ -126,6 +142,19 @@ export default {
       }
     }
 
+    function setLocalPlayerToActive() {
+      try {
+        const active = Number(engine.gameWorkflow?.activePlayerId || 0)
+        if (!engine.gameContext) engine.gameContext = {} as any
+        engine.gameContext.playerId = active
+        try { engine.save() } catch (e) { console.warn('engine.save failed', e) }
+        refresh()
+      } catch (e) {
+        console.error('setLocalPlayerToActive failed', e)
+        alert('Failed to set local player to active: ' + String(e))
+      }
+    }
+
     const fullscreenLabel = computed(() => (isFullscreen.value ? 'Exit Fullscreen' : 'Fullscreen'))
     const fullscreenIcon = computed(() => (isFullscreen.value ? contractOutline : expandOutline))
 
@@ -177,6 +206,7 @@ export default {
       toggleFullscreen,
       toggleSettings,
       clearLocalStorage,
+      setLocalPlayerToActive,
       isLocalPlayersTurn,
       shareOpen,
       ShareModal,

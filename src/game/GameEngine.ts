@@ -9,6 +9,7 @@ import { GameWorkflowState, GameWorkflowStateStorage } from '../models/GameWorkf
 import { GameContext, GameContextStorage } from '../models/GameContext'
 import { Deck } from '../models/Deck'
 import eventService from '../services/eventService'
+import engine from './engineInstance'
 
 
 
@@ -180,8 +181,8 @@ export default class GameEngine {
   }
 
 
-  canAct(p: number) {
-    return true 
+  canAct() {
+    return this.gameWorkflow.activePlayerId  === this.gameContext.playerId && !this.gameWorkflow.gameOver
   }
 
 
@@ -202,18 +203,88 @@ export default class GameEngine {
 
   // market and buy mechanics removed
 
-  // Play a card from hand onto the board (position 0). Reveals the card.
-  playCard(p: number, handIndex: number) : boolean{
-    console.log(`[GameEngine] playCard called with playerId=${p}, handIndex=${handIndex}`)
-    const can = this.canAct(p)
-    if (!can) { 
-      return can
+  getOwnCastleZone(playerId: number) {
+    return Number(playerId) === 0 ? 0 : ZONES.length - 1
+  }
+
+  getEnemyCastleZone(playerId: number) {
+    return Number(playerId) === 0 ? ZONES.length - 1 : 0
+  }
+
+  getSpawnZone(card: Card | null | undefined, playerId: number) {
+    // Determine a suitable spawn zone for the played card based on its element
+    // and the player's side. Prefer the nearest zone to the player's side that
+    // matches the card's element (earth/water). Fall back to the owner's castle.
+    try {
+      const el = String((card as any)?.element || 'earth')
+      const len = ZONE_ELEMENTS.length
+      if (Number(playerId) === 0) {
+        for (let i = 0; i < len; i++) {
+          if (ZONE_ELEMENTS[i] === el) return i
+        }
+      } else {
+        for (let i = len - 1; i >= 0; i--) {
+          if (ZONE_ELEMENTS[i] === el) return i
+        }
+      }
+    } catch (_e) {
+      // ignore and fallback
     }
+    return this.getOwnCastleZone(Number(playerId))
+  }
+
+  // Play a card from hand onto the board (position 0). Reveals the card.
+  playCard(p: number, handIndex: number): { ok: boolean; reason?: string } {
+    console.log(`[GameEngine] playCard called with playerId=${p}, handIndex=${handIndex}`)
+    if (!this.gameContext || !this.gameWorkflow) return { ok: false, reason: 'no game context' }
+    const player = this.gameContext.playersList[Number(p)]
+    if (!player) return { ok: false, reason: 'player not found' }
+
+    const handArr = Array.isArray(player.hand) ? player.hand : []
+    const cidRaw = handArr[Number(handIndex)]
+    if (cidRaw == null) return { ok: false, reason: 'card not found in hand' }
+
+    // remove from hand
+    try { handArr.splice(Number(handIndex), 1) } catch (_) {}
+    player.hand = handArr
+
+    const cidStr = String(cidRaw)
+    const cardInst: any = this.allCards?.cardsById?.[String(cidStr)] || this.allCards?.cards?.[String(cidStr)] || null
+    const spawnPos = this.getSpawnZone(cardInst as any, Number(p))
+    player.cardsInPlay = player.cardsInPlay || []
+    player.cardsInPlay.push({ cardId: Number(cidStr), position: Number(spawnPos) })
+
+    // call handler if available
+    try { if (cardInst && cardInst.handler && typeof cardInst.handler.onPlayed === 'function') { cardInst.handler.onPlayed(String(cidStr), Number(p), Number(spawnPos), this) } } catch (_) {}
+
+    // mark action for this player
+    try {
+      this.gameWorkflow.actionByPlayer = this.gameWorkflow.actionByPlayer || {}
+      this.gameWorkflow.actionByPlayer[String(p)] = 'action-taken'
+    } catch (_) {}
+
+    // advance active player to opponent
+    try {
+      const playersCount = (this.gameContext.playersList || []).length || 2
+      const next = (Number(p) === 0) ? 1 : 0
+      this.gameWorkflow.activePlayerId = next
+
+      // if all players acted, advance round and clear actions
+      const actedCount = Object.values(this.gameWorkflow.actionByPlayer || {}).filter(v => v === 'action-taken').length
+      if (actedCount >= playersCount) {
+        this.gameWorkflow.round = Number(this.gameWorkflow.round || 0) + 1
+        this.gameWorkflow.actionByPlayer = {}
+      }
+    } catch (_) {}
+
+    // persist and notify
+    this.save()
+    return { ok: true }
   }
 
   // Move a specific card by up to `steps` positions (must be non-negative)
   moveCard(cardId: string, p: number, steps: number): boolean {
-    const can = this.canAct(p)
+    const can = this.canAct()
     if (!can) return can
       return false
   }

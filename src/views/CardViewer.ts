@@ -91,7 +91,7 @@ export default {
     function playFromHand(index: number) {
       if (!canPlayFromHand.value) return
       const playerId = Number(localPlayerId.value)
-      const result: any = engine.playCard(playerId, Number(index || 0))
+      const result: any = engine.playCard(playerId, index)
       if (!result) {
         alert('Play failed: ' + String(result?.reason || 'invalid action'))
       }
