@@ -37,7 +37,6 @@ export default {
     const tick = ref(0)
     const state = computed(() => {
       tick.value
-      const rawPlayers = Array.isArray(engine.players)
       const wf = engine.gameWorkflow
       const ctx = engine.gameContext
       const aggregatedCards = (Array.isArray(engine.players) ? engine.players : []).reduce((acc: any[], p: any) => {
@@ -184,107 +183,38 @@ export default {
     }
 
     function canConvert(attacker: any | undefined | null) {
-      if (!attacker || !attacker.card) return false
-      const range = Number(attacker.card.range || 0)
-      const targets = state.value.cardsInPlay.filter((card) => card.ownerId !== state.value.activePlayerId)
-      return targets.some((target) => Math.abs(Number(target.position) - Number(attacker.position)) <= range)
+      return false
     }
 
-    function chooseEnemyTarget(modeLabel: string) {
-      const targets = state.value.cardsInPlay.filter((entry) => entry.ownerId !== state.value.activePlayerId)
-      if (!targets.length) {
-        alert('no targets')
-        return ''
-      }
-      const options = targets.map((entry) => `${entry.id} :: ${String(entry.card?.title || 'unknown')} (pos ${entry.position})`).join('\n')
-      const picked = window.prompt(`${modeLabel} target id:\n${options}`, String(targets[0].id || ''))
-      if (!picked) return ''
-      const id = String(picked).trim()
-      const exists = targets.some((entry) => String(entry.id) === id)
-      return exists ? id : ''
-    }
-
+    
     async function moveSelectedCard() {
-      if (!selectedEntry.value || !selectedCanAct.value) return
-      const card = selectedEntry.value
-      const velocity = Number(card.card?.velocity ?? 0)
-      if (!Number.isFinite(velocity) || velocity <= 0) return alert('Move failed: card has no velocity')
-
-      const playerId = Number(state.value.activePlayerId || 0)
-      const isWaterUnit = String(card.card?.element || 'earth') === 'water'
-      let maxSteps = velocity
-
-      if (isWaterUnit) {
-        const direction = playerId === 0 ? 1 : -1
-        let maxWaterSteps = 0
-        for (let index = 1; index <= velocity; index++) {
-          const nextZone = Number(card.position) + (direction * index)
-          if (nextZone < 0 || nextZone >= ZONE_ELEMENTS.length) break
-          if (ZONE_ELEMENTS[nextZone] !== 'water') break
-          maxWaterSteps = index
-        }
-        if (maxWaterSteps <= 0) return alert('Move failed: no reachable water zone for this boat')
-        maxSteps = maxWaterSteps
-      }
-
-      const raw = window.prompt(`Move steps (0 to ${maxSteps})`, String(maxSteps))
-      if (raw == null) return
-      let steps = Number(raw)
-      if (!Number.isFinite(steps)) steps = 0
-      steps = Math.max(0, Math.min(maxSteps, Math.trunc(steps)))
-      const confirmed = await askConfirm('Confirm move', `Move card ${card.id} by ${steps} step(s)?`)
-      if (!confirmed) return
-      const result: any = engine.moveCard(String(card.id), playerId, steps)
-      if (!result?.ok) return alert('Move failed: ' + String(result?.reason || 'invalid action'))
       refreshState()
     }
 
     async function attackWithSelectedCard() {
-      if (!selectedEntry.value || !selectedCanAct.value) return
-      const playerId = Number(state.value.activePlayerId || 0)
-      const targetId = chooseEnemyTarget('Attack')
-      if (!targetId) return
-      const confirmed = await askConfirm('Confirm attack', `Attack target ${targetId} with ${selectedEntry.value.id}?`)
-      if (!confirmed) return
-      const result: any = engine.attackCard(String(selectedEntry.value.id), targetId, playerId)
-      if (!result?.ok) return alert('Attack failed: ' + String(result?.reason || 'invalid action'))
       refreshState()
     }
 
     async function convertWithSelectedCard() {
-      if (!selectedEntry.value || !selectedCanAct.value) return
-      const playerId = Number(state.value.activePlayerId || 0)
-      const targetId = chooseEnemyTarget('Convert')
-      if (!targetId) return
-      const confirmed = await askConfirm('Confirm convert', `Convert target ${targetId} using ${selectedEntry.value.id}?`)
-      if (!confirmed) return
-      const result: any = engine.convertCard(String(selectedEntry.value.id), targetId, playerId)
-      if (!result?.ok) return alert('Convert failed: ' + String(result?.reason || 'invalid action'))
+     
       refreshState()
     }
 
     async function useSelectedAbility() {
-      if (!selectedEntry.value || !selectedCanAct.value) return
-      const options = state.value.cardsInPlay
-        .map((entry) => `${entry.id} :: ${String(entry.card?.title || 'unknown')} (owner ${entry.ownerId}, pos ${entry.position})`)
-        .join('\n')
-      const picked = window.prompt(`Use ability target id (leave empty for no target):\n${options}`, '')
-      if (picked == null) return
-      const targetId = String(picked || '').trim()
-      const playerId = Number(state.value.activePlayerId || 0)
-      const confirmed = await askConfirm('Confirm ability', targetId ? `Use ability of ${selectedEntry.value.id} on ${targetId}?` : `Use ability of ${selectedEntry.value.id}?`)
-      if (!confirmed) return
-      const result: any = targetId
-        ? engine.useCardAbility(String(selectedEntry.value.id), playerId, targetId)
-        : engine.useCardAbility(String(selectedEntry.value.id), playerId)
-      if (!result?.ok) return alert('Ability failed: ' + String(result?.reason || 'invalid action'))
       refreshState()
     }
 
     let unsub: (() => void) | null = null
     onMounted(() => {
       refreshState()
-      try { unsub = eventService.on('engine:stateChange', () => { refreshState(); console.log('[MapPage] engine emitted update') }) } catch (e) { unsub = null }
+      try { 
+        unsub = eventService.on('engine:stateChange', () => { 
+          refreshState(); 
+          console.log('[MapPage] engine emitted update') 
+        }) 
+      } catch (e) { 
+        unsub = null 
+      }
     })
 
     onUnmounted(() => {
