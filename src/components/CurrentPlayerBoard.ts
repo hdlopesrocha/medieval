@@ -20,6 +20,7 @@ export default {
     const tick = ref(0)
     const settingsOpen = ref(false)
     const shareOpen = ref(false)
+    const boardVisible = ref(true)
     const isFullscreen = ref(false)
     const settingsTriggerId = 'current-player-board-settings-trigger'
     let unsub: (() => void) | null = null
@@ -98,7 +99,6 @@ export default {
       if (!isLocalPlayersTurn.value) return
      
         engine.reset()
-        webrtcQr.syncGameState('createGame', engine.gameContext.getEnemyId())
      
         refresh()
      
@@ -118,7 +118,10 @@ export default {
     }
 
     // Board is always visible; hide/show toggle removed.
-
+    function toggleBoardVisible() {
+      boardVisible.value = !boardVisible.value
+      refresh()
+    }
     function clearLocalStorage() {
       try {
         engine.clearStoredState()
