@@ -10,7 +10,7 @@ import { GameContext, GameContextStorage } from '../models/GameContext'
 import { Deck } from '../models/Deck'
 import eventService from '../services/eventService'
 import engine from './engineInstance'
-
+import { ref } from 'vue'
 
 
 export const ZONES = [
@@ -149,7 +149,7 @@ export default class GameEngine {
          // ignore and fall back to empty deck
        }
        this.allCards = rebuilt
-       this.save()
+       this.save(false);
        // Notify subscribers and UI
        try { this.emitStateChange() } catch (_e) {}
        return true
@@ -201,7 +201,7 @@ export default class GameEngine {
     }
     this.gameContext.deck = deckArr
     // save initial state and persist card registry
-    this.save()
+    this.save(true)
   
 
     console.log('GameEngine initialized with context:', this.gameContext, this.gameWorkflow, this.allCards)
@@ -222,7 +222,7 @@ export default class GameEngine {
       deckArr[j] = tmp
     }
     this.gameContext.deck = deckArr
-    this.save()
+    this.save(true)
   }
 
  
@@ -261,70 +261,54 @@ export default class GameEngine {
   }
 
   // Play a card from hand onto the board (position 0). Reveals the card.
-  playCard(p: number, handIndex: number): { ok: boolean; reason?: string } {
-    console.log(`[GameEngine] playCard called with playerId=${p}, handIndex=${handIndex}`)
-    if (!this.gameContext || !this.gameWorkflow) return { ok: false, reason: 'no game context' }
-    const player = this.gameContext.playersList[Number(p)]
-    if (!player) return { ok: false, reason: 'player not found' }
+  playCard(playerId: number, handIndex: number): { ok: boolean; reason?: string } {
+    const cid = this.gameContext.playersList[playerId].hand[handIndex]
 
-    const handArr = Array.isArray(player.hand) ? player.hand : []
-    const cidRaw = handArr[Number(handIndex)]
-    if (cidRaw == null) return { ok: false, reason: 'card not found in hand' }
+    console.log(`[GameEngine] `, this.gameContext.playersList[playerId])
 
-    // remove from hand
-    try { handArr.splice(Number(handIndex), 1) } catch (_) {}
-    player.hand = handArr
+    this.gameContext.playersList[playerId].hand.splice(handIndex, 1)
+    this.gameContext.playersList[playerId].cardsInPlay.push({ cardId: cid, position:0 })
 
-    const cidStr = String(cidRaw)
-    const cardInst: any = this.allCards?.cardsById?.[String(cidStr)] || this.allCards?.cards?.[String(cidStr)] || null
-    const spawnPos = this.getSpawnZone(cardInst as any, Number(p))
-    player.cardsInPlay = player.cardsInPlay || []
-    player.cardsInPlay.push({ cardId: Number(cidStr), position: Number(spawnPos) })
+    this.gameWorkflow.actionByPlayer = this.gameWorkflow.actionByPlayer || {}
+    this.gameWorkflow.actionByPlayer[playerId] = 'action-taken'
 
-    // call handler if available
-    try { if (cardInst && cardInst.handler && typeof cardInst.handler.onPlayed === 'function') { cardInst.handler.onPlayed(String(cidStr), Number(p), Number(spawnPos), this) } } catch (_) {}
 
-    // mark action for this player
-    try {
-      this.gameWorkflow.actionByPlayer = this.gameWorkflow.actionByPlayer || {}
-      this.gameWorkflow.actionByPlayer[String(p)] = 'action-taken'
-    } catch (_) {}
+  // advance active player to opponent
 
-    // advance active player to opponent
-    try {
-      const playersCount = (this.gameContext.playersList || []).length || 2
-      const next = (Number(p) === 0) ? 1 : 0
-      this.gameWorkflow.activePlayerId = next
+    const playersCount = (this.gameContext.playersList || []).length || 2
+    const next = (playerId === 0) ? 1 : 0
+    this.gameWorkflow.activePlayerId = next
 
-      // if all players acted, advance round and clear actions
-      const actedCount = Object.values(this.gameWorkflow.actionByPlayer || {}).filter(v => v === 'action-taken').length
-      if (actedCount >= playersCount) {
-        this.gameWorkflow.round = Number(this.gameWorkflow.round || 0) + 1
-        this.gameWorkflow.actionByPlayer = {}
-      }
-    } catch (_) {}
+    // if all players acted, advance round and clear actions
+    const actedCount = Object.values(this.gameWorkflow.actionByPlayer || {}).filter(v => v === 'action-taken').length
+    if (actedCount >= playersCount) {
+      this.gameWorkflow.round = this.gameWorkflow.round + 1
+      this.gameWorkflow.actionByPlayer = {}
+    }
 
     // persist and notify
-    this.save()
+    this.allCards.cardsById[cid].handler.onPlayed(cid, playerId, this)
+    this.save(true)
+
     return { ok: true }
   }
 
   // Move a specific card by up to `steps` positions (must be non-negative)
-  moveCard(cardId: string, p: number, steps: number): boolean {
+  moveCard(cardId: string, playerId: number, steps: number): boolean {
     const can = this.canAct()
     if (!can) return can
       return false
   }
 
   // Persist internal state to localStorage (browser). Silent on failure.
-  save() {
+  save(broadcast: boolean) {
    
     GameContextStorage.save(this.gameContext)
     GameWorkflowStateStorage.save(this.gameWorkflow)
     this.allCards.save()
     // notify subscribers that state changed
-    try { this.emitStateChange() } catch (_e) {}
-    try { eventService.emit('engine:stateChange', this) } catch (_e) {}
+    this.emitStateChange()
+    eventService.emit('engine:stateChange', this, broadcast)
   }
 
   // Clear persisted storage entries that belong to the game and reset in-memory state.
@@ -359,7 +343,7 @@ export default class GameEngine {
     this.gameWorkflow = storedWorkflow
     this.allCards = storedDeck
     try { this.emitStateChange() } catch (_e) {}
-    try { eventService.emit('engine:stateChange', this) } catch (_e) {}
+    try { eventService.emit('engine:stateChange', this, false) } catch (_e) {}
     return true
   }
 
