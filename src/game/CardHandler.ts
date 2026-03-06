@@ -1,35 +1,27 @@
 import Card from '../models/Card'
+import GameEngine from './GameEngine'
 
 export interface CardHandler {
-  onMove(cardId: string, ownerId?: number, from?: number, to?: number, engine?: any): void
-  onAttack(attackerId: string, targetId: string, engine?: any): void
-  onPlayed(cardId: string, ownerId?: number, position?: number, engine?: any): void
-  onKilled(cardId: string, ownerId?: number, engine?: any): void
+  onMove(cardId: string, ownerId?: number, from?: number, to?: number, engine?: GameEngine): void
+  onAttack(attackerId: string, targetId: string, engine?: GameEngine): void
+  onPlayed(cardId: number, ownerId?: number, engine?: GameEngine): void
+  onKilled(cardId: number, ownerId?: number, engine?: GameEngine): void
 }
 
 export class DefaultCardHandler implements CardHandler {
-  onMove(cardId: string, _ownerId?: number, _from?: number, to?: number, engine?: any): void {
+  onMove(cardId: string, _ownerId?: number, _from?: number, to?: number, engine?: GameEngine): void {
 
   }
 
-    onAttack(_attackerId: string, _targetId: string, _engine?: any): void {
+    onAttack(_attackerId: string, _targetId: string, _engine?: GameEngine): void {
 
     }
 
-  onPlayed(cardId: string, ownerId?: number, position?: number, engine?: any): void {
-    // TODO
-    // the card should be added to cards in play for that player, and removed from the player's hand
-    // the card's position should be set to 0
-    // the card's owner should be set to the gameContext.playerID
-    // the player removes another card from deck to hand, if any
-    // the turn ends
-
-
-    console.log(`[CardHandler] onPlayed: cardId=${cardId}, ownerId=${ownerId}, position=${position}`)
-
+  onPlayed(cardId: number, ownerId?: number, engine?: GameEngine): void {
+    console.log("onPlayed", cardId, ownerId);
   }
 
-  onKilled(cardId: string, _ownerId?: number, engine?: any): void {
+  onKilled(cardId: number, _ownerId?: number, engine?: GameEngine): void {
 
   }
 }
