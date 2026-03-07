@@ -23,16 +23,13 @@ export default defineComponent({
       return isProd ? base + normalized : (normalized || p)
     })
 
-    const imageAlt = computed<string>(() => props.card?.title || 'card')
-
-    const onSelect = () => {
-      emit('select', props.card)
-    }
+    const imageAlt = computed<string>(() => 
+      props.card?.title || 'card'
+    )
 
     return {
       imageSrc,
-      imageAlt,
-      onSelect
+      imageAlt
     }
   }
 })
