@@ -10,6 +10,7 @@ import type { GameContext } from '../models/GameContext'
 import type { GameWorkflowState } from '../models/GameWorkflowState'
 import Card from 'src/models/Card'
 import CardPosition from 'src/models/CardPosition'
+import { car } from 'ionicons/icons'
 
 const ZONE_COUNT = 8
 const MAX_ZONE_VISIBLE_CARDS = 4
@@ -130,10 +131,15 @@ export default {
 
       for (const p of engine.players) {
         const playedCards = p.played
-        console.log('playedCards:', playedCards)
         for (const cardPosition of playedCards) {
-          grouped[cardPosition.position].push(
-            engine.allCards[cardPosition.cardId]
+          const card = engine.allCards.cards[cardPosition.cardId]
+          let cp = cardPosition.position
+          if(p.id !== engine.gameContext.playerId) {
+            cp = 7 - cp
+          }
+
+          grouped[cp].push(
+            card
           )
         }
       }
