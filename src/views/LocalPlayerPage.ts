@@ -13,6 +13,7 @@ import { sortCardsInPlayBySlot } from '../utils/sortCardsInPlay'
 import type { GameContext } from '../models/GameContext'
 import type { GameWorkflowState } from '../models/GameWorkflowState'
 import type Card from '../models/Card'
+import { play } from 'ionicons/icons'
 
 type GameActionResult = {
   ok?: boolean
@@ -55,7 +56,7 @@ export default {
     const isServerAuthority = computed(() => multiplayerMode.value && state.value.playerId === 0)
     const isClientProxy = computed(() => multiplayerMode.value && state.value.playerId === 1)
     // Only allow play if localPlayerId === activePlayerId
-    const tableCardsInPlay = computed(() => sortCardsInPlayBySlot(state.value.cardsInPlay, state.value.activePlayerId))
+    const tableCardsInPlay = computed(() => sortCardsInPlayBySlot(state.value.played, state.value.activePlayerId))
     const currentPlayingUserLabel = computed(() => {
       const currentId = Number(state.value.playerId ?? state.value.activePlayerId ?? 0)
       const player = (state.value.players || []).find((p: any) => Number(p.id) === currentId)
@@ -78,8 +79,8 @@ export default {
     function normalizedStateFromEngine(): any {
       const rawPlayers = Array.isArray(engine.players) ? engine.players : []
       const rawCardsInPlay = (Array.isArray(engine.players) ? engine.players : []).reduce((acc: any[], p: any) => {
-        const ownerId = Number(p.id)
-        const entries = Array.isArray(p.cardsInPlay) ? p.cardsInPlay : []
+        const ownerId = p.id
+        const entries = p.played
         for (const entry of entries) {
           const cid = Number((entry as any)?.cardId ?? (entry as any)?.id ?? NaN)
           if (!Number.isFinite(cid)) continue
@@ -105,7 +106,7 @@ export default {
         playedThisRound: Object.fromEntries(Object.entries(engine.gameWorkflow.actionByPlayer || {}).map(([k, v]) => [k, v === 'action-taken'])),
         castleHpByPlayer,
         players: rawPlayers.map((player) => ({ id: Number(player?.id || 0), name: player?.name })),
-        cardsInPlay: rawCardsInPlay.map((entry) => ({ id: String(entry?.id || ''), ownerId: Number(entry?.ownerId || 0), position: Number(entry?.position || 0), hidden: Boolean(entry?.hidden), card: entry?.card }))
+        played: rawCardsInPlay.map((entry) => ({ id: String(entry?.id || ''), ownerId: Number(entry?.ownerId || 0), position: Number(entry?.position || 0), hidden: Boolean(entry?.hidden), card: entry?.card }))
       }
       // bump tick for any computed watchers that also rely on it
       tick.value++
@@ -174,7 +175,7 @@ export default {
 
 
     function moveCardUI(cardId: string) {
-      const g = state.value.cardsInPlay.find((x) => x.id === cardId)
+      const g = state.value.played.find((x) => x.id === cardId)
       if (!g) return alert('card not found')
       const velocity = Number(g.card?.velocity ?? 0)
       if (!Number.isFinite(velocity) || velocity <= 0) return alert('Move failed: card has no velocity')

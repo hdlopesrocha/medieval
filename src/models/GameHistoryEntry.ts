@@ -7,8 +7,7 @@ export class GameHistoryEntry {
   round: number = 0;
   gameOver: boolean = false;
   deckCount: number = 0;
-  cardsInPlayCount: number = 0;
-  castleHpByPlayer: Record<string, number> = {};
+  castleHpByPlayer: Record<number, number> = {};
 
   constructor(init?: Partial<GameHistoryEntry>) {
     Object.assign(this, init);

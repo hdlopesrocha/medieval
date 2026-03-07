@@ -14,7 +14,6 @@
         <div><strong>#{{ entry.order }}</strong> · {{ formatTime(entry.timestamp) }}</div>
         <div><strong>action:</strong> {{ entry.action }}</div>
         <div><strong>round:</strong> {{ entry.round }} · <strong>activePlayer:</strong> {{ entry.activePlayerId }}</div>
-        <div><strong>deck:</strong> {{ entry.deckCount }} · <strong>inPlay:</strong> {{ entry.cardsInPlayCount }}</div>
         <div><strong>castleHp:</strong> p0={{ entry.castleHpByPlayer?.['0'] ?? 0 }} p1={{ entry.castleHpByPlayer?.['1'] ?? 0 }}</div>
         <div v-if="entry.gameOver" style="color:#b00020;font-weight:700">gameOver</div>
       </div>

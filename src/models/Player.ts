@@ -2,12 +2,16 @@
 import Card from './Card'
 import CardPosition from './CardPosition'
 
-export interface Player {
+export class Player {
   id: number
   name?: string
-  hand?: Array<number>
+  hand?: Array<number> = []
   castleHp?: number
   castleMaxHp?: number
-  cardsInPlay?: Array<CardPosition>
+  played?: Array<CardPosition> = []
+
+  constructor(init: Partial<Player>) {
+    Object.assign(this, init)
+  }
 }
 

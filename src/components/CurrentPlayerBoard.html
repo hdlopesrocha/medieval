@@ -45,17 +45,17 @@
         </ion-button>
         <ion-button size="small" fill="clear" @click="setLocalPlayerToActive">
           <ion-icon slot="start" :icon="personOutline"></ion-icon>
-          Use active player as local
+          Set active player
         </ion-button>
         <ion-button size="small" fill="clear" @click="toggleFullscreen">
           <ion-icon slot="start" :icon="fullscreenIcon"></ion-icon>
           {{ fullscreenLabel }}
         </ion-button>
-        <ion-button v-if="boardVisible" size="small" fill="clear" style="margin-top: 8px;" @click="toggleBoardVisible">
+        <ion-button v-if="boardVisible" size="small" fill="clear" @click="toggleBoardVisible">
           <ion-icon slot="start" :icon="contractOutline"></ion-icon>
           Hide Player Board
         </ion-button>
-        <ion-button size="small" color="danger" fill="clear" style="margin-top: 8px;" @click="clearLocalStorage">
+        <ion-button size="small" color="danger" fill="clear" @click="clearLocalStorage">
           <ion-icon slot="start" :icon="trashOutline"></ion-icon>
           Erase local storage
         </ion-button>

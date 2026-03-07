@@ -82,7 +82,7 @@
 
     <section style="margin-top:16px">
       <h3>Table (cards in play)</h3>
-      <div v-if="state.cardsInPlay.length === 0">No cards in play</div>
+      <div v-if="state.played.length === 0">No cards in play</div>
       <div v-else style="display:flex;flex-wrap:wrap;gap:8px">
         <div
           v-for="g in tableCardsInPlay"

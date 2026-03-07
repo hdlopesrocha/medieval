@@ -3,22 +3,6 @@ import Card from './Card'
 export class Deck {
   public cards: Record<number, Card> = {}
 
-  // Compatibility alias expected by consumers
-  get cardsById(): Record<string, Card> {
-    const out: Record<string, Card> = {}
-    for (const k of Object.keys(this.cards || {})) {
-      out[String(k)] = this.cards[k as any]
-    }
-    return out
-  }
-  set cardsById(v: Record<string, Card>) {
-    const out: Record<number, Card> = {}
-    for (const k of Object.keys(v || {})) {
-      out[Number(k)] = v[k]
-    }
-    this.cards = out
-  }
-
   constructor(cards?: Card[]) {
     if (cards) {
       for (const c of cards) {

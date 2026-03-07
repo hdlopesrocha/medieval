@@ -27,22 +27,34 @@
           />
         </div>
         <div class="zones-overlay">
-          <div v-for="zoneIdx in 8" :key="`zone-${zoneIdx}`" class="zone-cell" :style="zoneStyle(zoneIdx - 1)">
-            <div class="zone-stack" :style="zoneStackStyle(zoneIdx - 1)">
-              <div v-for="entry in cardsForZone(zoneIdx - 1)" :key="`zone-${zoneIdx}-card-${entry.id}`" class="played-card">
-                <MiniCardItem v-if="entry.card" :card="entry.card" @select="selectCard(entry)" />
+          <div v-for="zoneIdx in [0, 1, 2, 3, 4, 5, 6, 7]" 
+            :key="`zone-${zoneIdx}`" 
+            class="zone-cell" 
+            :style="zoneStyle(zoneIdx)">
+            <div class="zone-stack" 
+              :style="zoneStackStyle(zoneIdx)">
+              <div v-for="card in cardsForZone(zoneIdx)" 
+                :key="`zone-${zoneIdx}-card`" 
+                class="played-card">
+                <MiniCardItem v-if="card" 
+                :card="card" 
+                @select="selectCard(card)" />
                 <div v-else class="mini-card-fallback"></div>
               </div>
             </div>
-            <div v-if="hiddenCountForZone(zoneIdx - 1) > 0" class="zone-overflow-badge">
-              +{{ hiddenCountForZone(zoneIdx - 1) }}
+            <div v-if="hiddenCountForZone(zoneIdx) > 0" class="zone-overflow-badge">
+              +{{ hiddenCountForZone(zoneIdx) }}
             </div>
           </div>
         </div>
       </div>
     </div>
 
-    <div v-if="cardsInPlayCount === 0" style="margin-top:8px;color:#666">No played cards yet. Play from hand first.</div>
 </ion-page>
 
-<ConfirmActionModal :visible="confirmVisible" :title="confirmTitle" :message="confirmMessage" @confirm="onConfirm" @cancel="onCancel" />
+<ConfirmActionModal 
+  :visible="confirmVisible" 
+  :title="confirmTitle" 
+  :message="confirmMessage" 
+  @confirm="onConfirm" 
+  @cancel="onCancel" />

@@ -125,7 +125,6 @@ export default {
     function clearLocalStorage() {
       try {
         engine.clearStoredState()
-        window.location.reload() 
       } catch (e) {
         alert('Failed to clear local storage: ' + String(e))
       }

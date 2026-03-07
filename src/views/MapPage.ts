@@ -8,6 +8,8 @@ import MiniCardItem from '../components/MiniCardItem.vue'
 import ConfirmActionModal from '../components/ConfirmActionModal.vue'
 import type { GameContext } from '../models/GameContext'
 import type { GameWorkflowState } from '../models/GameWorkflowState'
+import Card from 'src/models/Card'
+import CardPosition from 'src/models/CardPosition'
 
 const ZONE_COUNT = 8
 const MAX_ZONE_VISIBLE_CARDS = 4
@@ -39,9 +41,9 @@ export default {
       tick.value
       const wf = engine.gameWorkflow
       const ctx = engine.gameContext
-      const aggregatedCards = (Array.isArray(engine.players) ? engine.players : []).reduce((acc: any[], p: any) => {
+      const aggregatedCards = engine.players.reduce((acc: any[], p: any) => {
         const ownerId = Number(p.id)
-        const entries = Array.isArray(p.cardsInPlay) ? p.cardsInPlay : []
+        const entries = p.played 
         for (const entry of entries) {
           const cid = Number((entry as any)?.cardId ?? (entry as any)?.id ?? NaN)
           if (!Number.isFinite(cid)) continue
@@ -52,11 +54,11 @@ export default {
         return acc
       }, [])
       const nextState: any = {
-        activePlayerId: Number(wf.activePlayerId || 0),
-        playerId: Number(ctx.playerId ?? wf.activePlayerId ?? 0),
-        round: Number(wf.round ?? 0),
+        activePlayerId: wf.activePlayerId,
+        playerId: ctx.playerId,
+        round: wf.round,
         players: engine.players,
-        cardsInPlay: aggregatedCards
+        played: aggregatedCards
       }
       return nextState
     })
@@ -87,7 +89,9 @@ export default {
 
     function selectCard(entry: any) {
       selectedEntry.value = entry || null
-      if (entry) popoverOpen.value = true
+      if (entry) { 
+        popoverOpen.value = true
+      }
     }
 
     function onPopoverDismiss() {
@@ -113,49 +117,41 @@ export default {
       // Bump tick to force computed readers to refresh.
       tick.value++
       if (selectedCardId.value) {
-        const latest = (state.value.cardsInPlay || []).find((entry) => String(entry.id) === selectedCardId.value) || null
+        const latest = (state.value.played || []).find((entry) => String(entry.id) === selectedCardId.value) || null
         selectedEntry.value = latest
       }
     }
 
-    const cardsInPlayCount = computed(() => {
-      let sum = 0
-      for (const p of (engine.players || [])) {
-        sum += Array.isArray(p.cardsInPlay) ? p.cardsInPlay.length : 0
+    const cardsByZone = computed(() : Record<number, Card[]> => {
+      const grouped: Record<number, Card[]> = {}
+      for (let index = 0; index < ZONE_COUNT; index++) {
+        grouped[index] = []
       }
-      return sum
-    })
 
-    const cardsByZone = computed(() => {
-      const grouped: Record<number, any[]> = {}
-      for (let index = 0; index < ZONE_COUNT; index++) grouped[index] = []
-      const players = Array.isArray(engine.players) ? engine.players : []
-      for (const p of players) {
-        const ownerId = Number(p.id)
-        const entries = Array.isArray(p.cardsInPlay) ? p.cardsInPlay : []
-        for (const entry of entries) {
-          const cid = Number((entry as any)?.cardId ?? (entry as any)?.id ?? NaN)
-          if (!Number.isFinite(cid)) continue
-          const pos = Number((entry as any)?.position ?? 0)
-          if (!Number.isInteger(pos) || pos < 0 || pos >= ZONE_COUNT) continue
-          const cardInst = engine.allCards[String(cid)] || null
-          grouped[pos].push({ id: String(cid), ownerId, position: Number(pos), hidden: Boolean((entry as any)?.hidden ?? (cardInst as any)?.hidden), card: cardInst })
+      for (const p of engine.players) {
+        const playedCards = p.played
+        console.log('playedCards:', playedCards)
+        for (const cardPosition of playedCards) {
+          grouped[cardPosition.position].push(
+            engine.allCards[cardPosition.cardId]
+          )
         }
       }
+      console.log('Cards grouped by zone:', grouped)
       return grouped
     })
 
-    function cardsForZone(zoneIndex: number) {
-      return (cardsByZone.value[zoneIndex] || []).slice(0, MAX_ZONE_VISIBLE_CARDS)
+    function cardsForZone(zoneIndex: number): Card[] {
+      return cardsByZone.value[zoneIndex] 
     }
 
     function hiddenCountForZone(zoneIndex: number) {
-      const total = (cardsByZone.value[zoneIndex] || []).length
+      const total = cardsByZone.value[zoneIndex].length
       return Math.max(0, total - MAX_ZONE_VISIBLE_CARDS)
     }
 
     function visibleCountForZone(zoneIndex: number) {
-      const total = (cardsByZone.value[zoneIndex] || []).length
+      const total = cardsByZone.value[zoneIndex].length
       return Math.max(0, Math.min(MAX_ZONE_VISIBLE_CARDS, total))
     }
 
@@ -218,14 +214,15 @@ export default {
     })
 
     onUnmounted(() => {
-      try { if (unsub) unsub() } catch (_) {}
+      if (unsub) {
+        unsub()
+      }
     })
 
     return {
       mapStripImages,
       state,
       isLocalPlayersTurn,
-      cardsInPlayCount,
       selectedEntry,
       confirmVisible,
       confirmTitle,

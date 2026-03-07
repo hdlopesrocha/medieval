@@ -27,14 +27,7 @@ function cloneCard(card: Card): JsonLike | null {
 export default {
   name: 'CardViewer',
   props: {
-    cards: {
-      type: Array,
-      default: null
-    },
-    mode: {
-      type: String,
-      default: 'deck'
-    }
+    mode: String
   },
   components: { CardItem, HorizontalScrollSlider, IonPage, IonContent, IonButton, IonButtons },
   setup(props: CardViewerProps) {
@@ -52,9 +45,9 @@ export default {
       const wf: any = engine.gameWorkflow || {}
       if (wf.gameOver) return false
       // Only allow play if it's this player's turn and they haven't played yet
-      if (Number(wf.activePlayerId ?? 0) !== Number(localPlayerId.value)) return false
-      const playedMap = Object.fromEntries(Object.entries(wf.actionByPlayer || {}).map(([k, v]) => [k, v === 'action-taken']))
-      return !playedMap[String(localPlayerId.value)]
+      if (wf.activePlayerId !== localPlayerId.value) 
+        return false
+      return true
     })
 
     
@@ -65,10 +58,9 @@ export default {
     })
 
     const cardsToShow = computed((): Card[] => {
-        console.debug('[CardViewer] computing cardsToShow, props.cards present?', Array.isArray(props.cards) && props.cards.length)
-      // If explicit cards were passed as a prop, show them
-      if (Array.isArray(props.cards) && props.cards.length) return props.cards
-
+      tick.value
+      console.debug('[CardViewer] computing cardsToShow')
+ 
       const mode = String(props.mode || 'deck')
       var hand = [];
       
@@ -76,13 +68,11 @@ export default {
         return engine.getPlayerCards(engine.gameContext.playerId)
       }
       else {
-        hand = engine.gameContext.deck || []
+        hand = engine.gameContext.deck
       }
       const result = hand.map(entry => {
-        try {
-          return (engine.allCards as any).cardsById?.[String(entry)] || (engine.allCards as any).cards?.[String(entry)] || null
-        } catch (_) { return null }
-      }).filter(Boolean) as Card[]
+          return engine.allCards.cards[entry]
+      })
       console.log('Cards to show:', { mode, hand, result })
       return result // resolve ids to card objects; if already objects, pass through
       
@@ -115,22 +105,17 @@ export default {
 
     onMounted(() => {
       tick.value++
-      // Force an initial evaluation of computed values so we see logs
-      try { console.log('[CardViewer] initial cardsToShow =>', cardsToShow.value) } catch (e) { console.log('[CardViewer] cardsToShow access failed', e) }
-      // Subscribe to engine state change events for instant updates (via EventService)
-      const unsub = (eventService && typeof eventService.on === 'function')
-        ? eventService.on('engine:stateChange', () => { tick.value++; console.log('[CardViewer] engine emitted update') })
-        : null
-      try {
-        console.log('[CardViewer] engine.gameContext:', engine.gameContext)
-        console.log('[CardViewer] engine.allCards.cardsById keys:', Object.keys((engine.allCards && (engine.allCards as any).cardsById) || {}).slice(0,50))
-        console.log('[CardViewer] engine.allCards:', engine.allCards, 'length=', Array.isArray(engine.allCards) ? engine.allCards.length : 'n/a')
-        console.log('[CardViewer] props.mode:', props.mode, 'engine.gameContext.playerId:', engine.gameContext?.playerId)
-      } catch (e) {
-        console.log('[CardViewer] engine introspect failed', e)
-      }
+      console.log('[CardViewer] initial cardsToShow =>', cardsToShow.value) 
+      const unsub = eventService.on('engine:stateChange', () => { 
+        tick.value++; 
+        console.log('[CardViewer] engine emitted update') 
+      })  
+      console.log('[CardViewer] engine.gameContext:', engine.gameContext)
+      console.log('[CardViewer] engine.allCards.cards keys:', Object.keys(engine.allCards.cards))
+      console.log('[CardViewer] engine.allCards:', engine.allCards, 'length=', Array.isArray(engine.allCards) ? engine.allCards.length : 'n/a')
+      console.log('[CardViewer] props.mode:', props.mode, 'engine.gameContext.playerId:', engine.gameContext?.playerId)
+
       timer = setInterval(() => { tick.value++ }, 500)
-      // cleanup subscription on unmount
       onUnmounted(() => { try { if (unsub) unsub() } catch (_) {} })
     })
 

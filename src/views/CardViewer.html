@@ -3,9 +3,13 @@
       <div class="card-slot" v-for="(c, i) in cardsToShow" :key="i">
         <CardItem v-if="c"
           :card="c"
-        :show-export="true">
+          :show-export="true">
           <template #actions>
-            <ion-button v-if="isLocalPlayersTurn && mode === 'hand'" size="small" :disabled="!canPlayFromHand || localPlayerId !== activePlayerId" @click="playFromHand(i)">Play</ion-button>
+            <ion-button 
+              v-if="isLocalPlayersTurn && mode === 'hand'" 
+              size="small" 
+              :disabled="!canPlayFromHand || localPlayerId !== activePlayerId" 
+              @click="playFromHand(i)">Play</ion-button>
           </template>
         </CardItem>
       </div>

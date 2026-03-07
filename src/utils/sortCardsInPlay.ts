@@ -4,9 +4,9 @@ export interface SortableInPlayCard {
   position?: number | string
 }
 
-export function sortCardsInPlayBySlot<T extends SortableInPlayCard>(cardsInPlay: T[], activePlayerId: number) {
+export function sortCardsInPlayBySlot<T extends SortableInPlayCard>(played: T[], activePlayerId: number) {
   const activeId = Number(activePlayerId || 0)
-  const cards = Array.isArray(cardsInPlay) ? [...cardsInPlay] : []
+  const cards = played
   cards.sort((left, right) => {
     const leftEnemy = Number(left.ownerId) !== activeId
     const rightEnemy = Number(right.ownerId) !== activeId

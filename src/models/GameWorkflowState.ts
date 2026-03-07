@@ -34,7 +34,6 @@ export class GameWorkflowState {
       round: Number(entry?.round ?? 0),
       gameOver: Boolean(entry?.gameOver),
       deckCount: Math.max(0, Number(entry?.deckCount || 0)),
-      cardsInPlayCount: Math.max(0, Number(entry?.cardsInPlayCount || 0)),
       castleHpByPlayer: { ...(entry?.castleHpByPlayer || {}) }
     }
     this.history = [...history, safeEntry]
@@ -54,7 +53,6 @@ export class GameWorkflowState {
           round: Number(item?.round ?? 0),
           gameOver: Boolean(item?.gameOver),
           deckCount: Math.max(0, Number(item?.deckCount || 0)),
-          cardsInPlayCount: Math.max(0, Number(item?.cardsInPlayCount || 0)),
           castleHpByPlayer: { ...(item?.castleHpByPlayer || {}) }
         } as GameHistoryEntry
       })

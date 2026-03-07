@@ -6,10 +6,7 @@ import { Player } from './Player'
 
 export class GameContext {
   deck: Array<number> = [];
-  // persisted list of players (id/name) - hands are stored on each entry as `hand` when present
-  // NOTE: `hand` contains an array of card UUID strings (persisted). Card objects are resolved by the GameEngine.
   playersList: Array<Player> =  [];
-  // persisted registry of card payloads (id -> serialized card) was moved to GameEngine
   playerId: number = 0;
   actionByPlayer: Record<string, string> = {};
   static load: any;
@@ -20,7 +17,7 @@ export class GameContext {
       this.deck = init.deck
       this.playersList = init.playersList 
       this.playerId = init.playerId
-      this.actionByPlayer = { ...(init.actionByPlayer || {}) }
+      this.actionByPlayer = init.actionByPlayer
     }
   }
 
@@ -44,7 +41,7 @@ export class GameContext {
   }
 
   // Expose a combined view of all players' cards in play (read-only array of same object refs)
-  // Note: cards in play are stored per-player in `Player.cardsInPlay`.
+  // Note: cards in play are stored per-player in `Player.played`.
 
   cloneCard(card: any) {
     if (!card) return null

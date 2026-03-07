@@ -45,13 +45,12 @@ export type GameCard = {
 
 export default class GameEngine {
   ZONES = ZONES
-  // Persistence: deck, players, cardsInPlay and hands are persisted in `gameContext`.
+  // Persistence: deck, players, cards and hands are persisted in `gameContext`.
   allCards: Deck = new Deck()
   gameContext: GameContext = null as any
   gameWorkflow: GameWorkflowState = null as any
   
 
-  private _skipEnemyAttacks = false
   // runtime registries expected by UI and engine callers
   // Simple observer set so UI/pages can subscribe to engine state updates
   private _listeners: Set<(engine: GameEngine) => void> = new Set()
@@ -82,26 +81,21 @@ export default class GameEngine {
 
   // Return card instances for a player's hand (resolves persisted ids)
   getPlayerCards(playerId: number) : Card[] {
-    const hand = (this.gameContext.playersList[playerId]?.hand) || []
+    const hand = this.gameContext.playersList[playerId].hand
     const out: Card[] = []
-    for (const id of hand) {
-      try {
-          const c : Card = this.allCards?.cardsById?.[String(id)]
-          console.debug('[GameEngine] getPlayerCards lookup id=', String(id), '->', !!c)
-        if (c) out.push(c)
-      } catch (_) {
-        // ignore
+    for (const id of hand) {    
+      const c : Card = this.allCards.cards[id]
+      console.debug('[GameEngine] getPlayerCards lookup id=', id, '->', !!c)
+      if (c) {
+        out.push(c)
       }
     }
     return out
   }
 
   // Helper: normalize a card reference to its id string
-  getCardId(card: any) {
-    if (card == null) return ''
-    if (typeof card === 'string' || typeof card === 'number') return String(card)
-    if ((card as any).id != null) return String((card as any).id)
-    return ''
+  getCardId(card: Card) {
+    return card.id
   }
 
   // Normalize played/action flags into boolean map
@@ -160,8 +154,10 @@ export default class GameEngine {
   }
 
   constructor() {
-    this.reset();
+    if(!this.load()) {
+      this.reset()
     }
+  }
 
   reset() {
     // Initialize game context and cards registry, register all cards and deal hands.
@@ -183,7 +179,10 @@ export default class GameEngine {
 
     this.gameContext = new GameContext({
       playerId: 0,
-      playersList: [ {id: 0, name: 'Player 1', castleHp: 20, castleMaxHp: 20}, {id: 1, name: 'Player 2', castleHp: 20, castleMaxHp: 20} ],
+      playersList: [ 
+        new Player({id: 0, name: 'Player 1', castleHp: 20, castleMaxHp: 20}), 
+        new Player({id: 1, name: 'Player 2', castleHp: 20, castleMaxHp: 20}) 
+      ],
       deck: deckArr,
       actionByPlayer: {}
     })
@@ -239,43 +238,25 @@ export default class GameEngine {
   }
 
   getSpawnZone(card: Card | null | undefined, playerId: number) {
-    // Determine a suitable spawn zone for the played card based on its element
-    // and the player's side. Prefer the nearest zone to the player's side that
-    // matches the card's element (earth/water). Fall back to the owner's castle.
-    try {
-      const el = String((card as any)?.element || 'earth')
-      const len = ZONE_ELEMENTS.length
-      if (Number(playerId) === 0) {
-        for (let i = 0; i < len; i++) {
-          if (ZONE_ELEMENTS[i] === el) return i
-        }
-      } else {
-        for (let i = len - 1; i >= 0; i--) {
-          if (ZONE_ELEMENTS[i] === el) return i
-        }
-      }
-    } catch (_e) {
-      // ignore and fallback
-    }
-    return this.getOwnCastleZone(Number(playerId))
+
   }
 
   // Play a card from hand onto the board (position 0). Reveals the card.
-  playCard(playerId: number, handIndex: number): { ok: boolean; reason?: string } {
-    const cid = this.gameContext.playersList[playerId].hand[handIndex]
+  playCard(playerId: number, handIndex: number): Boolean {
+    console.log(`[GameEngine] playCard called with playerId=${playerId}, handIndex=${handIndex}`)
 
-    console.log(`[GameEngine] `, this.gameContext.playersList[playerId])
-
-    this.gameContext.playersList[playerId].hand.splice(handIndex, 1)
-    this.gameContext.playersList[playerId].cardsInPlay.push({ cardId: cid, position:0 })
+    const player = this.gameContext.playersList[playerId]
+    const removedCards = player.hand.splice(handIndex, 1)
+    
+    removedCards.forEach(cid => {
+      player.played.push({ cardId: cid, position:0 })
+    })
+    this.gameContext.playersList[playerId] = player
 
     this.gameWorkflow.actionByPlayer = this.gameWorkflow.actionByPlayer || {}
     this.gameWorkflow.actionByPlayer[playerId] = 'action-taken'
 
-
-  // advance active player to opponent
-
-    const playersCount = (this.gameContext.playersList || []).length || 2
+    const playersCount = this.gameContext.playersList.length
     const next = (playerId === 0) ? 1 : 0
     this.gameWorkflow.activePlayerId = next
 
@@ -287,10 +268,12 @@ export default class GameEngine {
     }
 
     // persist and notify
-    this.allCards.cardsById[cid].handler.onPlayed(cid, playerId, this)
+    removedCards.forEach(cid => {
+      this.allCards.cards[cid].handler.onPlayed(cid, playerId, this)
+    })
     this.save(true)
 
-    return { ok: true }
+    return true
   }
 
   // Move a specific card by up to `steps` positions (must be non-negative)
@@ -342,8 +325,8 @@ export default class GameEngine {
     this.gameContext = storedGame
     this.gameWorkflow = storedWorkflow
     this.allCards = storedDeck
-    try { this.emitStateChange() } catch (_e) {}
-    try { eventService.emit('engine:stateChange', this, false) } catch (_e) {}
+    this.emitStateChange()
+    eventService.emit('engine:stateChange', this, false)
     return true
   }
 

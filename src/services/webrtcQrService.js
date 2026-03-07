@@ -391,7 +391,6 @@ function createWebrtcQrService() {
     sdpText.value = ''
     stopOfferQrRotation()
     engine.clearStoredState()
-
   }
 
   function resetClientState() {
@@ -404,13 +403,9 @@ function createWebrtcQrService() {
     answerQrPartIndex.value = 0
     answerJson.value = ''
 
-
     const wf = engine.gameWorkflow || new GameWorkflowState()
-    if (typeof wf.appendHistory === 'function') {
-      const castleMap = (Array.isArray(engine.players) ? engine.players : []).reduce((m, p) => { try { m[String(p.id)] = Number(p.castleHp ?? 0) } catch (_) {} return m }, {})
-      wf.appendHistory({ action: 'resetClientState', activePlayerId: 1, round: 0, gameOver: false, deckCount: 0, cardsInPlayCount: 0, castleHpByPlayer: castleMap })
-    }
-    engine.saveState()
+    const ctx = engine.gameContext || new GameContext()
+    engine.save(true)
 
   }
 
