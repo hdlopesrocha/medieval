@@ -1,14 +1,13 @@
-<ion-popover :is-open="popoverOpen"  @did-dismiss="onPopoverDismiss">
+<ion-popover :is-open="!!selectedCard"  @did-dismiss="onPopoverDismiss">
   <div class="map-card-overlay-wrap">
     
-    <CardItem v-if="selectedCard" :card="selectedCard" :showExport="false" />
+    <CardItem :card="selectedCard" :showExport="false" />
     
   </div>
   <div class="map-card-overlay-actions">
-      <template v-if="selectedCanAct && isLocalPlayersTurn">
+      <template v-if="isLocalPlayersTurn">
         <ion-button size="small" @click="moveSelectedCard">Move</ion-button>
         <ion-button size="small" @click="attackWithSelectedCard">Attack</ion-button>
-        <ion-button size="small" v-if="selectedCard && selectedCard.category === 'priest' && canConvert(selectedEntry)" @click="convertWithSelectedCard">Convert</ion-button>
         <ion-button size="small" @click="useSelectedAbility">Use</ion-button>
       </template>
   </div>
@@ -38,7 +37,7 @@
                 class="played-card">
                 <MiniCardItem v-if="card" 
                 :card="card" 
-                @select="selectCard(card)" />
+                @click="selectCard(card)" />
                 <div v-else class="mini-card-fallback"></div>
               </div>
             </div>

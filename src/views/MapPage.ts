@@ -36,34 +36,9 @@ export default {
   name: 'MapPage',
   components: { IonPage, IonContent, IonButton, IonPopover, CardItem, MiniCardItem, ConfirmActionModal },
   setup() {
-    // Use engine state directly; `tick` forces recompute in computed getters.
+    // Use engine directly; `tick` forces recompute in computed getters.
     const tick = ref(0)
-    const state = computed(() => {
-      tick.value
-      const wf = engine.gameWorkflow
-      const ctx = engine.gameContext
-      const aggregatedCards = engine.players.reduce((acc: any[], p: any) => {
-        const ownerId = Number(p.id)
-        const entries = p.played 
-        for (const entry of entries) {
-          const cid = Number((entry as any)?.cardId ?? (entry as any)?.id ?? NaN)
-          if (!Number.isFinite(cid)) continue
-          const pos = Number((entry as any)?.position ?? 0)
-          const cardInst = engine.allCards[String(cid)] || null
-          acc.push({ id: String(cid), ownerId, position: Number(pos ?? (cardInst as any)?.position ?? 0), hidden: Boolean((entry as any)?.hidden ?? (cardInst as any)?.hidden), card: cardInst })
-        }
-        return acc
-      }, [])
-      const nextState: any = {
-        activePlayerId: wf.activePlayerId,
-        playerId: ctx.playerId,
-        round: wf.round,
-        players: engine.players,
-        played: aggregatedCards
-      }
-      return nextState
-    })
-    const selectedEntry = ref<any | null>(null)
+    const selectedCard = ref<Card | null>(null)
     const confirmVisible = ref(false)
     const confirmTitle = ref('')
     const confirmMessage = ref('')
@@ -83,44 +58,36 @@ export default {
       })
     }
 
-    function onConfirm() { if (confirmResolver) confirmResolver(true) }
-    function onCancel() { if (confirmResolver) confirmResolver(false) }
-
-    const popoverOpen = ref(false)
-
-    function selectCard(entry: any) {
-      selectedEntry.value = entry || null
-      if (entry) { 
-        popoverOpen.value = true
-      }
+    function onConfirm() { 
+      if (confirmResolver) 
+        confirmResolver(true) 
+    }
+    
+    function onCancel() { 
+      if (confirmResolver) 
+        confirmResolver(false) 
+    }
+    function selectCard(entry: Card) {
+      console.log('Card selected', entry)
+      selectedCard.value = entry
+      tick.value++
     }
 
     function onPopoverDismiss() {
-      popoverOpen.value = false
-      selectedEntry.value = null
+      selectedCard.value = null
+      tick.value++
     }
 
-    const selectedCard = computed(() => selectedEntry.value?.card || null)
-    const selectedCardId = computed(() => String(selectedEntry.value?.id || ''))
-    const selectedCardPosition = computed(() => Number(selectedEntry.value?.position ?? -1))
-    const selectedCanAct = computed(() => {
-      if (!selectedEntry.value) return false
-      if (state.value.gameOver) return false
-      return Number(selectedEntry.value.ownerId) === Number(state.value.activePlayerId)
-    })
+
 
     const isLocalPlayersTurn = computed(() => {
       tick.value
-      return Number(state.value.playerId || 0) === Number(state.value.activePlayerId || 0)
+      return engine.gameContext.playerId === engine.gameWorkflow.activePlayerId
     })
 
     function refreshState() {
       // Bump tick to force computed readers to refresh.
       tick.value++
-      if (selectedCardId.value) {
-        const latest = (state.value.played || []).find((entry) => String(entry.id) === selectedCardId.value) || null
-        selectedEntry.value = latest
-      }
     }
 
     const cardsByZone = computed(() : Record<number, Card[]> => {
@@ -176,10 +143,6 @@ export default {
       }
     }
 
-    function closeDialog() {
-      selectedEntry.value = null
-    }
-
     function zoneName(position: number) {
       return ZONES[position] ?? String(position)
     }
@@ -227,17 +190,13 @@ export default {
 
     return {
       mapStripImages,
-      state,
       isLocalPlayersTurn,
-      selectedEntry,
+      selectedCard,
       confirmVisible,
       confirmTitle,
       confirmMessage,
       onConfirm,
       onCancel,
-      selectedCard,
-      selectedCanAct,
-      selectedCardPosition,
       cardsForZone,
       hiddenCountForZone,
       zoneStackStyle,
@@ -247,8 +206,6 @@ export default {
       attackWithSelectedCard,
       convertWithSelectedCard,
       useSelectedAbility,
-      closeDialog,
-      popoverOpen,
       onPopoverDismiss,
       zoneStyle,
       refreshState,

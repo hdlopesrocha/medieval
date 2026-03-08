@@ -129,15 +129,10 @@ ion-button.card-action-btn {
 
 
 .card-wrapper {
-	height: 100%;
-	display: inline-flex;
-	flex: 0 0 auto;
-	flex-direction: column;
-
-	width: auto;
-	align-items: stretch;
-	aspect-ratio: 2 / 3; /* width will be computed from height (2:3 => width:height*2/3) */
-}
+	  aspect-ratio: 2 / 3; /* Sets the ratio */
+  width: auto; /* Let it auto adjust based on ratio */
+  height: 100%; /* Take full height of the parent */
+  }
 
 
 </style>

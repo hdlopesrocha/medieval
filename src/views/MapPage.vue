@@ -100,6 +100,24 @@
   border-radius: 8px;
 }
 
+ion-popover::part(content) {
+  background: transparent;
+  box-shadow: none;
+}
+
+.popover-content {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 80vh; /* 80% of viewport height */
+}
+
+.custom-card {
+  aspect-ratio: 2 / 3; /* Sets the ratio */
+  width: auto; /* Let it auto adjust based on ratio */
+  height: 100%; /* Take full height of the parent */
+}
+
 .map-card-overlay-wrap {
   display: flex;
   flex-direction: column;

@@ -745,7 +745,10 @@ function createWebrtcQrService() {
     clientPeer = pc
     pc.ondatachannel = (ev) => {
       clientDataChannel = ev.channel
-      clientDataChannel.onopen = () => { connectedClient.value = true; consoleLogger.value.push('client: dataChannel open') }
+      clientDataChannel.onopen = () => { 
+        connectedClient.value = true; 
+        console.log('client: dataChannel open') 
+      }
       clientDataChannel.onmessage = handleDataChannelMessage
     }
 
