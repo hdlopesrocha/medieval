@@ -100,54 +100,63 @@
   border-radius: 8px;
 }
 
-ion-popover::part(content) {
-  background: transparent;
-  box-shadow: none;
-}
-
-.popover-content {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 80vh; /* 80% of viewport height */
-}
-
-.custom-card {
-  aspect-ratio: 2 / 3; /* Sets the ratio */
-  width: auto; /* Let it auto adjust based on ratio */
-  height: 100%; /* Take full height of the parent */
-}
-
-.map-card-overlay-wrap {
+.map-card-content {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 10px;
-  background: transparent !important;
-  box-shadow: none !important;
-  border: none !important;
+  /* Desired sizing: 80% of popover height and 2/3 aspect ratio */
+  height: 80%;
+  aspect-ratio: 2 / 3;
+  width: auto;
+  max-width: min(80vw, 480px);
+  box-sizing: border-box;
+  overflow: hidden;
+  justify-content: center;
 }
 
-.map-card-overlay-root {
-  position: fixed;
-  inset: 0;
-  z-index: 20000;
+/* Make the inner card stretch to the container to avoid extra white bars */
+.map-card-content .card-wrapper {
+  height: 100% !important;
+  width: 100% !important;
+  margin: 0 !important;
+  box-sizing: border-box !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+.map-card-content .card-image, .map-card-content ion-img {
+  max-height: 48% !important;
+  width: auto !important;
+}
+
+.map-card-actions {
   display: flex;
+  gap: 8px;
+  justify-content: center;
+}
+
+/* Confirm popover styles (moved from ConfirmActionModal) */
+.map-confirm-popover::part(content) {
+  background: transparent;
+  box-shadow: none;
+  display: flex;
+  justify-content: center;
   align-items: center;
-  justify-content: center;
-  background: rgba(0, 0, 0, 0.55);
+  padding: 0;
 }
-
-
-
-.map-card-overlay-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  justify-content: center;
-  width: fit-content;
-  max-width: 96vw;
+.confirm-box-popover{
+  background: #fff;
+  padding: 14px;
+  border-radius: 8px;
+  min-width: 260px;
+  max-width: 90vw;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+  display:flex;flex-direction:column;gap:12px;
 }
+.confirm-title{font-weight:700;font-size:16px}
+.confirm-message{color:#333;font-size:14px}
+.confirm-actions{display:flex;gap:8px;justify-content:flex-end}
 
 @keyframes mapPopoverScaleIn {
   from { opacity: 0; transform: scale(0.9); }
