@@ -1,4 +1,4 @@
-<button type="button">
+<button type="button" @click="$emit('select')">
     <img v-if="imageSrc" 
         :src="imageSrc" 
         :alt="imageAlt" 
