@@ -5,7 +5,6 @@ import eventService from '../services/eventService'
 import { ZONES, ZONE_ELEMENTS } from '../game/GameEngine'
 import CardItem from '../components/CardItem.vue'
 import MiniCardItem from '../components/MiniCardItem.vue'
-import ConfirmActionModal from '../components/ConfirmActionModal.vue'
 import type { GameContext } from '../models/GameContext'
 import type { GameWorkflowState } from '../models/GameWorkflowState'
 import Card from 'src/models/Card'
@@ -34,7 +33,7 @@ const mapStripImages = [
 
 export default {
   name: 'MapPage',
-  components: { IonPage, IonContent, IonButton, IonPopover, CardItem, MiniCardItem, ConfirmActionModal },
+  components: { IonPage, IonContent, IonButton, IonPopover, CardItem, MiniCardItem },
   setup() {
     // Use engine directly; `tick` forces recompute in computed getters.
     const tick = ref(0)
@@ -74,7 +73,9 @@ export default {
     }
 
     function onPopoverDismiss() {
+      console.log('Popover dismissed')
       selectedCard.value = null
+      confirmVisible.value = false
       tick.value++
     }
 

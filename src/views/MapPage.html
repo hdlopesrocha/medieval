@@ -1,15 +1,20 @@
-<ion-popover :is-open="!!selectedCard"  @did-dismiss="onPopoverDismiss">
-  <div class="map-card-overlay-wrap">
-    
+<ion-popover class="map-card-popover" :is-open="!!selectedCard || confirmVisible" backdrop-dismiss="true" @did-dismiss="onPopoverDismiss">
+  <div v-if="selectedCard" class="map-card-content">
     <CardItem :card="selectedCard" :showExport="false" />
-    
+    <div class="map-card-actions" v-if="isLocalPlayersTurn">
+      <ion-button size="small" @click="moveSelectedCard">Move</ion-button>
+      <ion-button size="small" @click="attackWithSelectedCard">Attack</ion-button>
+      <ion-button size="small" @click="useSelectedAbility">Use</ion-button>
+    </div>
   </div>
-  <div class="map-card-overlay-actions">
-      <template v-if="isLocalPlayersTurn">
-        <ion-button size="small" @click="moveSelectedCard">Move</ion-button>
-        <ion-button size="small" @click="attackWithSelectedCard">Attack</ion-button>
-        <ion-button size="small" @click="useSelectedAbility">Use</ion-button>
-      </template>
+
+  <div v-else-if="confirmVisible" class="confirm-box-popover">
+    <div class="confirm-title">{{ confirmTitle }}</div>
+    <div class="confirm-message">{{ confirmMessage }}</div>
+    <div class="confirm-actions">
+      <ion-button size="small" fill="clear" @click="onCancel">Cancel</ion-button>
+      <ion-button size="small" color="primary" @click="onConfirm">Confirm</ion-button>
+    </div>
   </div>
 </ion-popover>
 
@@ -37,7 +42,7 @@
                 class="played-card">
                 <MiniCardItem v-if="card" 
                 :card="card" 
-                @click="selectCard(card)" />
+                @select="selectCard(card)" />
                 <div v-else class="mini-card-fallback"></div>
               </div>
             </div>
@@ -50,10 +55,3 @@
     </div>
 
 </ion-page>
-
-<ConfirmActionModal 
-  :visible="confirmVisible" 
-  :title="confirmTitle" 
-  :message="confirmMessage" 
-  @confirm="onConfirm" 
-  @cancel="onCancel" />
