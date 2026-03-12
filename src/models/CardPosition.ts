@@ -3,6 +3,8 @@ export interface CardPosition {
   cardId: number
   // Zone/slot index where the card is placed
   position: number
+  // ID of the player who owns this card in play
+  ownerId: number
 }
 
 export default CardPosition
