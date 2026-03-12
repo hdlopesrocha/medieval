@@ -1,7 +1,32 @@
 <ion-popover class="map-card-popover" :is-open="!!selectedCard || confirmVisible" backdrop-dismiss="true" @did-dismiss="onPopoverDismiss">
-  <div v-if="selectedCard" class="map-card-content">
+  <!-- Move units popover (nested inside main popover) -->
+  <div v-if="movePopoverVisible" class="move-popover">
+    <ion-card>
+      <ion-card-header>
+        <ion-card-title>Select Move Units</ion-card-title>
+      </ion-card-header>
+      <ion-card-content>
+        <div class="move-range">
+          <ion-button 
+            v-for="units in getMoveRange()" 
+            :key="units"
+            size="small"
+            :color="selectedMoveUnits === units ? 'primary' : 'medium'"
+            @click="selectedMoveUnits = units">
+            {{ units }}
+          </ion-button>
+        </div>
+        <div class="move-actions">
+          <ion-button size="small" fill="clear" @click="cancelMove">Cancel</ion-button>
+          <ion-button size="small" color="primary" @click="confirmMove">Confirm</ion-button>
+        </div>
+      </ion-card-content>
+    </ion-card>
+  </div>
+
+  <div v-else-if="selectedCard" class="map-card-content">
     <CardItem :card="selectedCard" :showExport="false" />
-    <div class="map-card-actions" v-if="isLocalPlayersTurn">
+    <div class="map-card-actions" v-if="isLocalPlayersTurn && isSelectedCardOwnedByLocalPlayer">
       <ion-button size="small" @click="moveSelectedCard">Move</ion-button>
       <ion-button size="small" @click="attackWithSelectedCard">Attack</ion-button>
       <ion-button size="small" @click="useSelectedAbility">Use</ion-button>
@@ -37,12 +62,12 @@
             :style="zoneStyle(zoneIdx)">
             <div class="zone-stack" 
               :style="zoneStackStyle(zoneIdx)">
-              <div v-for="card in cardsForZone(zoneIdx)" 
-                :key="`zone-${zoneIdx}-card`" 
+              <div v-for="item in cardsWithOwnerForZone(zoneIdx)" 
+                :key="`zone-${zoneIdx}-card-${item.card.id}`" 
                 class="played-card">
-                <MiniCardItem v-if="card" 
-                :card="card" 
-                @select="selectCard(card)" />
+                <MiniCardItem v-if="item.card" 
+                :card="item.card" 
+                @select="selectCard(item.card, item.ownerId)" />
                 <div v-else class="mini-card-fallback"></div>
               </div>
             </div>
