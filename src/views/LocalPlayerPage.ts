@@ -78,16 +78,12 @@ export default {
 
     function normalizedStateFromEngine(): any {
       const rawPlayers = Array.isArray(engine.players) ? engine.players : []
-      const rawCardsInPlay = (Array.isArray(engine.players) ? engine.players : []).reduce((acc: any[], p: any) => {
-        const ownerId = p.id
-        const entries = p.played
-        for (const entry of entries) {
-          const cid = Number((entry as any)?.cardId ?? (entry as any)?.id ?? NaN)
-          if (!Number.isFinite(cid)) continue
-          const pos = Number((entry as any)?.position ?? 0)
-          const cardInst = engine.allCards[String(cid)] || null
-          acc.push({ id: String(cid), ownerId, position: Number(pos ?? (cardInst as any)?.position ?? 0), hidden: Boolean((entry as any)?.hidden ?? (cardInst as any)?.hidden), card: cardInst })
-        }
+      const rawCardsInPlay = (engine.gameContext?.played || []).reduce((acc: any[], entry: any) => {
+        const cid = Number(entry?.cardId ?? entry?.id ?? NaN)
+        if (!Number.isFinite(cid)) return acc
+        const pos = Number(entry?.position ?? 0)
+        const cardInst = engine.allCards[String(cid)] || null
+        acc.push({ id: String(cid), ownerId: Number(entry?.ownerId ?? 0), position: Number(pos ?? (cardInst as any)?.position ?? 0), hidden: Boolean(entry?.hidden ?? (cardInst as any)?.hidden), card: cardInst })
         return acc
       }, [])
       const wf: any = engine.gameWorkflow || {}
