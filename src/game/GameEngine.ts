@@ -249,7 +249,7 @@ export default class GameEngine {
     const removedCards = player.hand.splice(handIndex, 1)
     
     removedCards.forEach(cid => {
-      player.played.push({ cardId: cid, position:0 })
+      this.gameContext.played.push({ cardId: cid, position: 0, ownerId: playerId })
     })
     this.gameContext.playersList[playerId] = player
 
