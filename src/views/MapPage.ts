@@ -97,19 +97,14 @@ export default {
         grouped[index] = []
       }
 
-      for (const p of engine.players) {
-        const playedCards = p.played
-        for (const cardPosition of playedCards) {
-          const card = engine.allCards.cards[cardPosition.cardId]
-          let cp = cardPosition.position
-          if(p.id !== engine.gameContext.playerId) {
-            cp = 7 - cp
-          }
-
-          grouped[cp].push(
-            card
-          )
+      for (const cardPosition of engine.gameContext.played) {
+        const card = engine.allCards.cards[cardPosition.cardId]
+        let cp = cardPosition.position
+        if (cardPosition.ownerId !== engine.gameContext.playerId) {
+          cp = 7 - cp
         }
+
+        grouped[cp].push(card)
       }
       console.log('Cards grouped by zone:', grouped)
       return grouped
