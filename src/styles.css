@@ -79,6 +79,35 @@ ion-app, .ion-page, #app {
 .confirm-message{color:#333;font-size:14px}
 .confirm-actions{display:flex;gap:8px;justify-content:flex-end}
 
+/* Move popover styles */
+.move-popover {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 320px;
+}
+
+.move-title {
+  font-size: 16px;
+  font-weight: 600;
+  text-align: center;
+  color: var(--ion-color-dark, #333);
+}
+
+.move-range {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+}
+
+.move-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
 /* Map card popover content: center and limit size, allow child to use 80% height */
 ion-popover.map-card-popover::part(content) {
   /* Make the popover content area a fixed portion of the viewport so
