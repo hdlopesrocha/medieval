@@ -1,5 +1,5 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { IonPage, IonContent, IonButton, IonPopover } from '@ionic/vue'
+import { IonPage, IonContent, IonButton, IonPopover, IonCard } from '@ionic/vue'
 import engine from '../game/engineInstance'
 import eventService from '../services/eventService'
 import { ZONES, ZONE_ELEMENTS } from '../game/GameEngine'
@@ -7,8 +7,9 @@ import CardItem from '../components/CardItem.vue'
 import MiniCardItem from '../components/MiniCardItem.vue'
 import type { GameContext } from '../models/GameContext'
 import type { GameWorkflowState } from '../models/GameWorkflowState'
-import Card from 'src/models/Card'
-import CardPosition from 'src/models/CardPosition'
+import Card from '../models/Card'
+import CardPosition from '../models/CardPosition'
+import { Action } from '../models/Action'
 import { car } from 'ionicons/icons'
 
 const ZONE_COUNT = 8
@@ -33,11 +34,14 @@ const mapStripImages = [
 
 export default {
   name: 'MapPage',
-  components: { IonPage, IonContent, IonButton, IonPopover, CardItem, MiniCardItem },
+  components: { IonPage, IonContent, IonButton, IonPopover, IonCard, CardItem, MiniCardItem },
   setup() {
     // Use engine directly; `tick` forces recompute in computed getters.
     const tick = ref(0)
     const selectedCard = ref<Card | null>(null)
+    const selectedCardOwnerId = ref<number | null>(null)
+    const movePopoverVisible = ref(false)
+    const selectedMoveUnits = ref(0)
     const confirmVisible = ref(false)
     const confirmTitle = ref('')
     const confirmMessage = ref('')
@@ -66,15 +70,17 @@ export default {
       if (confirmResolver) 
         confirmResolver(false) 
     }
-    function selectCard(entry: Card) {
-      console.log('Card selected', entry)
+    function selectCard(entry: Card, ownerId: number) {
+      console.log('Card selected', entry, 'ownerId:', ownerId)
       selectedCard.value = entry
+      selectedCardOwnerId.value = ownerId
       tick.value++
     }
 
     function onPopoverDismiss() {
       console.log('Popover dismissed')
       selectedCard.value = null
+      selectedCardOwnerId.value = null
       confirmVisible.value = false
       tick.value++
     }
@@ -84,6 +90,11 @@ export default {
     const isLocalPlayersTurn = computed(() => {
       tick.value
       return engine.gameContext.playerId === engine.gameWorkflow.activePlayerId
+    })
+
+    const isSelectedCardOwnedByLocalPlayer = computed(() => {
+      tick.value
+      return selectedCardOwnerId.value === engine.gameContext.playerId
     })
 
     function refreshState() {
@@ -110,8 +121,30 @@ export default {
       return grouped
     })
 
+    const cardsWithOwnerByZone = computed(() : Record<number, Array<{ card: Card; ownerId: number }>> => {
+      const grouped: Record<number, Array<{ card: Card; ownerId: number }>> = {}
+      for (let index = 0; index < ZONE_COUNT; index++) {
+        grouped[index] = []
+      }
+
+      for (const cardPosition of engine.gameContext.played) {
+        const card = engine.allCards.cards[cardPosition.cardId]
+        let cp = cardPosition.position
+        if (cardPosition.ownerId !== engine.gameContext.playerId) {
+          cp = 7 - cp
+        }
+
+        grouped[cp].push({ card, ownerId: cardPosition.ownerId })
+      }
+      return grouped
+    })
+
     function cardsForZone(zoneIndex: number): Card[] {
       return cardsByZone.value[zoneIndex] 
+    }
+
+    function cardsWithOwnerForZone(zoneIndex: number): Array<{ card: Card; ownerId: number }> {
+      return cardsWithOwnerByZone.value[zoneIndex]
     }
 
     function hiddenCountForZone(zoneIndex: number) {
@@ -149,7 +182,49 @@ export default {
 
     
     async function moveSelectedCard() {
+      if (!selectedCard.value || selectedCardOwnerId.value === null) {
+        return
+      }
+      // Show move popover with velocity-based range
+      selectedMoveUnits.value = 0
+      movePopoverVisible.value = true
+    }
+
+    function confirmMove() {
+      if (!selectedCard.value || selectedCardOwnerId.value === null) {
+        movePopoverVisible.value = false
+        return
+      }
+      
+      // Find the card position in played array
+      const cardPosition = engine.gameContext.played.find(
+        cp => cp.cardId === selectedCard.value!.id && cp.ownerId === selectedCardOwnerId.value
+      )
+      
+      if (cardPosition) {
+        const action = new Action(cardPosition, selectedMoveUnits.value)
+        console.log('Move action created:', action)
+        // TODO: Execute the move action through the game engine
+      }
+      
+      movePopoverVisible.value = false
       refreshState()
+    }
+
+    function cancelMove() {
+      movePopoverVisible.value = false
+    }
+
+    function getMoveRange(): number[] {
+      if (!selectedCard.value) {
+        return []
+      }
+      const velocity = selectedCard.value.velocity
+      const range: number[] = []
+      for (let i = -velocity; i <= velocity; i++) {
+        range.push(i)
+      }
+      return range
     }
 
     async function attackWithSelectedCard() {
@@ -187,18 +262,25 @@ export default {
     return {
       mapStripImages,
       isLocalPlayersTurn,
+      isSelectedCardOwnedByLocalPlayer,
       selectedCard,
+      movePopoverVisible,
+      selectedMoveUnits,
       confirmVisible,
       confirmTitle,
       confirmMessage,
       onConfirm,
       onCancel,
       cardsForZone,
+      cardsWithOwnerForZone,
       hiddenCountForZone,
       zoneStackStyle,
       zoneName,
       canConvert,
       moveSelectedCard,
+      confirmMove,
+      cancelMove,
+      getMoveRange,
       attackWithSelectedCard,
       convertWithSelectedCard,
       useSelectedAbility,
