@@ -1,5 +1,6 @@
 import { GameWorkflowState } from './GameWorkflowState'
 import { Player } from './Player'
+import CardPosition from './CardPosition'
 
 // Removed: use GameWorkflowState and GameHistoryEntry classes instead.
 
@@ -9,6 +10,8 @@ export class GameContext {
   playersList: Array<Player> =  [];
   playerId: number = 0;
   actionByPlayer: Record<string, string> = {};
+  // Centralized array of all cards in play across all players
+  played: Array<CardPosition> = [];
   static load: any;
 
   constructor(init?: Partial<GameContext>) {
@@ -28,6 +31,7 @@ export class GameContext {
   clearContext(workflow: GameWorkflowState) {
     this.deck = []
     this.playersList = []
+    this.played = []
     Object.assign(workflow, {
       started: false,
       playerId: 0,
@@ -41,7 +45,6 @@ export class GameContext {
   }
 
   // Expose a combined view of all players' cards in play (read-only array of same object refs)
-  // Note: cards in play are stored per-player in `Player.played`.
 
   cloneCard(card: any) {
     if (!card) return null
